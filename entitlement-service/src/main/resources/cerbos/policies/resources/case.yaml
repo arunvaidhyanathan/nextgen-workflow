@@ -1,0 +1,142 @@
+# resources/case.yaml
+# Resource policy for OneCMS case management operations
+# This policy governs actions on case business objects and is enforced by OneCMS Service
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "case"
+  version: "1.0"
+  importDerivedRoles:
+    - one_cms_derived_roles
+  rules:
+    # ========================================
+    # CASE CREATION
+    # ========================================
+    - actions: ["create"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INTAKE_ANALYST" # Only intake analysts can create new cases
+      description: "Intake analysts can create new cases"
+
+    # ========================================
+    # CASE READING/VIEWING
+    # ========================================
+    - actions: ["read", "view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INTAKE_ANALYST"
+        - "INVESTIGATOR" 
+        - "INVESTIGATION_MANAGER"
+        - "ADJUDICATOR"
+        - "AROG_REVIEWER"
+        - "EO_OFFICER"
+        - "HR_SPECIALIST"
+        - "LEGAL_COUNSEL"
+        - "SECURITY_ANALYST"
+      derivedRoles:
+        # Allow department members to view cases assigned to their department
+        - case_department_member
+      description: "Authorized roles and department members can view cases"
+
+    # ========================================
+    # CASE UPDATING
+    # ========================================
+    - actions: ["update", "edit"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER" # Managers can always update
+        - "EO_OFFICER" # Ethics office has broad update rights
+      derivedRoles:
+        # Allow current assignee to update their assigned case
+        - case_assignee
+      description: "Managers, EO officers, and current assignees can update cases"
+
+    # ========================================
+    # ALLEGATION MANAGEMENT
+    # ========================================
+    - actions: ["add_allegation"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INTAKE_ANALYST"
+        - "INVESTIGATION_MANAGER"
+        - "INVESTIGATOR"
+      derivedRoles:
+        - case_assignee
+      description: "Intake analysts, managers, investigators, and assignees can add allegations"
+
+    - actions: ["update_allegation"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "INVESTIGATOR"
+      derivedRoles:
+        - case_assignee
+      description: "Managers, investigators, and assignees can update allegations"
+
+    # ========================================
+    # NARRATIVE MANAGEMENT
+    # ========================================
+    - actions: ["add_narrative", "create_narrative"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATOR"
+        - "INVESTIGATION_MANAGER"
+        - "HR_SPECIALIST"
+        - "LEGAL_COUNSEL"
+        - "SECURITY_ANALYST"
+      condition:
+        match:
+          # Only allow if user's department matches case department or they're assigned
+          any:
+            of:
+              - expr: request.resource.attr.department_code in request.principal.attr.departments
+              - expr: request.resource.attr.assigneeId == request.principal.id
+      description: "Specialists can add narratives to cases in their department or assigned to them"
+
+    # ========================================
+    # CASE ASSIGNMENT
+    # ========================================
+    - actions: ["assign", "reassign"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+      description: "Managers and EO officers can assign/reassign cases"
+
+    # ========================================
+    # CASE STATUS CHANGES
+    # ========================================
+    - actions: ["close_case", "reopen_case"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+      description: "Only managers and EO officers can close or reopen cases"
+
+    # ========================================
+    # SENSITIVE OPERATIONS
+    # ========================================
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_OFFICER" # Only ethics office can delete cases
+      condition:
+        match:
+          # Additional safety check - only allow deletion of draft cases
+          expr: request.resource.attr.status == "DRAFT"
+      description: "Only EO officers can delete draft cases"
+
+    # ========================================
+    # AUDIT AND REPORTING
+    # ========================================
+    - actions: ["audit", "export", "report"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "AROG_REVIEWER"
+      description: "Managers, EO officers, and AROG reviewers can access audit functions"
+
+  # Default deny rule - explicitly deny any action not covered above
+  defaultRule:
+    effect: EFFECT_DENY
+    description: "Default deny for any action not explicitly allowed"

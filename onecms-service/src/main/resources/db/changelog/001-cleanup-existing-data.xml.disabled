@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ============================================ -->
+    <!-- DATA CLEANUP - DELETE ALL EXISTING DATA     -->
+    <!-- ============================================ -->
+
+    <changeSet id="cleanup-001-disable-fk-checks" author="cms-migration">
+        <comment>Skip foreign key disable due to permission restrictions in managed database</comment>
+        <sql>
+            -- Foreign key handling managed by proper deletion order instead
+            SELECT 1;
+        </sql>
+        <rollback>
+            SELECT 1;
+        </rollback>
+    </changeSet>
+
+    <changeSet id="cleanup-002-delete-business-data" author="cms-migration">
+        <comment>Delete all data from core business tables in proper order</comment>
+        
+        <!-- Delete child tables first to avoid FK violations -->
+        <delete tableName="case_transitions" schemaName="cms_flowable_workflow"/>
+        <delete tableName="case_comments" schemaName="cms_flowable_workflow"/>
+        <delete tableName="case_attachments" schemaName="cms_flowable_workflow"/>
+        <delete tableName="work_items" schemaName="cms_flowable_workflow"/>
+        <delete tableName="allegations" schemaName="cms_flowable_workflow"/>
+        <delete tableName="cases" schemaName="cms_flowable_workflow"/>
+        <delete tableName="user_roles" schemaName="cms_flowable_workflow"/>
+        <delete tableName="user_sessions" schemaName="cms_flowable_workflow"/>
+        <delete tableName="notifications" schemaName="cms_flowable_workflow"/>
+        <delete tableName="audit_log" schemaName="cms_flowable_workflow"/>
+        
+        <!-- Delete reference tables -->
+        <delete tableName="departments" schemaName="cms_flowable_workflow"/>
+        <delete tableName="case_types" schemaName="cms_flowable_workflow"/>
+        <delete tableName="roles" schemaName="cms_flowable_workflow"/>
+        <delete tableName="users" schemaName="cms_flowable_workflow"/>
+        <delete tableName="system_configuration" schemaName="cms_flowable_workflow"/>
+    </changeSet>
+
+    <changeSet id="cleanup-003-reset-sequences" author="cms-migration">
+        <comment>Reset all sequences to start from 1</comment>
+        <sql splitStatements="true" endDelimiter=";">
+            ALTER SEQUENCE cms_flowable_workflow.users_user_id_seq RESTART WITH 1;
+            ALTER SEQUENCE cms_flowable_workflow.roles_role_id_seq RESTART WITH 1;
+            ALTER SEQUENCE cms_flowable_workflow.user_roles_user_role_id_seq RESTART WITH 1;
+            ALTER SEQUENCE cms_flowable_workflow.departments_id_seq RESTART WITH 1;
+            ALTER SEQUENCE cms_flowable_workflow.cases_case_id_seq RESTART WITH 1;
+            ALTER SEQUENCE cms_flowable_workflow.allegations_allegation_id_seq RESTART WITH 1;
+            ALTER SEQUENCE cms_flowable_workflow.work_items_work_item_id_seq RESTART WITH 1;
+        </sql>
+        <sql>
+            DO $reset_sequences$
+            DECLARE
+                seq_name text;
+            BEGIN
+                FOR seq_name IN 
+                    SELECT sequence_name 
+                    FROM information_schema.sequences 
+                    WHERE sequence_schema = 'cms_flowable_workflow'
+                    AND sequence_name NOT IN (
+                        'users_user_id_seq', 
+                        'roles_role_id_seq', 
+                        'user_roles_user_role_id_seq',
+                        'departments_id_seq',
+                        'cases_case_id_seq',
+                        'allegations_allegation_id_seq',
+                        'work_items_work_item_id_seq'
+                    )
+                LOOP
+                    EXECUTE 'ALTER SEQUENCE cms_flowable_workflow.' || seq_name || ' RESTART WITH 1';
+                END LOOP;
+            END $reset_sequences$;
+        </sql>
+        <rollback>
+            <!-- Sequences will be reset by subsequent data insertion -->
+        </rollback>
+    </changeSet>
+
+    <changeSet id="cleanup-004-enable-fk-checks" author="cms-migration">
+        <comment>Cleanup completion marker</comment>
+        <sql>
+            -- Data cleanup completed successfully
+            SELECT 1;
+        </sql>
+        <rollback>
+            SELECT 1;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

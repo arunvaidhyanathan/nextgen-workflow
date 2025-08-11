@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- Create core CMS tables for OneCMS service -->
+    
+    <changeSet id="1" author="onecms-migration">
+        <comment>Create departments table</comment>
+        <createTable tableName="departments" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="department_name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="manager_email" type="VARCHAR(255)"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2" author="onecms-migration">
+        <comment>Create case types table</comment>
+        <createTable tableName="case_types" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type_name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="3" author="onecms-migration">
+        <comment>Create cases table</comment>
+        <createTable tableName="cases" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_number" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="title" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="status" type="VARCHAR(50)" defaultValue="OPEN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="VARCHAR(20)" defaultValue="MEDIUM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)" defaultValue="MEDIUM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="case_type_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="department_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_to" type="VARCHAR(255)"/>
+            <column name="process_instance_id" type="VARCHAR(64)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="cases" baseColumnNames="case_type_id" baseTableSchemaName="onecms"
+            constraintName="fk_cases_case_type"
+            referencedTableName="case_types" referencedColumnNames="id" referencedTableSchemaName="onecms"/>
+
+        <addForeignKeyConstraint
+            baseTableName="cases" baseColumnNames="department_id" baseTableSchemaName="onecms"
+            constraintName="fk_cases_department"
+            referencedTableName="departments" referencedColumnNames="id" referencedTableSchemaName="onecms"/>
+    </changeSet>
+
+    <changeSet id="4" author="onecms-migration">
+        <comment>Create allegations table</comment>
+        <createTable tableName="allegations" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="allegation_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="severity" type="VARCHAR(20)" defaultValue="MEDIUM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="OPEN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="allegations" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_allegations_case"
+            referencedTableName="cases" referencedColumnNames="id" referencedTableSchemaName="onecms"/>
+    </changeSet>
+
+    <changeSet id="5" author="onecms-migration">
+        <comment>Create case entities table</comment>
+        <createTable tableName="case_entities" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_id" type="VARCHAR(255)"/>
+            <column name="role" type="VARCHAR(100)"/>
+            <column name="details" type="JSONB"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="case_entities" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_entities_case"
+            referencedTableName="cases" referencedColumnNames="id" referencedTableSchemaName="onecms"/>
+    </changeSet>
+
+    <changeSet id="6" author="onecms-migration">
+        <comment>Create case narratives table</comment>
+        <createTable tableName="case_narratives" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="narrative_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="author" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="case_narratives" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_narratives_case"
+            referencedTableName="cases" referencedColumnNames="id" referencedTableSchemaName="onecms"/>
+    </changeSet>
+
+    <changeSet id="7" author="onecms-migration">
+        <comment>Create case comments table</comment>
+        <createTable tableName="case_comments" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comment" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="author" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comment_type" type="VARCHAR(50)" defaultValue="GENERAL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="visibility" type="VARCHAR(20)" defaultValue="INTERNAL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="case_comments" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_comments_case"
+            referencedTableName="cases" referencedColumnNames="id" referencedTableSchemaName="onecms"/>
+    </changeSet>
+    
+</databaseChangeLog>

@@ -1,0 +1,106 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  # Spring Cloud Gateway Configuration
+  cloud:
+    gateway:
+      # Enable service discovery integration
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # Global Filters (Applied to all routes)
+      default-filters:
+        - RemoveResponseHeader=X-Powered-By
+        - name: Retry
+          args:
+            retries: 2
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST
+
+      # Route Definitions
+      routes:
+        # Route for Entitlement Service
+        - id: entitlement-service-route
+          uri: lb://entitlement-service
+          predicates:
+            - Path=/api/entitlements/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+
+        # Route for Flowable Core Workflow Service
+        - id: flowable-core-workflow-route
+          uri: lb://flowable-core-workflow
+          predicates:
+            - Path=/api/workflow/**
+          filters:
+            - name: HeaderUserExtractionFilter
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+
+        # Route for Authentication via Entitlement Service
+        - id: auth-service-route
+          uri: lb://entitlement-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - RewritePath=/api/auth/(?<segment>.*), /api/auth/$\{segment}
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+
+        # Route for OneCMS Service
+        - id: onecms-service-route
+          uri: lb://onecms-service
+          predicates:
+            - Path=/api/cms/**
+          filters:
+            - name: HeaderUserExtractionFilter
+            - RewritePath=/api/cms/(?<segment>.*), /api/$\{segment}
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# Management and Monitoring Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.workflow.apigateway: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

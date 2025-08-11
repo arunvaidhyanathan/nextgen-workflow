@@ -1,0 +1,38 @@
+server:
+  port: 8761
+
+eureka:
+  client:
+    # A Eureka server is not a client of itself
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # Turn off self-preservation mode in dev to see deregistration quickly
+    enable-self-preservation: false
+    # Set shorter eviction timer for development (default is 60s)
+    eviction-interval-timer-in-ms: 10000
+
+spring:
+  application:
+    name: service-registry
+
+# Enable Eureka dashboard
+eureka.dashboard.enabled: true
+
+# Actuator endpoint configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging configuration
+logging:
+  level:
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

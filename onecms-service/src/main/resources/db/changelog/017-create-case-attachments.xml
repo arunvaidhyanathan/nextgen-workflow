@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <!-- Create Case Attachments Table -->
+    <changeSet id="017-001-create-case-attachments" author="claude">
+        <comment>Create table for case attachments and documents</comment>
+        
+        <createTable tableName="case_attachments" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="attachment_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- File Information -->
+            <column name="original_filename" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stored_filename" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_path" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_size" type="BIGINT"/>
+            <column name="mime_type" type="VARCHAR(100)"/>
+            <column name="file_extension" type="VARCHAR(10)"/>
+            
+            <!-- Metadata -->
+            <column name="attachment_type" type="VARCHAR(50)" defaultValue="DOCUMENT"/>
+            <column name="description" type="TEXT"/>
+            <column name="tags" type="TEXT"/>
+            
+            <!-- Security and Access -->
+            <column name="is_confidential" type="BOOLEAN" defaultValueBoolean="false"/>
+            <column name="access_level" type="VARCHAR(20)" defaultValue="CASE_TEAM"/>
+            <column name="encryption_status" type="VARCHAR(20)" defaultValue="NONE"/>
+            
+            <!-- Audit Fields -->
+            <column name="uploaded_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uploaded_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            
+            <!-- Status -->
+            <column name="is_deleted" type="BOOLEAN" defaultValueBoolean="false"/>
+            <column name="deleted_at" type="TIMESTAMP"/>
+            <column name="deleted_by" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign key constraints -->
+    <changeSet id="017-002-add-attachment-constraints" author="claude">
+        <addForeignKeyConstraint
+            baseTableName="case_attachments" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="case_id"
+            referencedTableName="cases" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="case_id"
+            constraintName="fk_case_attachments_case_id"
+            onDelete="CASCADE"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="case_attachments" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="uploaded_by"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_case_attachments_uploaded_by"
+            onDelete="RESTRICT"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="case_attachments" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="deleted_by"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_case_attachments_deleted_by"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <!-- Add check constraints -->
+    <changeSet id="017-003-add-attachment-check-constraints" author="claude">
+        <sql>
+            <![CDATA[
+            -- Attachment type check
+            ALTER TABLE cms_flowable_workflow.case_attachments 
+            ADD CONSTRAINT check_attachment_type 
+            CHECK (attachment_type IN ('DOCUMENT', 'IMAGE', 'VIDEO', 'AUDIO', 'EVIDENCE', 'REPORT', 'CORRESPONDENCE', 'OTHER'));
+            
+            -- Access level check
+            ALTER TABLE cms_flowable_workflow.case_attachments 
+            ADD CONSTRAINT check_access_level 
+            CHECK (access_level IN ('PUBLIC', 'CASE_TEAM', 'INVESTIGATORS', 'MANAGERS', 'CONFIDENTIAL', 'RESTRICTED'));
+            
+            -- Encryption status check
+            ALTER TABLE cms_flowable_workflow.case_attachments 
+            ADD CONSTRAINT check_encryption_status 
+            CHECK (encryption_status IN ('NONE', 'BASIC', 'ADVANCED', 'PII_PROTECTED'));
+            
+            -- File size check (max 100MB)
+            ALTER TABLE cms_flowable_workflow.case_attachments 
+            ADD CONSTRAINT check_file_size 
+            CHECK (file_size > 0 AND file_size <= 104857600);
+            ]]>
+        </sql>
+    </changeSet>
+
+    <!-- Create indexes -->
+    <changeSet id="017-004-create-attachment-indexes" author="claude">
+        <createIndex tableName="case_attachments" schemaName="cms_flowable_workflow" indexName="idx_case_attachments_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_attachments" schemaName="cms_flowable_workflow" indexName="idx_case_attachments_uploaded_by">
+            <column name="uploaded_by"/>
+        </createIndex>
+        <createIndex tableName="case_attachments" schemaName="cms_flowable_workflow" indexName="idx_case_attachments_uploaded_at">
+            <column name="uploaded_at"/>
+        </createIndex>
+        <createIndex tableName="case_attachments" schemaName="cms_flowable_workflow" indexName="idx_case_attachments_type">
+            <column name="attachment_type"/>
+        </createIndex>
+        <createIndex tableName="case_attachments" schemaName="cms_flowable_workflow" indexName="idx_case_attachments_filename">
+            <column name="original_filename"/>
+        </createIndex>
+        <createIndex tableName="case_attachments" schemaName="cms_flowable_workflow" indexName="idx_case_attachments_not_deleted">
+            <column name="is_deleted"/>
+        </createIndex>
+        <createIndex tableName="case_attachments" schemaName="cms_flowable_workflow" indexName="idx_case_attachments_confidential">
+            <column name="is_confidential"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

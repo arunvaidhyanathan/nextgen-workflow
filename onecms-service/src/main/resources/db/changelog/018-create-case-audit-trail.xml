@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <!-- Create Case Audit Trail Table -->
+    <changeSet id="018-001-create-case-audit-trail" author="claude">
+        <comment>Create comprehensive audit trail for all case-related activities</comment>
+        
+        <createTable tableName="case_audit_trail" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="audit_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Action Details -->
+            <column name="action_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action_description" type="TEXT"/>
+            <column name="action_category" type="VARCHAR(50)" defaultValue="GENERAL"/>
+            
+            <!-- Target Information -->
+            <column name="target_entity_type" type="VARCHAR(50)"/>
+            <column name="target_entity_id" type="VARCHAR(100)"/>
+            <column name="field_name" type="VARCHAR(100)"/>
+            <column name="old_value" type="TEXT"/>
+            <column name="new_value" type="TEXT"/>
+            
+            <!-- User and Session Info -->
+            <column name="performed_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_role" type="VARCHAR(50)"/>
+            <column name="session_id" type="VARCHAR(100)"/>
+            <column name="ip_address" type="VARCHAR(45)"/>
+            <column name="user_agent" type="TEXT"/>
+            
+            <!-- Timing -->
+            <column name="performed_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="duration_ms" type="INTEGER" defaultValue="0"/>
+            
+            <!-- System Information -->
+            <column name="system_version" type="VARCHAR(50)"/>
+            <column name="workflow_instance_id" type="VARCHAR(100)"/>
+            <column name="task_id" type="VARCHAR(100)"/>
+            
+            <!-- Additional Context -->
+            <column name="additional_data" type="JSONB"/>
+            <column name="risk_level" type="VARCHAR(20)" defaultValue="LOW"/>
+            <column name="compliance_flag" type="BOOLEAN" defaultValueBoolean="false"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign key constraints -->
+    <changeSet id="018-002-add-audit-constraints" author="claude">
+        <addForeignKeyConstraint
+            baseTableName="case_audit_trail" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="case_id"
+            referencedTableName="cases" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="case_id"
+            constraintName="fk_case_audit_trail_case_id"
+            onDelete="CASCADE"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="case_audit_trail" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="performed_by"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_case_audit_trail_performed_by"
+            onDelete="RESTRICT"/>
+    </changeSet>
+
+    <!-- Add check constraints -->
+    <changeSet id="018-003-add-audit-check-constraints" author="claude">
+        <sql>
+            <![CDATA[
+            -- Action type check
+            ALTER TABLE cms_flowable_workflow.case_audit_trail 
+            ADD CONSTRAINT check_action_type 
+            CHECK (action_type IN (
+                'CASE_CREATED', 'CASE_UPDATED', 'CASE_CLOSED', 'CASE_REOPENED',
+                'CASE_ASSIGNED', 'CASE_REASSIGNED', 'CASE_ESCALATED',
+                'ENTITY_ADDED', 'ENTITY_UPDATED', 'ENTITY_REMOVED',
+                'ALLEGATION_ADDED', 'ALLEGATION_UPDATED', 'ALLEGATION_REMOVED',
+                'NARRATIVE_ADDED', 'NARRATIVE_UPDATED', 'NARRATIVE_REMOVED',
+                'COMMENT_ADDED', 'COMMENT_UPDATED', 'COMMENT_REMOVED',
+                'ATTACHMENT_UPLOADED', 'ATTACHMENT_DOWNLOADED', 'ATTACHMENT_REMOVED',
+                'WORKFLOW_STARTED', 'TASK_COMPLETED', 'TASK_ASSIGNED',
+                'STATUS_CHANGED', 'PRIORITY_CHANGED', 'DEPARTMENT_ASSIGNED',
+                'USER_ACCESS', 'LOGIN_ATTEMPT', 'PERMISSION_GRANTED',
+                'DATA_EXPORT', 'REPORT_GENERATED', 'COMPLIANCE_CHECK',
+                'SYSTEM_EVENT', 'ERROR_OCCURRED', 'SECURITY_ALERT'
+            ));
+            
+            -- Action category check
+            ALTER TABLE cms_flowable_workflow.case_audit_trail 
+            ADD CONSTRAINT check_action_category 
+            CHECK (action_category IN (
+                'CASE_MANAGEMENT', 'WORKFLOW', 'DATA_CHANGE', 'ACCESS_CONTROL',
+                'COMPLIANCE', 'SECURITY', 'SYSTEM', 'USER_ACTION', 'GENERAL'
+            ));
+            
+            -- Risk level check
+            ALTER TABLE cms_flowable_workflow.case_audit_trail 
+            ADD CONSTRAINT check_risk_level 
+            CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL'));
+            
+            -- Target entity type check
+            ALTER TABLE cms_flowable_workflow.case_audit_trail 
+            ADD CONSTRAINT check_target_entity_type 
+            CHECK (target_entity_type IS NULL OR target_entity_type IN (
+                'CASE', 'ENTITY', 'ALLEGATION', 'NARRATIVE', 'COMMENT', 
+                'ATTACHMENT', 'USER', 'WORKFLOW', 'TASK', 'QUEUE'
+            ));
+            ]]>
+        </sql>
+    </changeSet>
+
+    <!-- Create comprehensive indexes for audit queries -->
+    <changeSet id="018-004-create-audit-indexes" author="claude">
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_performed_by">
+            <column name="performed_by"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_performed_at">
+            <column name="performed_at"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_action_type">
+            <column name="action_type"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_action_category">
+            <column name="action_category"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_target_entity">
+            <column name="target_entity_type"/>
+            <column name="target_entity_id"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_risk_level">
+            <column name="risk_level"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_compliance">
+            <column name="compliance_flag"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_workflow">
+            <column name="workflow_instance_id"/>
+        </createIndex>
+        <createIndex tableName="case_audit_trail" schemaName="cms_flowable_workflow" indexName="idx_case_audit_trail_date_action">
+            <column name="performed_at"/>
+            <column name="action_type"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

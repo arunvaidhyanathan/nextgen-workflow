@@ -1,0 +1,164 @@
+<testsuites id="" name="" tests="6" failures="0" skipped="0" errors="0" time="10.256734">
+<testsuite name="final-auth-test.spec.ts" timestamp="2025-08-11T09:30:06.059Z" hostname="chromium" tests="2" failures="0" skipped="0" time="10.772" errors="0">
+<testcase name="Complete Authentication Fix Verification › Complete End-to-End Authentication Test" classname="final-auth-test.spec.ts" time="6.086">
+<system-out>
+<![CDATA[🚀 Testing the complete authentication fix...
+📍 Performing login...
+✅ Success: ✅ Tasks fetched: 0 tasks
+✅ Success: ✅ Cases fetched: 5 cases
+✅ Success: ✅ Dashboard stats fetched: {allOpenCases: 0, openInvestigations: 2, totalCases: 5}
+
+=== AUTHENTICATION RESULTS ===
+Final URL: http://localhost:3000/dashboard
+Session ID stored: YES
+User info stored: YES
+On dashboard: true
+
+=== API REQUEST ANALYSIS ===
+Total API requests: 4
+Proxy requests: 4
+Direct requests: 0
+✅ All requests use proxy correctly
+
+=== ERROR ANALYSIS ===
+Total errors: 0
+✅ No CORS or authentication errors
+Dashboard content loaded: YES
+
+=== FINAL ASSESSMENT ===
+🎉 COMPLETE SUCCESS! All authentication issues resolved:
+   ✅ Login works correctly
+   ✅ Session data stored properly
+   ✅ All API calls use proxy
+   ✅ No CORS errors
+   ✅ Dashboard loads correctly
+]]>
+</system-out>
+</testcase>
+<testcase name="Complete Authentication Fix Verification › Manual Dashboard API Test" classname="final-auth-test.spec.ts" time="4.686">
+<system-out>
+<![CDATA[🚀 Testing dashboard API calls manually...
+✅ Login successful, testing API calls...
+
+=== API TEST RESULTS ===
+✅ /api/cms/v1/cases/dashboard-stats: 200 (SUCCESS)
+   Data: { allOpenCases: [33m0[39m, openInvestigations: [33m2[39m, totalCases: [33m5[39m }
+✅ /api/cms/v1/cases/dashboard-cases: 200 (SUCCESS)
+   Items: 5
+✅ /api/workflow/my-tasks: 200 (SUCCESS)
+   Items: 0
+
+All API tests successful: ✅ YES
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="final-auth-test.spec.ts" timestamp="2025-08-11T09:30:06.059Z" hostname="firefox" tests="2" failures="0" skipped="0" time="11.536" errors="0">
+<testcase name="Complete Authentication Fix Verification › Complete End-to-End Authentication Test" classname="final-auth-test.spec.ts" time="6.611">
+<system-out>
+<![CDATA[🚀 Testing the complete authentication fix...
+📍 Performing login...
+✅ Success: ✅ Cases fetched: 5 cases
+✅ Success: ✅ Dashboard stats fetched: JSHandle@object
+✅ Success: ✅ Tasks fetched: 0 tasks
+
+=== AUTHENTICATION RESULTS ===
+Final URL: http://localhost:3000/dashboard
+Session ID stored: YES
+User info stored: YES
+On dashboard: true
+
+=== API REQUEST ANALYSIS ===
+Total API requests: 4
+Proxy requests: 4
+Direct requests: 0
+✅ All requests use proxy correctly
+
+=== ERROR ANALYSIS ===
+Total errors: 0
+✅ No CORS or authentication errors
+Dashboard content loaded: YES
+
+=== FINAL ASSESSMENT ===
+🎉 COMPLETE SUCCESS! All authentication issues resolved:
+   ✅ Login works correctly
+   ✅ Session data stored properly
+   ✅ All API calls use proxy
+   ✅ No CORS errors
+   ✅ Dashboard loads correctly
+]]>
+</system-out>
+</testcase>
+<testcase name="Complete Authentication Fix Verification › Manual Dashboard API Test" classname="final-auth-test.spec.ts" time="4.925">
+<system-out>
+<![CDATA[🚀 Testing dashboard API calls manually...
+✅ Login successful, testing API calls...
+
+=== API TEST RESULTS ===
+✅ /api/cms/v1/cases/dashboard-stats: 200 (SUCCESS)
+   Data: { allOpenCases: [33m0[39m, openInvestigations: [33m2[39m, totalCases: [33m5[39m }
+✅ /api/cms/v1/cases/dashboard-cases: 200 (SUCCESS)
+   Items: 5
+✅ /api/workflow/my-tasks: 200 (SUCCESS)
+   Items: 0
+
+All API tests successful: ✅ YES
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="final-auth-test.spec.ts" timestamp="2025-08-11T09:30:06.059Z" hostname="webkit" tests="2" failures="0" skipped="0" time="10.421" errors="0">
+<testcase name="Complete Authentication Fix Verification › Complete End-to-End Authentication Test" classname="final-auth-test.spec.ts" time="6.254">
+<system-out>
+<![CDATA[🚀 Testing the complete authentication fix...
+📍 Performing login...
+✅ Success: ✅ Tasks fetched: 0 tasks
+✅ Success: ✅ Dashboard stats fetched: {allOpenCases: 0, openInvestigations: 2, totalCases: 5}
+✅ Success: ✅ Cases fetched: 5 cases
+
+=== AUTHENTICATION RESULTS ===
+Final URL: http://localhost:3000/dashboard
+Session ID stored: YES
+User info stored: YES
+On dashboard: true
+
+=== API REQUEST ANALYSIS ===
+Total API requests: 4
+Proxy requests: 4
+Direct requests: 0
+✅ All requests use proxy correctly
+
+=== ERROR ANALYSIS ===
+Total errors: 0
+✅ No CORS or authentication errors
+Dashboard content loaded: YES
+
+=== FINAL ASSESSMENT ===
+🎉 COMPLETE SUCCESS! All authentication issues resolved:
+   ✅ Login works correctly
+   ✅ Session data stored properly
+   ✅ All API calls use proxy
+   ✅ No CORS errors
+   ✅ Dashboard loads correctly
+]]>
+</system-out>
+</testcase>
+<testcase name="Complete Authentication Fix Verification › Manual Dashboard API Test" classname="final-auth-test.spec.ts" time="4.167">
+<system-out>
+<![CDATA[🚀 Testing dashboard API calls manually...
+✅ Login successful, testing API calls...
+
+=== API TEST RESULTS ===
+✅ /api/cms/v1/cases/dashboard-stats: 200 (SUCCESS)
+   Data: { allOpenCases: [33m0[39m, openInvestigations: [33m2[39m, totalCases: [33m5[39m }
+✅ /api/cms/v1/cases/dashboard-cases: 200 (SUCCESS)
+   Items: 5
+✅ /api/workflow/my-tasks: 200 (SUCCESS)
+   Items: 0
+
+All API tests successful: ✅ YES
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,0 +1,43 @@
+# derived_roles/one-cms.yaml
+# Derived roles specific to the OneCMS application within the nextgen-workflow ecosystem
+apiVersion: "api.cerbos.dev/v1"
+description: "Derived roles for OneCMS case management system"
+derivedRoles:
+  name: one_cms_derived_roles
+  definitions:
+    # A user is a case assignee if their ID matches the assigneeId attribute of the case resource
+    - name: case_assignee
+      parentRoles: ["user"] # Generic role all authenticated users have
+      condition:
+        match:
+          expr: request.resource.attr.assigneeId == request.principal.id
+
+    # A user is a case department member if the case's department code is in their list of departments
+    # The Entitlement Service populates principal.attr.departments from user_departments table
+    - name: case_department_member
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: request.resource.attr.department_code in request.principal.attr.departments
+
+    # A user can access queues they are entitled to based on their roles
+    # The Entitlement Service populates principal.attr.queues from business_app_roles.metadata.queues
+    - name: queue_member
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: request.resource.attr.currentQueue in request.principal.attr.queues
+
+    # A user is a task assignee if they are currently assigned to the task
+    - name: task_assignee
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: request.resource.attr.currentTask.assignee == request.principal.id
+
+    # A user belongs to the same department as the case for cross-departmental visibility rules
+    - name: same_department_member
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: request.resource.attr.case_department_code in request.principal.attr.departments

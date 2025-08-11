@@ -1,0 +1,648 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- Initial OneCMS Schema Creation based on JPA Entity Analysis -->
+    
+    <!-- ========================================= -->
+    <!-- REFERENCE DATA TABLES -->
+    <!-- Note: User and department data is managed by entitlement-service -->
+    <!-- ========================================= -->
+
+    <!-- ========================================= -->
+    <!-- CASE TYPE & REFERENCE DATA TABLES -->
+    <!-- ========================================= -->
+
+    <changeSet id="001-create-case-types-table" author="onecms-migration">
+        <comment>Create case_types table for case categorization</comment>
+        <createTable tableName="case_types" schemaName="onecms">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_type_id" type="BIGINT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="type_code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="type_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type_description" type="TEXT"/>
+            <column name="default_priority" type="VARCHAR(50)"/>
+            <column name="sla_hours" type="INTEGER"/>
+            <column name="is_active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <createIndex tableName="case_types" schemaName="onecms" indexName="idx_case_types_code">
+            <column name="type_code"/>
+        </createIndex>
+        <createIndex tableName="case_types" schemaName="onecms" indexName="idx_case_types_active">
+            <column name="is_active"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Reference data tables -->
+    <changeSet id="002-create-reference-tables" author="onecms-migration">
+        <comment>Create reference data tables for countries, data sources, and escalation methods</comment>
+        
+        <!-- Countries and Clusters -->
+        <createTable tableName="countries_clusters" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="country_code" type="VARCHAR(10)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="country_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cluster_name" type="VARCHAR(50)"/>
+            <column name="region" type="VARCHAR(50)"/>
+            <column name="is_active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Data Sources -->
+        <createTable tableName="data_sources" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="source_code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="source_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Escalation Methods -->
+        <createTable tableName="escalation_methods" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="method_code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="method_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValue="true"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Indexes for reference tables -->
+        <createIndex tableName="countries_clusters" schemaName="onecms" indexName="idx_countries_code">
+            <column name="country_code"/>
+        </createIndex>
+        <createIndex tableName="data_sources" schemaName="onecms" indexName="idx_data_sources_code">
+            <column name="source_code"/>
+        </createIndex>
+        <createIndex tableName="escalation_methods" schemaName="onecms" indexName="idx_escalation_methods_code">
+            <column name="method_code"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- MAIN CASES TABLE -->
+    <!-- ========================================= -->
+
+    <changeSet id="003-create-cases-table" author="onecms-migration">
+        <comment>Create main cases table with all fields from Case entity</comment>
+        <createTable tableName="cases" schemaName="onecms">
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_number" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="case_type_id" type="BIGINT"/>
+            <column name="department_id" type="BIGINT"/>
+            <column name="priority" type="VARCHAR(20)" defaultValue="MEDIUM"/>
+            <column name="status" type="VARCHAR(50)" defaultValue="OPEN"/>
+            <column name="assigned_to_user_id" type="VARCHAR(50)"/>
+            <column name="complainant_name" type="VARCHAR(200)"/>
+            <column name="complainant_email" type="VARCHAR(255)"/>
+            <column name="workflow_instance_key" type="BIGINT"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by_user_id" type="VARCHAR(50)"/>
+            
+            <!-- Additional case fields from frontend requirements -->
+            <column name="occurrence_date" type="DATE"/>
+            <column name="date_reported_to_citi" type="DATE"/>
+            <column name="date_received_by_escalation_channel" type="DATE"/>
+            <column name="complaint_escalated_by" type="VARCHAR(50)"/>
+            <column name="data_source_id" type="VARCHAR(50)"/>
+            <column name="cluster_country" type="VARCHAR(50)"/>
+            <column name="legal_hold" type="BOOLEAN" defaultValue="false"/>
+            <column name="outside_counsel" type="BOOLEAN" defaultValue="false"/>
+            <column name="intake_analyst_id" type="VARCHAR(50)"/>
+            <column name="investigation_manager_id" type="VARCHAR(50)"/>
+            <column name="investigator_id" type="VARCHAR(50)"/>
+        </createTable>
+        
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint
+            baseTableName="cases" baseColumnNames="case_type_id" baseTableSchemaName="onecms"
+            constraintName="fk_cases_case_type"
+            referencedTableName="case_types" referencedColumnNames="id" referencedTableSchemaName="onecms"
+            onDelete="SET NULL"/>
+            
+        <!-- Note: User ID references point to entitlement-service.users.id -->
+        <!-- Department ID references point to entitlement-service.departments.id -->
+        <!-- No foreign key constraints since they reference external service tables -->
+        
+        <!-- Performance indexes -->
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_case_number">
+            <column name="case_number"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_priority">
+            <column name="priority"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_created_at">
+            <column name="created_at"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_assigned_to">
+            <column name="assigned_to_user_id"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_workflow_instance">
+            <column name="workflow_instance_key"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- ALLEGATIONS TABLE -->
+    <!-- ========================================= -->
+
+    <changeSet id="004-create-allegations-table" author="onecms-migration">
+        <comment>Create allegations table with all fields from Allegation entity</comment>
+        <createTable tableName="allegations" schemaName="onecms">
+            <column name="allegation_id" type="VARCHAR(50)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="allegation_type" type="VARCHAR(100)"/>
+            <column name="severity" type="VARCHAR(20)"/>
+            <column name="description" type="TEXT"/>
+            <column name="department_classification" type="VARCHAR(100)"/>
+            <column name="assigned_group" type="VARCHAR(100)"/>
+            <column name="flowable_plan_item_id" type="VARCHAR(255)"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Additional fields from frontend requirements -->
+            <column name="allegation_number" type="VARCHAR(100)"/>
+            <column name="investigation_function" type="VARCHAR(50)"/>
+            <column name="subject_entity_id" type="VARCHAR(50)"/>
+            <column name="allegation_category" type="VARCHAR(20)"/>
+            <column name="grc_taxonomy_1" type="VARCHAR(100)"/>
+            <column name="grc_taxonomy_2" type="VARCHAR(100)"/>
+            <column name="grc_taxonomy_3" type="VARCHAR(100)"/>
+            <column name="grc_taxonomy_4" type="VARCHAR(100)"/>
+        </createTable>
+        
+        <!-- Foreign key to cases -->
+        <addForeignKeyConstraint
+            baseTableName="allegations" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_allegations_case"
+            referencedTableName="cases" referencedColumnNames="case_id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+        
+        <!-- Indexes -->
+        <createIndex tableName="allegations" schemaName="onecms" indexName="idx_allegations_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="allegations" schemaName="onecms" indexName="idx_allegations_severity">
+            <column name="severity"/>
+        </createIndex>
+        <createIndex tableName="allegations" schemaName="onecms" indexName="idx_allegations_category">
+            <column name="allegation_category"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- CASE ENTITIES TABLE -->
+    <!-- ========================================= -->
+
+    <changeSet id="005-create-case-entities-table" author="onecms-migration">
+        <comment>Create case_entities table for people and organizations involved in cases</comment>
+        <createTable tableName="case_entities" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="entity_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="investigation_function" type="VARCHAR(50)"/>
+            <column name="relationship_type" type="VARCHAR(100)"/>
+            
+            <!-- Person fields -->
+            <column name="soeid" type="VARCHAR(50)"/>
+            <column name="geid" type="VARCHAR(50)"/>
+            <column name="first_name" type="VARCHAR(100)"/>
+            <column name="middle_name" type="VARCHAR(100)"/>
+            <column name="last_name" type="VARCHAR(100)"/>
+            <column name="email_address" type="VARCHAR(255)"/>
+            <column name="phone_number" type="VARCHAR(50)"/>
+            <column name="address" type="TEXT"/>
+            <column name="city" type="VARCHAR(100)"/>
+            <column name="state" type="VARCHAR(100)"/>
+            <column name="zip_code" type="VARCHAR(20)"/>
+            
+            <!-- Organization fields -->
+            <column name="organization_name" type="VARCHAR(255)"/>
+            <column name="organization_type" type="VARCHAR(100)"/>
+            
+            <!-- Additional fields from UI design -->
+            <column name="preferred_contact_method" type="TEXT"/>
+            <column name="goc" type="VARCHAR(100)"/>
+            <column name="manager" type="VARCHAR(255)"/>
+            <column name="hire_date" type="DATE"/>
+            <column name="hr_responsible" type="VARCHAR(255)"/>
+            <column name="legal_vehicle" type="VARCHAR(100)"/>
+            <column name="managed_segment" type="VARCHAR(100)"/>
+            <column name="relationship_to_citi" type="VARCHAR(100)"/>
+            <column name="anonymous" type="BOOLEAN" defaultValue="false"/>
+            
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Foreign key to cases -->
+        <addForeignKeyConstraint
+            baseTableName="case_entities" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_entities_case"
+            referencedTableName="cases" referencedColumnNames="case_id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+        
+        <!-- Indexes -->
+        <createIndex tableName="case_entities" schemaName="onecms" indexName="idx_case_entities_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="onecms" indexName="idx_case_entities_type">
+            <column name="entity_type"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="onecms" indexName="idx_case_entities_soeid">
+            <column name="soeid"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="onecms" indexName="idx_case_entities_email">
+            <column name="email_address"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- CASE NARRATIVES TABLE -->
+    <!-- ========================================= -->
+
+    <changeSet id="006-create-case-narratives-table" author="onecms-migration">
+        <comment>Create case_narratives table for case investigation narratives</comment>
+        <createTable tableName="case_narratives" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="narrative_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="investigation_function" type="VARCHAR(50)"/>
+            <column name="narrative_type" type="VARCHAR(100)"/>
+            <column name="narrative_title" type="VARCHAR(255)"/>
+            <column name="narrative_text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_recalled" type="BOOLEAN" defaultValue="false"/>
+            <column name="created_by" type="VARCHAR(50)"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint
+            baseTableName="case_narratives" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_narratives_case"
+            referencedTableName="cases" referencedColumnNames="case_id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+            
+        <!-- Note: created_by references entitlement-service.users.id -->
+        <!-- No foreign key constraint since it references external service table -->
+        
+        <!-- Indexes -->
+        <createIndex tableName="case_narratives" schemaName="onecms" indexName="idx_case_narratives_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_narratives" schemaName="onecms" indexName="idx_case_narratives_type">
+            <column name="narrative_type"/>
+        </createIndex>
+        <createIndex tableName="case_narratives" schemaName="onecms" indexName="idx_case_narratives_created_by">
+            <column name="created_by"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- CASE COMMENTS TABLE -->
+    <!-- ========================================= -->
+
+    <changeSet id="007-create-case-comments-table" author="onecms-migration">
+        <comment>Create case_comments table for case discussion and communication</comment>
+        <createTable tableName="case_comments" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="comment_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_comment_id" type="BIGINT"/>
+            <column name="comment_text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comment_type" type="VARCHAR(50)" defaultValue="GENERAL"/>
+            <column name="created_by" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_by" type="VARCHAR(50)"/>
+            <column name="is_deleted" type="BOOLEAN" defaultValue="false"/>
+            <column name="is_internal" type="BOOLEAN" defaultValue="false"/>
+            <column name="is_confidential" type="BOOLEAN" defaultValue="false"/>
+            <column name="character_count" type="INTEGER" defaultValue="0"/>
+        </createTable>
+        
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint
+            baseTableName="case_comments" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_comments_case"
+            referencedTableName="cases" referencedColumnNames="case_id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+            
+        <!-- Note: created_by and updated_by reference entitlement-service.users.id -->
+        <!-- No foreign key constraints since they reference external service tables -->
+        
+        <!-- Indexes -->
+        <createIndex tableName="case_comments" schemaName="onecms" indexName="idx_case_comments_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="onecms" indexName="idx_case_comments_created_by">
+            <column name="created_by"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="onecms" indexName="idx_case_comments_created_at">
+            <column name="created_at"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="onecms" indexName="idx_case_comments_type">
+            <column name="comment_type"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- WORKFLOW & TRANSITION TABLES -->
+    <!-- ========================================= -->
+
+    <changeSet id="008-create-case-transitions-table" author="onecms-migration">
+        <comment>Create case_transitions table for tracking case status changes</comment>
+        <createTable tableName="case_transitions" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="transition_id" type="BIGINT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_status" type="VARCHAR(50)"/>
+            <column name="to_status" type="VARCHAR(50)"/>
+            <column name="task_definition_key" type="VARCHAR(100)"/>
+            <column name="task_name" type="VARCHAR(200)"/>
+            <column name="workflow_instance_key" type="BIGINT"/>
+            <column name="task_key" type="BIGINT"/>
+            <column name="performed_by_user_id" type="VARCHAR(50)"/>
+            <column name="transition_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comments" type="TEXT"/>
+        </createTable>
+        
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint
+            baseTableName="case_transitions" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_transitions_case"
+            referencedTableName="cases" referencedColumnNames="case_id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+            
+        <!-- Note: performed_by_user_id references entitlement-service.users.id -->
+        <!-- No foreign key constraint since it references external service table -->
+        
+        <!-- Indexes -->
+        <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_date">
+            <column name="transition_date"/>
+        </createIndex>
+        <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_performed_by">
+            <column name="performed_by_user_id"/>
+        </createIndex>
+        <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_workflow">
+            <column name="workflow_instance_key"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="009-create-transition-variables-table" author="onecms-migration">
+        <comment>Create transition_variables table for storing case transition variables</comment>
+        <createTable tableName="transition_variables" schemaName="onecms">
+            <column name="case_transitions_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="variable_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="variable_value" type="VARCHAR(500)"/>
+        </createTable>
+        
+        <!-- Composite primary key -->
+        <addPrimaryKey 
+            tableName="transition_variables" 
+            schemaName="onecms" 
+            columnNames="case_transitions_id,variable_name" 
+            constraintName="pk_transition_variables"/>
+        
+        <!-- Foreign key constraint -->
+        <addForeignKeyConstraint
+            baseTableName="transition_variables" baseColumnNames="case_transitions_id" baseTableSchemaName="onecms"
+            constraintName="fk_transition_variables_transition"
+            referencedTableName="case_transitions" referencedColumnNames="id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- WORK ITEMS TABLES -->
+    <!-- ========================================= -->
+
+    <changeSet id="010-create-work-items-table" author="onecms-migration">
+        <comment>Create work_items table for case tasks and work items</comment>
+        <createTable tableName="work_items" schemaName="onecms">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="work_item_id" type="VARCHAR(20)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)"/>
+            <column name="assigned_to_user_id" type="VARCHAR(50)"/>
+            <column name="task_name" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_key" type="BIGINT"/>
+            <column name="status" type="VARCHAR(50)" defaultValue="PENDING"/>
+            <column name="due_date" type="DATE"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_at" type="TIMESTAMP"/>
+            <column name="completed_by_user_id" type="VARCHAR(50)"/>
+        </createTable>
+        
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint
+            baseTableName="work_items" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_work_items_case"
+            referencedTableName="cases" referencedColumnNames="case_id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+            
+        <!-- Note: assigned_to_user_id and completed_by_user_id reference entitlement-service.users.id -->
+        <!-- No foreign key constraints since they reference external service tables -->
+        
+        <!-- Indexes -->
+        <createIndex tableName="work_items" schemaName="onecms" indexName="idx_work_items_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="work_items" schemaName="onecms" indexName="idx_work_items_assigned_to">
+            <column name="assigned_to_user_id"/>
+        </createIndex>
+        <createIndex tableName="work_items" schemaName="onecms" indexName="idx_work_items_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="work_items" schemaName="onecms" indexName="idx_work_items_due_date">
+            <column name="due_date"/>
+        </createIndex>
+        <createIndex tableName="work_items" schemaName="onecms" indexName="idx_work_items_task_key">
+            <column name="task_key"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Note: User role assignments are managed by entitlement-service -->
+    <!-- This service only stores user ID references as VARCHAR(50) -->
+
+    <!-- ========================================= -->
+    <!-- FINAL OPTIMIZATIONS -->
+    <!-- ========================================= -->
+
+    <changeSet id="011-add-additional-indexes" author="onecms-migration">
+        <comment>Add additional performance indexes for common query patterns</comment>
+        
+        <!-- Composite indexes for common query patterns -->
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_status_priority">
+            <column name="status"/>
+            <column name="priority"/>
+        </createIndex>
+        
+        <createIndex tableName="cases" schemaName="onecms" indexName="idx_cases_department_status">
+            <column name="department_id"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex tableName="allegations" schemaName="onecms" indexName="idx_allegations_case_severity">
+            <column name="case_id"/>
+            <column name="severity"/>
+        </createIndex>
+        
+        <createIndex tableName="work_items" schemaName="onecms" indexName="idx_work_items_assigned_status">
+            <column name="assigned_to_user_id"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <!-- Full text search indexes for narrative and comment searches -->
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_case_narratives_text_search ON onecms.case_narratives 
+            USING gin(to_tsvector('english', narrative_text));
+        </sql>
+        
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_case_comments_text_search ON onecms.case_comments 
+            USING gin(to_tsvector('english', comment_text));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,2169 @@
+{
+	"info": {
+		"_postman_id": "8a4e5c2f-9d3e-4b2c-8f1e-6a7b8c9d0e1f",
+		"name": "NextGen Workflow API - Session Authentication Testing Suite",
+		"description": "Complete API testing suite for the NextGen Workflow OneCMS application with session-based authentication.\n\n## Overview\nThis collection provides end-to-end testing capabilities for:\n- Session-based Authentication & Authorization\n- Case Management Workflows\n- Task-based Operations\n- Multi-department Processes\n- Admin Operations\n- Error Handling\n\n## How to Use\n1. Set environment variables (baseUrl, database credentials)\n2. Run 00-Configuration to get session IDs\n3. Execute folders in sequence for full E2E testing\n4. Individual folders can be run independently for specific testing\n\n## Key Variables\n- `baseUrl`: API base URL (e.g., http://localhost:8080/api)\n- `session_analyst`: Session ID for intake analyst\n- `session_investigator`: Session ID for investigator\n- `session_manager`: Session ID for investigation manager\n- `session_admin`: Session ID for admin user\n- `caseId`: Dynamically set case ID\n- `taskId`: Dynamically set task ID\n\nAuthor: NextGen Workflow Development Team\nVersion: 2.0.0",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "key",
+				"value": "X-Session-Id",
+				"type": "string"
+			},
+			{
+				"key": "value",
+				"value": "{{session_analyst}}",
+				"type": "string"
+			},
+			{
+				"key": "in",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Set common headers",
+					"pm.request.headers.add({",
+					"    key: 'Content-Type',",
+					"    value: 'application/json'",
+					"});",
+					"",
+					"// Add session ID header if available",
+					"const sessionId = pm.collectionVariables.get('session_analyst') || ",
+					"                  pm.collectionVariables.get('session_investigator') || ",
+					"                  pm.collectionVariables.get('session_manager') || ",
+					"                  pm.collectionVariables.get('session_admin') ||",
+					"                  pm.collectionVariables.get('session_legal') ||",
+					"                  pm.collectionVariables.get('session_hr') ||",
+					"                  pm.collectionVariables.get('session_security');",
+					"if (sessionId && !pm.request.headers.has('X-Session-Id')) {",
+					"    pm.request.headers.add({",
+					"        key: 'X-Session-Id',",
+					"        value: sessionId",
+					"    });",
+					"};",
+					"",
+					"// Log request details for debugging",
+					"console.log(`Making request to: ${pm.request.url}`);",
+					"console.log(`Method: ${pm.request.method}`);",
+					"",
+					"// Validate required variables",
+					"const requiredVars = ['baseUrl'];",
+					"requiredVars.forEach(varName => {",
+					"    if (!pm.collectionVariables.get(varName)) {",
+					"        console.warn(`Warning: Required variable '${varName}' is not set`);",
+					"    }",
+					"});"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Common response validation",
+					"pm.test('Response time is acceptable', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"pm.test('Response has correct content type', function () {",
+					"    if (pm.response.code !== 204) {",
+					"        pm.expect(pm.response.headers.get('content-type')).to.include('application/json');",
+					"    }",
+					"});",
+					"",
+					"// Log response for debugging",
+					"console.log(`Response status: ${pm.response.code}`);",
+					"console.log(`Response time: ${pm.response.responseTime}ms`);",
+					"",
+					"// Store response data if available",
+					"if (pm.response.code === 200 || pm.response.code === 201) {",
+					"    try {",
+					"        const responseJson = pm.response.json();",
+					"        pm.collectionVariables.set('lastResponse', JSON.stringify(responseJson));",
+					"    } catch (e) {",
+					"        console.log('Response is not JSON');",
+					"    }",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api",
+			"type": "string"
+		},
+		{
+			"key": "session_analyst",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_investigator",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_manager",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_legal",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_hr",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_security",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "session_admin",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "caseId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "taskId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "allegationId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "narrativeId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "processInstanceId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "testUserId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "lastResponse",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "00 - Configuration",
+			"description": "Initial setup and authentication token retrieval for all user roles.",
+			"item": [
+				{
+					"name": "Get Session IDs (All Users)",
+					"description": "Retrieve session IDs for all user personas used in testing.",
+					"item": [
+						{
+							"name": "Login as Intake Analyst",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response contains sessionId', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('sessionId');",
+											"    pm.expect(responseJson.sessionId).to.not.be.empty;",
+											"    ",
+											"    // Store session ID for use in other requests",
+											"    pm.collectionVariables.set('session_analyst', responseJson.sessionId);",
+											"});",
+											"",
+											"pm.test('Response contains user info', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('user');",
+											"    pm.expect(responseJson.user.username).to.equal('alice.intake');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"alice.intake\",\n    \"password\": \"password123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							}
+						},
+						{
+							"name": "Login as Investigator",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Session ID stored successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.collectionVariables.set('session_investigator', responseJson.sessionId);",
+											"    pm.expect(pm.collectionVariables.get('session_investigator')).to.not.be.empty;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"edward.inv\",\n    \"password\": \"password123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							}
+						},
+						{
+							"name": "Login as Investigation Manager",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Session ID stored successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.collectionVariables.set('session_manager', responseJson.sessionId);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"frank.mgr\",\n    \"password\": \"password123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							}
+						},
+						{
+							"name": "Login as HR Specialist",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Session ID stored successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.collectionVariables.set('session_hr', responseJson.sessionId);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"bob.hr\",\n    \"password\": \"password123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							}
+						},
+						{
+							"name": "Login as Legal Counsel",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Session ID stored successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.collectionVariables.set('session_legal', responseJson.sessionId);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"charlie.legal\",\n    \"password\": \"password123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							}
+						},
+						{
+							"name": "Login as Security Analyst",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Session ID stored successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.collectionVariables.set('session_security', responseJson.sessionId);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"diana.sec\",\n    \"password\": \"password123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							}
+						},
+						{
+							"name": "Login as Ethics Officer (Admin)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Admin login successful', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Admin session ID stored successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.collectionVariables.set('session_admin', responseJson.sessionId);",
+											"    pm.expect(pm.collectionVariables.get('session_admin')).to.not.be.empty;",
+											"});",
+											"",
+											"pm.test('User is Ethics Officer with admin privileges', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson.user.username).to.equal('ivan.eo');",
+											"    pm.expect(responseJson.user.firstName).to.equal('Ivan');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"ivan.eo\",\n    \"password\": \"password123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Validate Session IDs",
+					"description": "Test that all session IDs are valid and can access basic endpoints.",
+					"item": [
+						{
+							"name": "Test Analyst Session",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Session ID is valid', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Can access worklist', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.be.an('array');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_analyst}}",
+										"type": "text"
+									}
+								],
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/workflow/my-tasks",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"my-tasks"
+									]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "01 - Admin Authentication",
+			"description": "Authenticate as Ethics Officer (admin-level access) for administrative operations.",
+			"item": [
+				{
+					"name": "Login as Ethics Officer (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Admin login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains admin session ID', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('token');",
+									"    pm.expect(responseJson.token).to.not.be.empty;",
+									"    ",
+									"    // Store admin token for administrative operations",
+									"    pm.collectionVariables.set('session_admin', responseJson.sessionId);",
+									"});",
+									"",
+									"pm.test('User is Ethics Officer', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('user');",
+									"    pm.expect(responseJson.user.username).to.equal('ivan.eo');",
+									"    pm.expect(responseJson.user.firstName).to.equal('Ivan');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"ivan.eo\",\n    \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "Verify Admin User Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Admin user details retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('User has admin-level role', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.username).to.equal('ivan.eo');",
+									"    pm.expect(responseJson.attributes.is_manager).to.equal(true);",
+									"    pm.expect(responseJson.attributes.employee_level).to.equal('Director');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_admin}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/entitlements/users/username/ivan.eo",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"entitlements",
+								"users",
+								"username",
+								"ivan.eo"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "02 - Workflow Setup - One CMS Application",
+			"description": "Deploy and register BPMN workflows for the OneCMS application.",
+			"item": [
+				{
+					"name": "Register CMS Workflow",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Workflow registered successfully', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains workflow metadata', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('processDefinitionKey');",
+									"    pm.expect(responseJson.processDefinitionKey).to.equal('Process_CMS_Workflow_Updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_admin}}",
+									"type": "text"
+								}
+							],
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"processDefinitionKey\": \"Process_CMS_Workflow_Updated\",\n    \"businessAppName\": \"OneCMS\",\n    \"description\": \"Main CMS workflow for case processing\",\n    \"taskQueueMappings\": [\n        {\n            \"taskDefinitionKey\": \"eo-intake-review\",\n            \"queueName\": \"onecms-intake-queue\",\n            \"candidateGroups\": [\"INTAKE_ANALYST\"]\n        },\n        {\n            \"taskDefinitionKey\": \"hr-review\",\n            \"queueName\": \"onecms-hr-review-queue\",\n            \"candidateGroups\": [\"HR_SPECIALIST\"]\n        },\n        {\n            \"taskDefinitionKey\": \"legal-review\",\n            \"queueName\": \"onecms-legal-review-queue\",\n            \"candidateGroups\": [\"LEGAL_COUNSEL\"]\n        },\n        {\n            \"taskDefinitionKey\": \"investigation-task\",\n            \"queueName\": \"onecms-investigation-queue\",\n            \"candidateGroups\": [\"INVESTIGATOR\"]\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/workflow-management/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"workflow-management",
+								"register"
+							]
+						}
+					}
+				},
+				{
+					"name": "Deploy BPMN Workflow (from file)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Workflow deployed successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Deployment response contains process definitions', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success');",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson).to.have.property('processDefinitions');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_admin}}",
+									"type": "text"
+								}
+							],
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fileName\": \"Process_CMS_Workflow_Updated.bpmn20.xml\",\n    \"dmnFileName\": \"allegation-classification.dmn\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/workflow-management/deploy-from-file",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"workflow-management",
+								"deploy-from-file"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Workflow Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Workflow details retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains workflow metadata', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('processDefinitionKey');",
+									"    pm.expect(responseJson).to.have.property('businessAppName');",
+									"    pm.expect(responseJson.businessAppName).to.equal('OneCMS');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_admin}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cms/workflow-management/Process_CMS_Workflow_Updated",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"workflow-management",
+								"Process_CMS_Workflow_Updated"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "03 - E2E Case Workflow: Financial Fraud",
+			"description": "Complete end-to-end case workflow from creation to closure.",
+			"item": [
+				{
+					"name": "Stage 1: Case Intake (As Intake Analyst)",
+					"description": "Initial case creation and intake processing.",
+					"item": [
+						{
+							"name": "Create New Financial Fraud Case",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Case created successfully', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test('Response contains case details', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('caseId');",
+											"    pm.expect(responseJson).to.have.property('caseNumber');",
+											"    pm.expect(responseJson.title).to.equal('Financial Fraud Investigation');",
+											"    ",
+											"    // Store case ID for subsequent requests",
+											"    pm.collectionVariables.set('caseId', responseJson.caseId);",
+											"    ",
+											"    // Store process instance ID if available",
+											"    if (responseJson.workflowInstanceKey) {",
+											"        pm.collectionVariables.set('processInstanceId', responseJson.workflowInstanceKey.toString());",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_analyst}}",
+										"type": "text"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"title\": \"Financial Fraud Investigation\",\n    \"description\": \"Suspected unauthorized financial transactions involving employee expense reports\",\n    \"departmentId\": 1,\n    \"complainantName\": \"John Doe\",\n    \"complainantEmail\": \"john.doe@company.com\",\n    \"occurrenceDate\": \"2024-08-01\",\n    \"dateReportedToCiti\": \"2024-08-10\",\n    \"cluster\": \"North America\",\n    \"legalHold\": false,\n    \"outsideCounsel\": false,\n    \"allegations\": [\n        {\n            \"allegationType\": \"Financial Fraud\",\n            \"severity\": \"HIGH\",\n            \"description\": \"Unauthorized expense report submissions with falsified receipts\",\n            \"departmentClassification\": \"Finance\",\n            \"grcTaxonomy1\": \"Fraud\",\n            \"grcTaxonomy2\": \"Financial\"\n        }\n    ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cms/cases",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"cases"
+									]
+								}
+							}
+						},
+						{
+							"name": "Get My Worklist (Intake Analyst)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Worklist retrieved successfully', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Worklist contains intake task', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.be.an('array');",
+											"    ",
+											"    if (responseJson.length > 0) {",
+											"        const intakeTask = responseJson.find(task => ",
+											"            task.taskName && task.taskName.includes('Intake'));",
+											"        ",
+											"        if (intakeTask) {",
+											"            pm.collectionVariables.set('taskId', intakeTask.taskId);",
+											"            pm.expect(intakeTask).to.have.property('caseContext');",
+											"        }",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_analyst}}",
+										"type": "text"
+									}
+								],
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/workflow/my-tasks",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"my-tasks"
+									]
+								}
+							}
+						},
+						{
+							"name": "Claim Intake Task",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Task claimed successfully', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Task operation response is valid', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success');",
+											"    pm.expect(responseJson.success).to.be.true;",
+											"    pm.expect(responseJson.taskId).to.equal(pm.collectionVariables.get('taskId'));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_analyst}}",
+										"type": "text"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/workflow/onecms/tasks/{{taskId}}/claim",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"tasks",
+										"{{taskId}}",
+										"claim"
+									]
+								}
+							}
+						},
+						{
+							"name": "Complete Intake Task",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Task completed successfully', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Task completion response is valid', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success');",
+											"    pm.expect(responseJson.success).to.be.true;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_analyst}}",
+										"type": "text"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"variables\": {\n        \"intakeDecision\": \"ROUTE_TO_INVESTIGATION\",\n        \"assignedDepartment\": \"LEGAL\",\n        \"priority\": \"HIGH\",\n        \"estimatedHours\": 40\n    },\n    \"outcome\": \"APPROVED\",\n    \"comments\": \"Case approved for legal review and investigation. High priority due to financial impact.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/workflow/onecms/tasks/{{taskId}}/complete",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"tasks",
+										"{{taskId}}",
+										"complete"
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Stage 2: Departmental Review (As Legal Counsel)",
+					"description": "Legal department review and case routing.",
+					"item": [
+						{
+							"name": "Get My Worklist (Legal Counsel)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Legal counsel worklist retrieved', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Legal review task available', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.be.an('array');",
+											"    ",
+											"    const legalTask = responseJson.find(task => ",
+											"        task.taskName && task.taskName.includes('Legal'));",
+											"    ",
+											"    if (legalTask) {",
+											"        pm.collectionVariables.set('taskId', legalTask.taskId);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_legal}}",
+										"type": "text"
+									}
+								],
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/workflow/my-tasks",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"my-tasks"
+									]
+								}
+							}
+						},
+						{
+							"name": "Claim and Complete Legal Review Task",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"// First claim the task, then complete it in one request",
+											"// This simulates the UI behavior where claim and complete happen together"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Legal review task completed', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Legal review outcome recorded', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success');",
+											"    pm.expect(responseJson.success).to.be.true;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_legal}}",
+										"type": "text"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"variables\": {\n        \"legalReviewDecision\": \"APPROVE_INVESTIGATION\",\n        \"legalRisk\": \"MEDIUM\",\n        \"requiresOutsideCounsel\": false,\n        \"legalHoldRequired\": true\n    },\n    \"outcome\": \"APPROVED\",\n    \"comments\": \"Legal review completed. Approve for full investigation. Legal hold to be implemented.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/workflow/onecms/tasks/{{taskId}}/complete",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"tasks",
+										"{{taskId}}",
+										"complete"
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Stage 3: Investigation (As Investigator)",
+					"description": "Investigation phase with case analysis and findings.",
+					"item": [
+						{
+							"name": "Add Investigation Narrative",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Investigation narrative added successfully', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test('Narrative response contains details', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('narrativeId');",
+											"    pm.expect(responseJson.narrativeType).to.equal('Investigation Summary');",
+											"    ",
+											"    pm.collectionVariables.set('narrativeId', responseJson.narrativeId);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_investigator}}",
+										"type": "text"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"narrativeType\": \"Investigation Summary\",\n    \"narrativeTitle\": \"Financial Fraud Investigation - Initial Findings\",\n    \"narrativeText\": \"Investigation commenced on August 10, 2024. Initial review of expense reports from January-July 2024 reveals suspicious patterns in submissions by subject employee. Key findings:\\n\\n1. Duplicate receipt submissions across multiple expense reports\\n2. Altered receipt timestamps and amounts\\n3. Unusual vendor patterns not matching company approved suppliers\\n4. Total estimated fraud amount: $12,500\\n\\nRecommendation: Continue investigation with forensic accounting review.\",\n    \"investigationFunction\": \"Financial Analysis\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cms/cases/{{caseId}}/narratives",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"cases",
+										"{{caseId}}",
+										"narratives"
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Investigation Task",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Investigation tasks retrieved', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Investigation task found', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const investTask = responseJson.find(task => ",
+											"        task.taskName && task.taskName.includes('Investigation'));",
+											"    ",
+											"    if (investTask) {",
+											"        pm.collectionVariables.set('taskId', investTask.taskId);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_investigator}}",
+										"type": "text"
+									}
+								],
+								"method": "GET",
+								"url": {
+									"raw": "{{baseUrl}}/workflow/my-tasks",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"my-tasks"
+									]
+								}
+							}
+						},
+						{
+							"name": "Complete Investigation Plan (Validation Pass)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Investigation plan completed successfully', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Investigation moves to next stage', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success');",
+											"    pm.expect(responseJson.success).to.be.true;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_investigator}}",
+										"type": "text"
+									}
+								],
+								"method": "POST",
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"variables\": {\n        \"investigationPlanStatus\": \"COMPLETED\",\n        \"findingsLevel\": \"SUBSTANTIATED\",\n        \"recommendedAction\": \"DISCIPLINARY_ACTION\",\n        \"estimatedLoss\": 12500,\n        \"evidenceCollected\": true,\n        \"witnessInterviews\": 3,\n        \"forensicAnalysisRequired\": false\n    },\n    \"outcome\": \"COMPLETE\",\n    \"comments\": \"Investigation plan completed. Evidence supports financial fraud allegations. Recommend proceeding to disciplinary action phase.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/workflow/onecms/tasks/{{taskId}}/complete",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"worklist",
+										"tasks",
+										"{{taskId}}",
+										"complete"
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Stage 4: Case Finalization (As Manager)",
+					"description": "Final review and case closure by investigation manager.",
+					"item": [
+						{
+							"name": "Update Case Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Case updated successfully', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Case status updated to under review', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson.status).to.equal('UNDER_REVIEW');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{session_manager}}",
+										"type": "text"
+									}
+								]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"UNDER_REVIEW\",\n    \"priority\": \"HIGH\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cms/cases/{{caseId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cms",
+										"cases",
+										"{{caseId}}"
+									]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "04 - Reference Data",
+			"description": "Test reference data endpoints for static lookup values.",
+			"item": [
+				{
+					"name": "Get Escalation Methods",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Escalation methods retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains escalation methods array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"    ",
+									"    if (responseJson.length > 0) {",
+									"        const method = responseJson[0];",
+									"        pm.expect(method).to.have.property('id');",
+									"        pm.expect(method).to.have.property('methodName');",
+									"        pm.expect(method).to.have.property('methodCode');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cms/reference-data/escalation-methods",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"reference-data",
+								"escalation-methods"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Data Sources",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Data sources retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains data sources array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cms/reference-data/data-sources",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"reference-data",
+								"data-sources"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Departments",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Departments retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains departments array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"    ",
+									"    if (responseJson.length > 0) {",
+									"        const dept = responseJson[0];",
+									"        pm.expect(dept).to.have.property('departmentName');",
+									"        pm.expect(dept).to.have.property('departmentCode');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cms/reference-data/departments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"reference-data",
+								"departments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Case Types",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Case types retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains case types array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cms/reference-data/case-types",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"reference-data",
+								"case-types"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "05 - Authorization Tests",
+			"description": "Test authorization policies and access control (expect failures).",
+			"item": [
+				{
+					"name": "Get My Tasks [Fail 403] - Wrong Role",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Authorization denied as expected', function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test('Error response contains proper message', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"    pm.expect(responseJson.message).to.include('Insufficient permissions');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_hr}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/workflow/my-tasks?department=LEGAL",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"workflow",
+								"my-tasks"
+							],
+							"query": [
+								{
+									"key": "department",
+									"value": "LEGAL"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Case [Fail 403] - Investigator Cannot Create",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Case creation denied for investigator', function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test('Proper authorization error returned', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_investigator}}",
+									"type": "text"
+								}
+							],
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Unauthorized Case Creation Test\",\n    \"description\": \"This should fail\",\n    \"departmentId\": 1,\n    \"complainantName\": \"Test User\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/cases",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"cases"
+							]
+						}
+					}
+				},
+				{
+					"name": "Access Admin Endpoint [Fail 403] - Non-Admin User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Admin access denied for non-admin user', function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test('Authorization error message present', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('error');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"unauthorized.user\",\n    \"email\": \"test@test.com\",\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/entitlements/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"entitlements",
+								"users"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "06 - Error Tests",
+			"description": "Test error handling and validation (expect failures with proper error messages).",
+			"item": [
+				{
+					"name": "Create Case with Missing Title [Fail 400]",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Validation error returned', function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Error message indicates missing title', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"    pm.expect(responseJson.message.toLowerCase()).to.include('title');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"description\": \"Missing title test\",\n    \"departmentId\": 1,\n    \"complainantName\": \"Test User\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/cases",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"cases"
+							]
+						}
+					}
+				},
+				{
+					"name": "Complete Task with Missing Parameters [Fail 400]",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bad request error returned', function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Error response has proper structure', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"invalidParameter\": \"test\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/workflow/onecms/tasks/invalid-task-id/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"workflow",
+								"onecms",
+								"tasks",
+								"invalid-task-id",
+								"complete"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Non-existent Case [Fail 404]",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Case not found error returned', function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test('Proper 404 error structure', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"    pm.expect(responseJson.message.toLowerCase()).to.include('not found');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cms/cases/NONEXISTENT-CASE-ID",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"cases",
+								"NONEXISTENT-CASE-ID"
+							]
+						}
+					}
+				},
+				{
+					"name": "Invalid Session ID Test [Fail 401]",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Unauthorized error for invalid session ID', function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test('Authentication error message present', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "invalid-session-id-12345",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/workflow/my-tasks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"workflow",
+								"my-tasks"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "07 - Performance & Load Tests",
+			"description": "Basic performance validation and load testing scenarios.",
+			"item": [
+				{
+					"name": "Multiple Concurrent Case Creation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Response time under 2 seconds', function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});",
+									"",
+									"pm.test('Case created successfully', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains proper case data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('caseId');",
+									"    pm.expect(responseJson).to.have.property('workflowInstanceKey');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Performance Test Case {{$randomInt}}\",\n    \"description\": \"Load testing case creation endpoint with timestamp {{$timestamp}}\",\n    \"departmentId\": 1,\n    \"complainantName\": \"Load Test User {{$randomFirstName}}\",\n    \"complainantEmail\": \"loadtest{{$randomInt}}@test.com\",\n    \"occurrenceDate\": \"2024-08-10\",\n    \"allegations\": [\n        {\n            \"allegationType\": \"Performance Test\",\n            \"severity\": \"MEDIUM\",\n            \"description\": \"Load test allegation {{$randomWords}}\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/cases",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cms",
+								"cases"
+							]
+						}
+					}
+				},
+				{
+					"name": "Large Worklist Retrieval Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Worklist response time acceptable', function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(3000);",
+									"});",
+									"",
+									"pm.test('Worklist retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is properly paginated', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"    console.log(`Retrieved ${responseJson.length} work items`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"header": [
+							{
+								"key": "X-Session-Id",
+									"value": "{{session_analyst}}",
+									"type": "text"
+								}
+							],
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/workflow/my-tasks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"workflow",
+								"my-tasks"
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

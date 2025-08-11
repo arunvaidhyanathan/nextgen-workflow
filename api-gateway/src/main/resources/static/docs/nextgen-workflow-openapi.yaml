@@ -1,0 +1,711 @@
+openapi: 3.0.3
+info:
+  title: NextGen Workflow API (via API Gateway)
+  version: 2.0.0
+  description: |
+    The official RESTful API for the NextGen Workflow microservices system, accessed through the API Gateway.
+    This API provides unified access to all workflow, case management, and authorization services.
+    
+    ## Architecture
+    - **API Gateway**: Single entry point at port 8080
+    - **Entitlement Service**: Authorization and user management (port 8081)
+    - **Flowable Core Workflow**: BPMN workflow engine (port 8082) 
+    - **OneCMS Service**: Case management system (port 8083)
+    
+    ## Key Features
+    - **Unified API**: All services accessible through API Gateway
+    - **Case Management**: Create, update, and manage investigation cases
+    - **Workflow Integration**: Task-based workflow with Flowable BPMN engine
+    - **Policy-Based Authorization**: Cerbos-powered fine-grained permissions
+    - **Service Discovery**: Automatic service routing via Eureka
+    - **Circuit Breaker**: Resilient service communication
+    
+    ## Authentication & Authorization
+    - All requests routed through API Gateway
+    - Authorization handled by Entitlement Service + Cerbos v0.14
+    - User context passed via X-User-Id header
+    - Fail-safe: Access denied when authorization service unavailable
+    
+    ## API Gateway Routing
+    - `/api/entitlements/**` → Entitlement Service
+    - `/api/workflow/**` → Flowable Core Workflow Service
+    - `/api/cms/**` → OneCMS Service
+    
+  contact:
+    name: NextGen Workflow Development Team
+    email: dev-team@workflow.com
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: API Gateway (Local Development)
+  - url: https://api.workflow.company.com
+    description: Production API Gateway
+
+security:
+  - ApiGateway: []
+
+components:
+  securitySchemes:
+    ApiGateway:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token passed through API Gateway with user context
+  
+  schemas:
+    # Common schemas
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+    
+    # Authorization schemas
+    AuthorizationCheckRequest:
+      type: object
+      required:
+        - principal
+        - resource
+        - action
+      properties:
+        principal:
+          type: object
+          properties:
+            id:
+              type: string
+              example: "user123"
+            roles:
+              type: array
+              items:
+                type: string
+              example: ["investigator", "user"]
+            attributes:
+              type: object
+              additionalProperties: true
+        resource:
+          type: object
+          properties:
+            kind:
+              type: string
+              example: "case"
+            id:
+              type: string
+              example: "case-123"
+            attributes:
+              type: object
+              additionalProperties: true
+        action:
+          type: string
+          example: "read"
+    
+    AuthorizationCheckResponse:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        reason:
+          type: string
+          example: "Access granted"
+    
+    # Workflow schemas
+    RegisterWorkflowMetadataRequest:
+      type: object
+      required:
+        - processDefinitionKey
+        - processName
+        - businessAppName
+        - candidateGroupMappings
+      properties:
+        processDefinitionKey:
+          type: string
+          example: "investigationWorkflow"
+          description: "Unique identifier for the workflow process"
+        processName:
+          type: string
+          example: "Investigation Case Workflow"
+          description: "Human-readable name for the workflow"
+        businessAppName:
+          type: string
+          example: "onecms"
+          description: "Business application this workflow belongs to"
+        description:
+          type: string
+          example: "Standard workflow for investigation cases"
+        candidateGroupMappings:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            "investigators": "investigation-queue"
+            "managers": "management-queue"
+            "legal": "legal-review-queue"
+          description: "Mapping of candidate groups to queue names"
+        metadata:
+          type: object
+          additionalProperties: true
+          description: "Additional workflow metadata"
+    
+    DeployWorkflowRequest:
+      type: object
+      required:
+        - processDefinitionKey
+        - bpmnXml
+      properties:
+        processDefinitionKey:
+          type: string
+          example: "investigationWorkflow"
+        bpmnXml:
+          type: string
+          example: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>..."
+          description: "BPMN 2.0 XML content"
+        deploymentName:
+          type: string
+          example: "Investigation Workflow v1.0"
+    
+    WorkflowMetadataResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        processDefinitionKey:
+          type: string
+        processName:
+          type: string
+        businessAppName:
+          type: string
+        description:
+          type: string
+        candidateGroupMappings:
+          type: object
+          additionalProperties:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        deployed:
+          type: boolean
+        deploymentId:
+          type: string
+        version:
+          type: integer
+        createdDate:
+          type: string
+          format: date-time
+        lastModifiedDate:
+          type: string
+          format: date-time
+    
+    # Case Management schemas
+    CaseCreateRequest:
+      type: object
+      required:
+        - summary
+        - priority
+        - severity
+      properties:
+        summary:
+          type: string
+          example: "Investigation into suspicious activity"
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        assignedToDepartment:
+          type: string
+          example: "INVESTIGATIONS"
+        assignedToUserId:
+          type: string
+          example: "investigator123"
+    
+    CaseResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        caseNumber:
+          type: string
+          example: "CMS-2025-001"
+        summary:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, IN_PROGRESS, UNDER_REVIEW, CLOSED, ARCHIVED]
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        createdDate:
+          type: string
+          format: date-time
+        assignedToDepartment:
+          type: string
+        assignedToUserId:
+          type: string
+        createdByUserId:
+          type: string
+
+tags:
+  - name: Authorization & Entitlements
+    description: User authorization and entitlement management via Entitlement Service
+  - name: Workflow Registration
+    description: Workflow metadata registration and BPMN deployment via Workflow Service
+  - name: Workflow Operations
+    description: Process instances and task management via Workflow Service
+  - name: Case Management
+    description: Case creation and management via OneCMS Service
+  - name: System Health
+    description: Service health and monitoring endpoints
+
+paths:
+  # Authorization & Entitlement Service (via /api/entitlements/**)
+  /api/entitlements/check:
+    post:
+      tags:
+        - Authorization & Entitlements
+      summary: Check user authorization
+      description: Verify if a user is authorized to perform an action on a resource using Cerbos policies
+      security:
+        - ApiGateway: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizationCheckRequest'
+            examples:
+              case_read:
+                summary: Check case read permission
+                value:
+                  principal:
+                    id: "user123"
+                    roles: ["investigator"]
+                    attributes:
+                      department: "INVESTIGATIONS"
+                  resource:
+                    kind: "case"
+                    id: "case-123"
+                    attributes:
+                      status: "OPEN"
+                      department: "INVESTIGATIONS"
+                  action: "read"
+      responses:
+        '200':
+          description: Authorization check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationCheckResponse'
+              examples:
+                allowed:
+                  value:
+                    allowed: true
+                    reason: "Access granted"
+                denied:
+                  value:
+                    allowed: false
+                    reason: "Policy evaluation denied access"
+        '500':
+          description: Authorization service error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /api/entitlements/health:
+    get:
+      tags:
+        - System Health
+      summary: Check entitlement service health
+      description: Health check endpoint for the entitlement service
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Entitlement Service is running"
+        '503':
+          description: Service unavailable
+  
+  # Workflow Registration & Management (via /api/workflow/**)
+  /api/workflow/{businessApp}/workflow-metadata/register:
+    post:
+      tags:
+        - Workflow Registration
+      summary: Register workflow metadata
+      description: Register a new workflow with queue mappings and metadata
+      security:
+        - ApiGateway: []
+      parameters:
+        - name: businessApp
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+          description: Business application name
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          example: "admin123"
+          description: User ID for authorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterWorkflowMetadataRequest'
+            example:
+              processDefinitionKey: "investigationWorkflow"
+              processName: "Investigation Case Workflow"
+              businessAppName: "onecms"
+              description: "Standard workflow for investigation cases"
+              candidateGroupMappings:
+                investigators: "investigation-queue"
+                managers: "management-queue"
+                legal: "legal-review-queue"
+              metadata:
+                version: "1.0"
+                category: "investigation"
+      responses:
+        '201':
+          description: Workflow metadata registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          description: Invalid request or workflow already exists
+        '403':
+          description: User not authorized to register workflows
+        '500':
+          description: Internal server error
+  
+  /api/workflow/{businessApp}/workflow-metadata/deploy:
+    post:
+      tags:
+        - Workflow Registration
+      summary: Deploy BPMN workflow
+      description: Deploy a BPMN workflow definition to the Flowable engine
+      security:
+        - ApiGateway: []
+      parameters:
+        - name: businessApp
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          example: "admin123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeployWorkflowRequest'
+            example:
+              processDefinitionKey: "investigationWorkflow"
+              bpmnXml: "<?xml version=\"1.0\" encoding=\"UTF-8\"?><definitions xmlns=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">...</definitions>"
+              deploymentName: "Investigation Workflow v1.0"
+      responses:
+        '200':
+          description: Workflow deployed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          description: Invalid BPMN XML or deployment failed
+        '403':
+          description: User not authorized to deploy workflows
+        '404':
+          description: Workflow metadata not found
+        '500':
+          description: Internal server error
+  
+  /api/workflow/{businessApp}/workflow-metadata/deploy-from-file:
+    post:
+      tags:
+        - Workflow Registration
+      summary: Deploy workflow from file
+      description: Deploy a BPMN workflow from a file in the definitions directory
+      security:
+        - ApiGateway: []
+      parameters:
+        - name: businessApp
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          example: "admin123"
+        - name: processDefinitionKey
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "investigationWorkflow"
+        - name: filename
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "investigation-workflow.bpmn"
+      responses:
+        '200':
+          description: Workflow deployed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          description: Invalid request or deployment failed
+        '403':
+          description: User not authorized to deploy workflows
+        '404':
+          description: Workflow metadata or BPMN file not found
+        '500':
+          description: Internal server error
+  
+  /api/workflow/{businessApp}/workflow-metadata/{processDefinitionKey}:
+    get:
+      tags:
+        - Workflow Registration
+      summary: Get workflow metadata
+      description: Retrieve workflow metadata by process definition key
+      security:
+        - ApiGateway: []
+      parameters:
+        - name: businessApp
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+        - name: processDefinitionKey
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "investigationWorkflow"
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          example: "user123"
+      responses:
+        '200':
+          description: Workflow metadata found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '403':
+          description: User not authorized to view workflow metadata
+        '404':
+          description: Workflow metadata not found
+        '500':
+          description: Internal server error
+  
+  # Case Management (via /api/cms/**)
+  /api/cms/v1/cases:
+    get:
+      tags:
+        - Case Management
+      summary: List cases
+      description: Retrieve a paginated list of cases
+      security:
+        - ApiGateway: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OPEN, IN_PROGRESS, UNDER_REVIEW, CLOSED, ARCHIVED]
+      responses:
+        '200':
+          description: List of cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CaseResponse'
+        '401':
+          description: Authentication required
+        '500':
+          description: Internal server error
+    
+    post:
+      tags:
+        - Case Management
+      summary: Create new case
+      description: Create a new investigation case
+      security:
+        - ApiGateway: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseCreateRequest'
+            example:
+              summary: "Investigation into suspicious financial transactions"
+              description: "Detailed investigation required for unusual transaction patterns"
+              priority: "HIGH"
+              severity: "MEDIUM"
+              assignedToDepartment: "INVESTIGATIONS"
+              assignedToUserId: "investigator123"
+      responses:
+        '201':
+          description: Case created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+        '400':
+          description: Invalid request data
+        '401':
+          description: Authentication required
+        '403':
+          description: User not authorized to create cases
+        '500':
+          description: Internal server error
+  
+  /api/cms/v1/cases/{caseNumber}:
+    get:
+      tags:
+        - Case Management
+      summary: Get case by case number
+      description: Retrieve detailed information about a specific case
+      security:
+        - ApiGateway: []
+      parameters:
+        - name: caseNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "CMS-2025-001"
+      responses:
+        '200':
+          description: Case details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: User not authorized to view this case
+        '404':
+          description: Case not found
+        '500':
+          description: Internal server error
+  
+  /api/cms/v1/departments:
+    get:
+      tags:
+        - Case Management
+      summary: List departments
+      description: Get all available departments for case assignment
+      security:
+        - ApiGateway: []
+      responses:
+        '200':
+          description: List of departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      format: int64
+                    departmentCode:
+                      type: string
+                      example: "INVESTIGATIONS"
+                    departmentName:
+                      type: string
+                      example: "Investigations Department"
+        '401':
+          description: Authentication required
+        '500':
+          description: Internal server error
+  
+  # System Health & Monitoring
+  /api/cms/actuator/health:
+    get:
+      tags:
+        - System Health
+      summary: OneCMS service health
+      description: Health check for the OneCMS case management service
+      responses:
+        '200':
+          description: Service is healthy
+        '503':
+          description: Service is down
+  
+  /api/workflow/actuator/health:
+    get:
+      tags:
+        - System Health
+      summary: Workflow service health
+      description: Health check for the Flowable workflow service
+      responses:
+        '200':
+          description: Service is healthy
+        '503':
+          description: Service is down
+
+externalDocs:
+  description: Complete system architecture documentation
+  url: https://github.com/your-org/nextgen-workflow/blob/main/nextgen-workflow.md

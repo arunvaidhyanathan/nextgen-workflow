@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Create Escalation Methods Table -->
+    <changeSet id="005-001-create-escalation-methods" author="claude">
+        <createTable tableName="escalation_methods" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="method_code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="method_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+        
+        <!-- Insert seed data -->
+        <insert tableName="escalation_methods" schemaName="cms_flowable_workflow">
+            <column name="method_code" value="ER"/>
+            <column name="method_name" value="Employee Reported"/>
+            <column name="description" value="Report escalated through Employee Relations"/>
+        </insert>
+        <insert tableName="escalation_methods" schemaName="cms_flowable_workflow">
+            <column name="method_code" value="EMAIL"/>
+            <column name="method_name" value="Email"/>
+            <column name="description" value="Report received via email"/>
+        </insert>
+        <insert tableName="escalation_methods" schemaName="cms_flowable_workflow">
+            <column name="method_code" value="PHONE"/>
+            <column name="method_name" value="Phone"/>
+            <column name="description" value="Report received via phone call"/>
+        </insert>
+        <insert tableName="escalation_methods" schemaName="cms_flowable_workflow">
+            <column name="method_code" value="IN_PERSON"/>
+            <column name="method_name" value="In Person"/>
+            <column name="description" value="Report made in person"/>
+        </insert>
+    </changeSet>
+
+    <!-- Create Data Sources Table -->
+    <changeSet id="005-002-create-data-sources" author="claude">
+        <createTable tableName="data_sources" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="source_code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="source_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+        
+        <!-- Insert seed data -->
+        <insert tableName="data_sources" schemaName="cms_flowable_workflow">
+            <column name="source_code" value="DS001"/>
+            <column name="source_name" value="Data Source 001"/>
+            <column name="description" value="Primary data source system"/>
+        </insert>
+        <insert tableName="data_sources" schemaName="cms_flowable_workflow">
+            <column name="source_code" value="DS002"/>
+            <column name="source_name" value="Data Source 002"/>
+            <column name="description" value="Secondary data source system"/>
+        </insert>
+        <insert tableName="data_sources" schemaName="cms_flowable_workflow">
+            <column name="source_code" value="DS003"/>
+            <column name="source_name" value="Data Source 003"/>
+            <column name="description" value="Tertiary data source system"/>
+        </insert>
+        <insert tableName="data_sources" schemaName="cms_flowable_workflow">
+            <column name="source_code" value="NA"/>
+            <column name="source_name" value="Not Applicable"/>
+            <column name="description" value="No specific data source"/>
+        </insert>
+    </changeSet>
+
+    <!-- Create Countries/Clusters Table -->
+    <changeSet id="005-003-create-countries-clusters" author="claude">
+        <createTable tableName="countries_clusters" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="country_code" type="VARCHAR(10)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="country_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cluster_name" type="VARCHAR(50)"/>
+            <column name="region" type="VARCHAR(50)"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+        
+        <!-- Insert seed data -->
+        <insert tableName="countries_clusters" schemaName="cms_flowable_workflow">
+            <column name="country_code" value="US"/>
+            <column name="country_name" value="United States"/>
+            <column name="cluster_name" value="NAM"/>
+            <column name="region" value="North America"/>
+        </insert>
+        <insert tableName="countries_clusters" schemaName="cms_flowable_workflow">
+            <column name="country_code" value="UK"/>
+            <column name="country_name" value="United Kingdom"/>
+            <column name="cluster_name" value="EMEA"/>
+            <column name="region" value="Europe"/>
+        </insert>
+        <insert tableName="countries_clusters" schemaName="cms_flowable_workflow">
+            <column name="country_code" value="SG"/>
+            <column name="country_name" value="Singapore"/>
+            <column name="cluster_name" value="APAC"/>
+            <column name="region" value="Asia Pacific"/>
+        </insert>
+        <insert tableName="countries_clusters" schemaName="cms_flowable_workflow">
+            <column name="country_code" value="HK"/>
+            <column name="country_name" value="Hong Kong"/>
+            <column name="cluster_name" value="APAC"/>
+            <column name="region" value="Asia Pacific"/>
+        </insert>
+        <insert tableName="countries_clusters" schemaName="cms_flowable_workflow">
+            <column name="country_code" value="IN"/>
+            <column name="country_name" value="India"/>
+            <column name="cluster_name" value="APAC"/>
+            <column name="region" value="Asia Pacific"/>
+        </insert>
+    </changeSet>
+
+    <!-- Create Indexes -->
+    <changeSet id="005-004-create-indexes" author="claude">
+        <createIndex tableName="escalation_methods" schemaName="cms_flowable_workflow" indexName="idx_escalation_methods_code">
+            <column name="method_code"/>
+        </createIndex>
+        <createIndex tableName="data_sources" schemaName="cms_flowable_workflow" indexName="idx_data_sources_code">
+            <column name="source_code"/>
+        </createIndex>
+        <createIndex tableName="countries_clusters" schemaName="cms_flowable_workflow" indexName="idx_countries_clusters_code">
+            <column name="country_code"/>
+        </createIndex>
+        <createIndex tableName="countries_clusters" schemaName="cms_flowable_workflow" indexName="idx_countries_clusters_cluster">
+            <column name="cluster_name"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.36.0
+    container_name: cerbos-pdp
+    ports:
+      - "3592:3592" # HTTP API
+      - "3593:3593" # gRPC API (default for SDK)
+    volumes:
+      - ./cerbos-policies:/policies # Mount your policies directory
+    command: ["server"]
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3592/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M

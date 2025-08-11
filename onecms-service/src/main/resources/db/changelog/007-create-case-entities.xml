@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <!-- Create Case Entities Table -->
+    <changeSet id="007-001-create-case-entities" author="claude">
+        <createTable tableName="case_entities" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="entity_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entity_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="investigation_function" type="VARCHAR(50)"/>
+            <column name="relationship_type" type="VARCHAR(100)"/>
+            
+            <!-- Person fields -->
+            <column name="soeid" type="VARCHAR(50)"/>
+            <column name="geid" type="VARCHAR(50)"/>
+            <column name="first_name" type="VARCHAR(100)"/>
+            <column name="middle_name" type="VARCHAR(100)"/>
+            <column name="last_name" type="VARCHAR(100)"/>
+            <column name="email_address" type="VARCHAR(255)"/>
+            <column name="phone_number" type="VARCHAR(50)"/>
+            <column name="address" type="TEXT"/>
+            <column name="city" type="VARCHAR(100)"/>
+            <column name="state" type="VARCHAR(100)"/>
+            <column name="zip_code" type="VARCHAR(20)"/>
+            
+            <!-- Organization fields -->
+            <column name="organization_name" type="VARCHAR(255)"/>
+            <column name="organization_type" type="VARCHAR(100)"/>
+            
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign key constraint -->
+    <changeSet id="007-002-add-fk-constraints" author="claude">
+        <addForeignKeyConstraint
+            baseTableName="case_entities" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="case_id"
+            referencedTableName="cases" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="case_id"
+            constraintName="fk_case_entities_case_id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Add check constraint -->
+    <changeSet id="007-002b-add-check-constraints" author="claude">
+        <sql>
+            ALTER TABLE cms_flowable_workflow.case_entities 
+            ADD CONSTRAINT check_entity_type 
+            CHECK (entity_type IN ('PERSON', 'ORGANIZATION'));
+        </sql>
+    </changeSet>
+
+    <!-- Create indexes -->
+    <changeSet id="007-003-create-entity-indexes" author="claude">
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_type">
+            <column name="entity_type"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_soeid">
+            <column name="soeid"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_email">
+            <column name="email_address"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

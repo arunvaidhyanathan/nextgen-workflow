@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- OneCMS Service Database Changelog Master File -->
+    <!-- This file coordinates all database migrations for the OneCMS service -->
+    
+    <!-- Core table creation (follows proper microservice schema design) -->
+    <include file="classpath:db/changelog/001-create-cms-core-tables.xml"/>
+    
+    <!-- Add case transitions table for workflow tracking -->
+    <include file="classpath:db/changelog/019-create-case-transitions-table.xml"/>
+    
+</databaseChangeLog>

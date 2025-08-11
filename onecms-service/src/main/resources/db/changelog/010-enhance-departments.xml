@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add new columns to departments table -->
+    <changeSet id="010-001-add-department-fields" author="claude">
+        <addColumn tableName="departments" schemaName="cms_flowable_workflow">
+            <column name="department_region" type="VARCHAR(50)"/>
+            <column name="department_function" type="VARCHAR(50)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Insert assignment groups from frontend -->
+    <changeSet id="010-002-insert-assignment-groups" author="claude">
+        <insert tableName="departments" schemaName="cms_flowable_workflow">
+            <column name="department_code" value="HR_NAM"/>
+            <column name="department_name" value="HR North America"/>
+            <column name="department_description" value="Human Resources for North America region"/>
+            <column name="department_region" value="NAM"/>
+            <column name="department_function" value="HR"/>
+        </insert>
+        <insert tableName="departments" schemaName="cms_flowable_workflow">
+            <column name="department_code" value="HR_EMEA"/>
+            <column name="department_name" value="HR Europe Middle East Africa"/>
+            <column name="department_description" value="Human Resources for EMEA region"/>
+            <column name="department_region" value="EMEA"/>
+            <column name="department_function" value="HR"/>
+        </insert>
+        <insert tableName="departments" schemaName="cms_flowable_workflow">
+            <column name="department_code" value="HR_APAC"/>
+            <column name="department_name" value="HR Asia Pacific"/>
+            <column name="department_description" value="Human Resources for Asia Pacific region"/>
+            <column name="department_region" value="APAC"/>
+            <column name="department_function" value="HR"/>
+        </insert>
+        <insert tableName="departments" schemaName="cms_flowable_workflow">
+            <column name="department_code" value="LEGAL_NAM"/>
+            <column name="department_name" value="Legal North America"/>
+            <column name="department_description" value="Legal department for North America region"/>
+            <column name="department_region" value="NAM"/>
+            <column name="department_function" value="LEGAL"/>
+        </insert>
+        <insert tableName="departments" schemaName="cms_flowable_workflow">
+            <column name="department_code" value="LEGAL_EMEA"/>
+            <column name="department_name" value="Legal Europe Middle East Africa"/>
+            <column name="department_description" value="Legal department for EMEA region"/>
+            <column name="department_region" value="EMEA"/>
+            <column name="department_function" value="LEGAL"/>
+        </insert>
+        <insert tableName="departments" schemaName="cms_flowable_workflow">
+            <column name="department_code" value="CSIS"/>
+            <column name="department_name" value="Corporate Security Investigation Services"/>
+            <column name="department_description" value="Corporate Security and Investigation Services"/>
+            <column name="department_region" value="GLOBAL"/>
+            <column name="department_function" value="SECURITY"/>
+        </insert>
+    </changeSet>
+
+    <!-- Create indexes -->
+    <changeSet id="010-003-create-department-indexes" author="claude">
+        <createIndex tableName="departments" schemaName="cms_flowable_workflow" indexName="idx_departments_region">
+            <column name="department_region"/>
+        </createIndex>
+        <createIndex tableName="departments" schemaName="cms_flowable_workflow" indexName="idx_departments_function">
+            <column name="department_function"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

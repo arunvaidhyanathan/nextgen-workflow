@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" exporter="Flowable" exporterVersion="7.1.0" id="Definitions_CMS_Process" targetNamespace="http://www.flowable.org/processdef">
+  <process id="OneCMS_Workflow" isExecutable="true" name="One CMS Workflow Process" processType="Public">
+    <startEvent id="StartEvent_ComplaintReceived" name="Complaint Received">
+      <outgoing>Flow_to_Intake</outgoing>
+    </startEvent>
+    <userTask id="Task_EO_Intake" name="EO Intake - Initial Review">
+      <extensionElements>
+        <flowable:candidateGroups>INTAKE_ANALYST_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_to_Intake</incoming>
+      <outgoing>Flow_to_DetermineRouting</outgoing>
+    </userTask>
+    <serviceTask flowable:class="com.workflow.cmsflowable.service.DetermineDepartmentRoutingService" id="ServiceTask_DetermineDepartmentRouting" name="Determine Department Routing">
+      <incoming>Flow_to_DetermineRouting</incoming>
+      <outgoing>Flow_to_Gateway</outgoing>
+    </serviceTask>
+    <exclusiveGateway id="ExclusiveGateway_RouteByDepartments" name="Route by Departments">
+      <incoming>Flow_to_Gateway</incoming>
+      <outgoing>Flow_to_SingleDepartment</outgoing>
+      <outgoing>Flow_to_MultiDepartment</outgoing>
+    </exclusiveGateway>
+    <userTask id="Task_CreateWorkItem" name="Create Work Item (Single Dept)">
+      <extensionElements>
+        <flowable:candidateGroups>WORK_ITEM_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_to_SingleDepartment</incoming>
+      <outgoing>Flow_SingleDept_to_IUIntake</outgoing>
+    </userTask>
+    <subProcess id="SubProcess_DepartmentAssignments" name="Department Assignments">
+      <multiInstanceLoopCharacteristics flowable:collection="relevantDepartments" flowable:elementVariable="department" isSequential="false"/>
+      <startEvent id="StartEvent_DeptAssignment" name="Start Dept Assignment">
+        <outgoing>Flow_StartDept_to_Task</outgoing>
+      </startEvent>
+      <userTask id="Task_AssignToDepartment" name="Assign to ${department}">
+        <extensionElements>
+          <flowable:candidateGroups>${department}_GROUP</flowable:candidateGroups>
+        </extensionElements>
+        <incoming>Flow_StartDept_to_Task</incoming>
+        <outgoing>Flow_Task_to_EndDept</outgoing>
+      </userTask>
+      <endEvent id="EndEvent_DeptAssignment" name="End Dept Assignment">
+        <incoming>Flow_Task_to_EndDept</incoming>
+      </endEvent>
+      <sequenceFlow id="Flow_StartDept_to_Task" sourceRef="StartEvent_DeptAssignment" targetRef="Task_AssignToDepartment"/>
+      <sequenceFlow id="Flow_Task_to_EndDept" sourceRef="Task_AssignToDepartment" targetRef="EndEvent_DeptAssignment"/>
+    </subProcess>
+    <userTask id="Task_IU_IntakeReview" name="IU Intake Review">
+      <extensionElements>
+        <flowable:candidateGroups>IU_ANALYST_GROUP,IU_MANAGER_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_SingleDept_to_IUIntake</incoming>
+      <incoming>Flow_MultiDept_to_IUIntake</incoming>
+      <outgoing>Flow_to_DraftIP</outgoing>
+    </userTask>
+    <!-- ===================================================================== -->
+    <!-- MODIFIED SECTION: Investigation Plan with Validation Loop             -->
+    <!-- ===================================================================== -->
+    <userTask id="Task_DraftInvestigationPlan" name="Draft Investigation Plan (IP)">
+      <extensionElements>
+        <flowable:candidateGroups>INVESTIGATOR_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_to_DraftIP</incoming>
+      <incoming>Flow_Loopback_to_DraftIP</incoming>
+      <outgoing>Flow_DraftIP_to_Validate</outgoing>
+    </userTask>
+    <scriptTask id="Script_ValidateInvestigationPlan" name="Validate IP Submission" scriptFormat="groovy">
+      <incoming>Flow_DraftIP_to_Validate</incoming>
+      <outgoing>Flow_Validate_to_Gateway</outgoing>
+      <script><![CDATA[
+        def errors = new java.util.ArrayList();
+        if (!execution.hasVariable("investigationPlanDetails") || execution.getVariable("investigationPlanDetails").toString().length() < 50) {
+          errors.add("Investigation plan details must be at least 50 characters.");
+        }
+        if (!execution.hasVariable("estimatedCompletionDate")) {
+          errors.add("Estimated completion date is a required field.");
+        }
+        if (errors.isEmpty()) {
+          execution.setVariable("investigationPlanValid", true);
+        } else {
+          execution.setVariable("investigationPlanValid", false);
+          execution.setVariable("investigationPlanValidationError", errors);
+        }
+      ]]></script>
+    </scriptTask>
+    <exclusiveGateway id="Gateway_IsPlanValid" name="Is Investigation Plan Valid?">
+      <incoming>Flow_Validate_to_Gateway</incoming>
+      <outgoing>Flow_PlanValid</outgoing>
+      <outgoing>Flow_PlanInvalid</outgoing>
+    </exclusiveGateway>
+    <scriptTask id="Script_IncrementPlanTries" name="Increment Plan Attempt Count" scriptFormat="groovy">
+      <incoming>Flow_PlanInvalid</incoming>
+      <outgoing>Flow_Loopback_to_DraftIP</outgoing>
+      <script><![CDATA[
+        def currentAttempts = execution.getVariable("investigationPlanAttemptCount") ?: 0;
+        execution.setVariable("investigationPlanAttemptCount", currentAttempts + 1);
+      ]]></script>
+    </scriptTask>
+    <!-- ======================== End of Modified Section ======================== -->
+    <userTask id="Task_ConductInvestigation" name="Conduct Investigation">
+      <extensionElements>
+        <flowable:candidateGroups>INVESTIGATOR_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_PlanValid</incoming>
+      <outgoing>Flow_to_DraftROI</outgoing>
+    </userTask>
+    <userTask id="Task_DraftROI" name="Draft Report of Investigation (ROI)">
+      <extensionElements>
+        <flowable:candidateGroups>INVESTIGATOR_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_to_DraftROI</incoming>
+      <incoming>Flow_ROI_Feedback</incoming>
+      <outgoing>Flow_to_ROIApproval</outgoing>
+    </userTask>
+    <exclusiveGateway id="ExclusiveGateway_ROI_Approved" name="ROI Approved?">
+      <incoming>Flow_to_ROIApproval</incoming>
+      <outgoing>Flow_ROI_Approved</outgoing>
+      <outgoing>Flow_ROI_Feedback</outgoing>
+    </exclusiveGateway>
+    <userTask id="Task_AssessFindings" name="Assess Findings &amp; Substantiation">
+      <extensionElements>
+        <flowable:candidateGroups>INVESTIGATION_MANAGER_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_ROI_Approved</incoming>
+      <outgoing>Flow_to_SubstantiationGateway</outgoing>
+    </userTask>
+    <exclusiveGateway id="ExclusiveGateway_AllegationsSubstantiated" name="Allegations Substantiated?">
+      <incoming>Flow_to_SubstantiationGateway</incoming>
+      <outgoing>Flow_Substantiated_Yes</outgoing>
+      <outgoing>Flow_Substantiated_No</outgoing>
+    </exclusiveGateway>
+    <userTask id="Task_HR_LegalAdjudication" name="HR Legal Adjudication">
+      <extensionElements>
+        <flowable:candidateGroups>HR_LEGAL_ADJUDICATION_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_Substantiated_Yes</incoming>
+      <outgoing>Flow_to_CoordinateDiscipline</outgoing>
+    </userTask>
+    <userTask id="Task_CoordinateDiscipline" name="Coordinate Disciplinary Action">
+      <extensionElements>
+        <flowable:candidateGroups>HR_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_to_CoordinateDiscipline</incoming>
+      <outgoing>Flow_AfterDiscipline</outgoing>
+    </userTask>
+    <exclusiveGateway id="ExclusiveGateway_AROG_CriteriaMet" name="AROG Criteria Met?">
+      <incoming>Flow_Substantiated_No</incoming>
+      <incoming>Flow_AfterDiscipline</incoming>
+      <outgoing>Flow_AROG_Yes</outgoing>
+      <outgoing>Flow_AROG_No</outgoing>
+    </exclusiveGateway>
+    <userTask id="Task_AROG_ReviewMeeting" name="AROG Review Meeting">
+      <extensionElements>
+        <flowable:candidateGroups>AROG_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_AROG_Yes</incoming>
+      <outgoing>Flow_AfterAROG</outgoing>
+    </userTask>
+    <userTask id="Task_EO_FinalReviewAndClosure" name="EO Final Review and Closure">
+      <extensionElements>
+        <flowable:candidateGroups>DIRECTOR_GROUP</flowable:candidateGroups>
+      </extensionElements>
+      <incoming>Flow_AfterAROG</incoming>
+      <incoming>Flow_AROG_No</incoming>
+      <incoming>Flow_Closure_Feedback</incoming>
+      <outgoing>Flow_to_ClosureApproval</outgoing>
+    </userTask>
+    <exclusiveGateway id="ExclusiveGateway_CaseApprovedForClosure" name="Case Approved for Closure?">
+      <incoming>Flow_to_ClosureApproval</incoming>
+      <outgoing>Flow_Closure_Approved</outgoing>
+      <outgoing>Flow_Closure_Feedback</outgoing>
+    </exclusiveGateway>
+    <endEvent id="EndEvent_CaseClosed" name="Case Closed">
+      <incoming>Flow_Closure_Approved</incoming>
+    </endEvent>
+    <sequenceFlow id="Flow_to_Intake" sourceRef="StartEvent_ComplaintReceived" targetRef="Task_EO_Intake">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_DetermineRouting" sourceRef="Task_EO_Intake" targetRef="ServiceTask_DetermineDepartmentRouting">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_Gateway" sourceRef="ServiceTask_DetermineDepartmentRouting" targetRef="ExclusiveGateway_RouteByDepartments">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_SingleDepartment" name="Single Department" sourceRef="ExclusiveGateway_RouteByDepartments" targetRef="Task_CreateWorkItem">
+      <conditionExpression xsi:type="tFormalExpression">${relevantDepartments.size() == 1}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_MultiDepartment" name="Multi-Department" sourceRef="ExclusiveGateway_RouteByDepartments" targetRef="SubProcess_DepartmentAssignments">
+      <conditionExpression xsi:type="tFormalExpression">${relevantDepartments.size() &gt; 1}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_SingleDept_to_IUIntake" sourceRef="Task_CreateWorkItem" targetRef="Task_IU_IntakeReview">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_MultiDept_to_IUIntake" sourceRef="SubProcess_DepartmentAssignments" targetRef="Task_IU_IntakeReview">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_DraftIP" sourceRef="Task_IU_IntakeReview" targetRef="Task_DraftInvestigationPlan">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_DraftIP_to_Validate" sourceRef="Task_DraftInvestigationPlan" targetRef="Script_ValidateInvestigationPlan">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_Validate_to_Gateway" sourceRef="Script_ValidateInvestigationPlan" targetRef="Gateway_IsPlanValid">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_PlanValid" name="Plan is Valid" sourceRef="Gateway_IsPlanValid" targetRef="Task_ConductInvestigation">
+      <conditionExpression xsi:type="tFormalExpression">${investigationPlanValid == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_PlanInvalid" name="Plan is Invalid" sourceRef="Gateway_IsPlanValid" targetRef="Script_IncrementPlanTries">
+      <conditionExpression xsi:type="tFormalExpression">${investigationPlanValid == false}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_Loopback_to_DraftIP" sourceRef="Script_IncrementPlanTries" targetRef="Task_DraftInvestigationPlan">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_DraftROI" sourceRef="Task_ConductInvestigation" targetRef="Task_DraftROI">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_ROIApproval" sourceRef="Task_DraftROI" targetRef="ExclusiveGateway_ROI_Approved">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_ROI_Approved" name="Yes" sourceRef="ExclusiveGateway_ROI_Approved" targetRef="Task_AssessFindings">
+      <conditionExpression xsi:type="tFormalExpression">${roiApproved == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_ROI_Feedback" name="No / Feedback" sourceRef="ExclusiveGateway_ROI_Approved" targetRef="Task_DraftROI">
+      <conditionExpression xsi:type="tFormalExpression">${roiApproved == false}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_SubstantiationGateway" sourceRef="Task_AssessFindings" targetRef="ExclusiveGateway_AllegationsSubstantiated">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_Substantiated_Yes" name="Yes" sourceRef="ExclusiveGateway_AllegationsSubstantiated" targetRef="Task_HR_LegalAdjudication">
+      <conditionExpression xsi:type="tFormalExpression">${allegationsSubstantiated == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_Substantiated_No" name="No" sourceRef="ExclusiveGateway_AllegationsSubstantiated" targetRef="ExclusiveGateway_AROG_CriteriaMet">
+      <conditionExpression xsi:type="tFormalExpression">${allegationsSubstantiated == false}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_CoordinateDiscipline" sourceRef="Task_HR_LegalAdjudication" targetRef="Task_CoordinateDiscipline">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_AfterDiscipline" sourceRef="Task_CoordinateDiscipline" targetRef="ExclusiveGateway_AROG_CriteriaMet">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_AROG_Yes" name="Yes" sourceRef="ExclusiveGateway_AROG_CriteriaMet" targetRef="Task_AROG_ReviewMeeting">
+      <conditionExpression xsi:type="tFormalExpression">${isArogCase == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_AROG_No" name="No" sourceRef="ExclusiveGateway_AROG_CriteriaMet" targetRef="Task_EO_FinalReviewAndClosure">
+      <conditionExpression xsi:type="tFormalExpression">${isArogCase == false}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_AfterAROG" sourceRef="Task_AROG_ReviewMeeting" targetRef="Task_EO_FinalReviewAndClosure">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_to_ClosureApproval" sourceRef="Task_EO_FinalReviewAndClosure" targetRef="ExclusiveGateway_CaseApprovedForClosure">
+    </sequenceFlow>
+    <sequenceFlow id="Flow_Closure_Approved" name="Yes" sourceRef="ExclusiveGateway_CaseApprovedForClosure" targetRef="EndEvent_CaseClosed">
+      <conditionExpression xsi:type="tFormalExpression">${caseApprovedForClosure == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_Closure_Feedback" name="No / Feedback" sourceRef="ExclusiveGateway_CaseApprovedForClosure" targetRef="Task_EO_FinalReviewAndClosure">
+      <conditionExpression xsi:type="tFormalExpression">${caseApprovedForClosure == false}</conditionExpression>
+    </sequenceFlow>
+  </process>
+</definitions>

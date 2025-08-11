@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add new columns to cases table -->
+    <changeSet id="006-001-add-case-fields" author="claude">
+        <addColumn tableName="cases" schemaName="cms_flowable_workflow">
+            <column name="occurrence_date" type="DATE"/>
+            <column name="date_reported_to_citi" type="DATE"/>
+            <column name="date_received_by_escalation_channel" type="DATE"/>
+            <column name="complaint_escalated_by" type="VARCHAR(50)"/>
+            <column name="data_source_id" type="VARCHAR(50)"/>
+            <column name="cluster_country" type="VARCHAR(50)"/>
+            <column name="legal_hold" type="BOOLEAN" defaultValueBoolean="false"/>
+            <column name="outside_counsel" type="BOOLEAN" defaultValueBoolean="false"/>
+            <column name="intake_analyst_id" type="BIGINT"/>
+            <column name="investigation_manager_id" type="BIGINT"/>
+            <column name="investigator_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Add foreign key constraints -->
+    <changeSet id="006-002-add-foreign-keys" author="claude">
+        <addForeignKeyConstraint
+            baseTableName="cases" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="intake_analyst_id"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_cases_intake_analyst"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="cases" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="investigation_manager_id"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_cases_investigation_manager"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="cases" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="investigator_id"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_cases_investigator"/>
+    </changeSet>
+
+    <!-- Create indexes for better performance -->
+    <changeSet id="006-003-create-case-indexes" author="claude">
+        <createIndex tableName="cases" schemaName="cms_flowable_workflow" indexName="idx_cases_occurrence_date">
+            <column name="occurrence_date"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="cms_flowable_workflow" indexName="idx_cases_intake_analyst">
+            <column name="intake_analyst_id"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="cms_flowable_workflow" indexName="idx_cases_investigation_manager">
+            <column name="investigation_manager_id"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="cms_flowable_workflow" indexName="idx_cases_investigator">
+            <column name="investigator_id"/>
+        </createIndex>
+        <createIndex tableName="cases" schemaName="cms_flowable_workflow" indexName="idx_cases_cluster_country">
+            <column name="cluster_country"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

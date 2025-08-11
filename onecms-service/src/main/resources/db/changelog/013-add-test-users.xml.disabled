@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Add test users with known passwords for testing -->
+    <changeSet id="test-001-add-test-users" author="cms-test">
+        <comment>Add test users with known passwords - BCrypt hash for 'password123'</comment>
+        
+        <sql>
+            INSERT INTO cms_flowable_workflow.users (username, email, password_hash, first_name, last_name, user_status)
+            VALUES 
+            ('testadmin', 'testadmin@cms-flowable.com', '$2a$12$pSJqEJgSdKmSW6rILpNW/eJdVyeqMFOgLyFoI3f7C0E.U9DQJZvGe', 'Test', 'Admin', 'ACTIVE'),
+            ('testhr', 'testhr@cms-flowable.com', '$2a$12$pSJqEJgSdKmSW6rILpNW/eJdVyeqMFOgLyFoI3f7C0E.U9DQJZvGe', 'Test', 'HR', 'ACTIVE'),
+            ('testlegal', 'testlegal@cms-flowable.com', '$2a$12$pSJqEJgSdKmSW6rILpNW/eJdVyeqMFOgLyFoI3f7C0E.U9DQJZvGe', 'Test', 'Legal', 'ACTIVE'),
+            ('testcsis', 'testcsis@cms-flowable.com', '$2a$12$pSJqEJgSdKmSW6rILpNW/eJdVyeqMFOgLyFoI3f7C0E.U9DQJZvGe', 'Test', 'CSIS', 'ACTIVE')
+            ON CONFLICT (username) DO NOTHING;
+        </sql>
+
+        <rollback>
+            <delete tableName="users" schemaName="cms_flowable_workflow">
+                <where>username IN ('testadmin', 'testhr', 'testlegal', 'testcsis')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Assign roles to test users -->
+    <changeSet id="test-002-assign-test-user-roles" author="cms-test">
+        <comment>Assign roles to test users</comment>
+        
+        <sql>
+            INSERT INTO cms_flowable_workflow.user_roles (user_id, role_id, is_active)
+            SELECT u.user_id, r.role_id, true
+            FROM (VALUES 
+                ('testadmin', 'ADMIN'),
+                ('testhr', 'HR_SPECIALIST'),
+                ('testhr', 'HR_GROUP'),
+                ('testlegal', 'LEGAL_COUNSEL'),
+                ('testlegal', 'LEGAL_GROUP'),
+                ('testcsis', 'SECURITY_ANALYST'),
+                ('testcsis', 'CSIS_GROUP')
+            ) AS user_role_mappings(username, role_code)
+            JOIN cms_flowable_workflow.users u ON u.username = user_role_mappings.username
+            JOIN cms_flowable_workflow.roles r ON r.role_code = user_role_mappings.role_code
+            ON CONFLICT (user_id, role_id) WHERE is_active = true DO NOTHING;
+        </sql>
+
+        <rollback>
+            <delete tableName="user_roles" schemaName="cms_flowable_workflow">
+                <where>user_id IN (SELECT user_id FROM cms_flowable_workflow.users WHERE username IN ('testadmin', 'testhr', 'testlegal', 'testcsis'))</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

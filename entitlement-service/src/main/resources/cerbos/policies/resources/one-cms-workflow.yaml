@@ -1,0 +1,153 @@
+# resources/one-cms-workflow.yaml  
+# Platform-level workflow policy enforced by Flowable Core Workflow Service
+# This is generic and reusable across different business applications
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  # Namespaced resource identifier: BusinessApp::ProcessDefinitionKey
+  resource: "OneCMS::Process_CMS_Workflow_Updated"
+  version: "1.0"
+  importDerivedRoles:
+    - one_cms_derived_roles
+  rules:
+    # ========================================
+    # WORKFLOW INSTANCE MANAGEMENT
+    # ========================================
+    - actions: ["start_workflow_instance", "initiate_process"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INTAKE_ANALYST" # Only intake analysts can start new workflow instances
+      description: "Intake analysts can initiate new workflow processes"
+
+    - actions: ["terminate_workflow", "cancel_process"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+      description: "Managers and EO officers can terminate workflow instances"
+
+    # ========================================
+    # QUEUE ACCESS MANAGEMENT
+    # ========================================
+    - actions: ["view_queue", "list_queue_tasks"]
+      effect: EFFECT_ALLOW
+      roles: ["user"] # All authenticated users can potentially view queues
+      condition:
+        match:
+          # Allow ONLY if the requested queue is in the principal's entitled queues
+          # Entitlement Service builds principal.attr.queues from business_app_roles.metadata.queues
+          expr: request.resource.attr.currentQueue in request.principal.attr.queues
+      description: "Users can view queues they are entitled to based on their roles"
+
+    # ========================================
+    # TASK MANAGEMENT
+    # ========================================
+    - actions: ["view_task", "read_task"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          # Allow if the task's queue is in the principal's entitled queues
+          expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
+      description: "Users can view tasks in queues they have access to"
+
+    - actions: ["claim_task", "assign_to_self"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              # Rule 1: User must have access to the queue the task is in
+              - expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
+              # Rule 2: Task must be unassigned (null assignee)
+              - expr: request.resource.attr.currentTask.assignee == null
+      description: "Users can claim unassigned tasks in their entitled queues"
+
+    - actions: ["complete_task", "finish_task"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          # Allow ONLY if the principal is the current assignee of the task
+          expr: request.resource.attr.currentTask.assignee == request.principal.id
+      description: "Only the assigned user can complete their tasks"
+
+    - actions: ["delegate_task", "reassign_task"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+      condition:
+        match:
+          any:
+            of:
+              # Manager can delegate any task in their queues
+              - expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
+              # Current assignee can delegate their own task
+              - expr: request.resource.attr.currentTask.assignee == request.principal.id
+      description: "Managers can delegate tasks, assignees can delegate their own tasks"
+
+    # ========================================
+    # TASK HISTORY AND AUDIT
+    # ========================================
+    - actions: ["view_task_history", "view_audit_trail"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "AROG_REVIEWER"
+      condition:
+        match:
+          # Can view history of tasks in their entitled queues
+          expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
+      description: "Managers and reviewers can view task history in their queues"
+
+    # ========================================
+    # PROCESS VARIABLE ACCESS
+    # ========================================
+    - actions: ["read_process_variables", "view_variables"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          # Can read variables if they have access to any queue in the process
+          any:
+            of:
+              - expr: request.resource.attr.currentQueue in request.principal.attr.queues
+              - expr: request.resource.attr.currentTask.assignee == request.principal.id
+      description: "Users can read process variables for their accessible tasks/queues"
+
+    - actions: ["update_process_variables", "set_variables"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+      derivedRoles:
+        - task_assignee
+      description: "Managers and current task assignees can update process variables"
+
+    # ========================================
+    # ESCALATION AND NOTIFICATIONS
+    # ========================================
+    - actions: ["escalate_task", "send_notification"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+      derivedRoles:
+        - task_assignee # Assignee can escalate their own task
+      description: "Managers and assignees can escalate tasks and send notifications"
+
+    # ========================================
+    # ADMINISTRATIVE ACTIONS
+    # ========================================
+    - actions: ["suspend_process", "activate_process"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_OFFICER" # Only ethics office can suspend/activate processes
+      description: "Only EO officers can suspend or activate workflow processes"
+
+  # Default deny rule
+  defaultRule:
+    effect: EFFECT_DENY
+    description: "Default deny for any workflow action not explicitly allowed"

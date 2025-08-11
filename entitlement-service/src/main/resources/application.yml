@@ -1,0 +1,74 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: entitlement-service
+
+  # Database Configuration
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: none
+      default_schema: entitlements
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: entitlements
+
+  # Liquibase Configuration
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    liquibase-schema: entitlements
+    default-schema: entitlements
+    enabled: true
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# Cerbos Configuration
+cerbos:
+  host: ${CERBOS_HOST:localhost}
+  port: ${CERBOS_PORT:3593}
+  tls:
+    enabled: ${CERBOS_TLS_ENABLED:false}
+  policies:
+    path: classpath:cerbos/policies
+    auto-load: ${CERBOS_AUTO_LOAD_POLICIES:true}
+    validate-on-startup: ${CERBOS_VALIDATE_POLICIES:true}
+  connection:
+    timeout: ${CERBOS_CONNECTION_TIMEOUT:30s}
+    keep-alive: ${CERBOS_KEEP_ALIVE:true}
+
+# Management and Monitoring Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    com.workflow.entitlements: INFO
+    dev.cerbos: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

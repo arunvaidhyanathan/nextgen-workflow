@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ============================================ -->
+    <!-- SEED DATA INSERTION FOR CORE TABLES         -->
+    <!-- ============================================ -->
+
+    <!-- Insert Roles Data -->
+    <changeSet id="seed-001-insert-roles-v2" author="cms-migration">
+        <comment>Insert seed data for roles table - skip if data exists</comment>
+        
+        <sql>
+            INSERT INTO cms_flowable_workflow.roles (role_code, role_name, role_description, access_level, is_active)
+            VALUES 
+            ('ADMIN', 'System Administrator', 'Full system access for configuration and user management', 'ADMIN', true),
+            ('DIRECTOR', 'Director/Chief Ethics Officer', 'Final case approval, policy decisions, and organizational oversight', 'DIRECTOR', true),
+            ('INTAKE_ANALYST', 'Intake Analyst', 'Initial case processing and triage. Reviews incoming cases and routes to appropriate departments', 'ANALYST', true),
+            ('HR_SPECIALIST', 'HR Specialist', 'Handles HR-related cases including harassment, discrimination, and policy violations', 'SPECIALIST', true),
+            ('LEGAL_COUNSEL', 'Legal Counsel', 'Manages legal cases including fraud, compliance violations, and regulatory matters', 'SPECIALIST', true),
+            ('SECURITY_ANALYST', 'Security Analyst', 'Investigates security breaches, data incidents, and physical security matters', 'ANALYST', true),
+            ('INVESTIGATOR', 'Investigator', 'Conducts detailed investigations, interviews, and evidence collection', 'INVESTIGATOR', true),
+            ('IU_MANAGER', 'Investigation Unit Manager', 'Manages investigation team, assigns cases, and reviews investigation plans', 'MANAGER', true),
+            ('HR_GROUP', 'HR Staff', 'Human Resources General', 'GROUP', true),
+            ('LEGAL_GROUP', 'Legal Counsel', 'Legal Counsel', 'GROUP', true),
+            ('CSIS_GROUP', 'CSIS Analyst', 'CSIS Security Analysts', 'GROUP', true)
+            ON CONFLICT (role_code) DO NOTHING;
+        </sql>
+
+        <rollback>
+            <delete tableName="roles" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Insert Departments Data -->
+    <changeSet id="seed-002-insert-departments-v2" author="cms-migration">
+        <comment>Insert seed data for departments table - skip if data exists</comment>
+        
+        <sql>
+            INSERT INTO cms_flowable_workflow.departments (department_id, department_code, department_name, department_description, is_active)
+            VALUES 
+            (1, 'ETHICS', 'Ethics Office', 'Oversees ethical conduct and integrity matters', true),
+            (2, 'HR', 'Human Resources', 'Handles employee relations, harassment, and HR policy violations', true),
+            (3, 'LEGAL', 'Legal Department', 'Manages legal matters, compliance, and regulatory issues', true),
+            (4, 'SECURITY', 'Corporate Security', 'Investigates security incidents and data breaches', true),
+            (5, 'IT', 'Information Technology', 'Manages technical security and system incidents', true),
+            (6, 'FINANCE', 'Finance Department', 'Handles financial fraud and monetary misconduct', true)
+            ON CONFLICT (department_code) DO NOTHING;
+        </sql>
+
+        <rollback>
+            <delete tableName="departments" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Insert Case Types Data -->
+    <changeSet id="seed-003-insert-case-types-v2" author="cms-migration">
+        <comment>Insert seed data for case_types table - skip if data exists</comment>
+        
+        <sql>
+            INSERT INTO cms_flowable_workflow.case_types (type_code, type_name, type_description, workflow_process_key, default_priority, sla_days, is_active)
+            VALUES 
+            ('HARASSMENT', 'Harassment Complaint', 'Cases involving workplace harassment including sexual, verbal, or psychological harassment', 'cms_workflow_process', 'HIGH', 30, true),
+            ('DISCRIMINATION', 'Discrimination Complaint', 'Cases involving discrimination based on protected characteristics', 'cms_workflow_process', 'HIGH', 45, true),
+            ('FRAUD', 'Fraud Investigation', 'Cases involving financial fraud, embezzlement, or financial misconduct', 'cms_workflow_process', 'CRITICAL', 60, true),
+            ('POLICY_VIOLATION', 'Policy Violation', 'Cases involving violations of company policies and procedures', 'cms_workflow_process', 'MEDIUM', 30, true),
+            ('SECURITY_INCIDENT', 'Security Incident', 'Cases involving physical or information security breaches', 'cms_workflow_process', 'CRITICAL', 15, true),
+            ('COMPLIANCE_VIOLATION', 'Compliance Violation', 'Cases involving regulatory compliance violations', 'cms_workflow_process', 'HIGH', 45, true),
+            ('CONFLICT_OF_INTEREST', 'Conflict of Interest', 'Cases involving potential or actual conflicts of interest', 'cms_workflow_process', 'MEDIUM', 30, true),
+            ('DATA_BREACH', 'Data Breach', 'Cases involving unauthorized access or disclosure of sensitive data', 'cms_workflow_process', 'CRITICAL', 10, true)
+            ON CONFLICT (type_code) DO NOTHING;
+        </sql>
+
+        <rollback>
+            <delete tableName="case_types" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Insert Default Admin User -->
+    <changeSet id="seed-004-insert-admin-user-v2" author="cms-migration">
+        <comment>Insert default admin user - skip if data exists</comment>
+        
+        <sql>
+            INSERT INTO cms_flowable_workflow.users (username, email, password_hash, first_name, last_name, user_status)
+            VALUES 
+            ('admin', 'admin@cms-flowable.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqyPJnbBNnbJYZ1XWJZ2jIm', 'System', 'Administrator', 'ACTIVE'),
+            ('intake.analyst', 'intake@cms-flowable.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqyPJnbBNnbJYZ1XWJZ2jIm', 'Intake', 'Analyst', 'ACTIVE'),
+            ('hr.specialist', 'hr@cms-flowable.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqyPJnbBNnbJYZ1XWJZ2jIm', 'HR', 'Specialist', 'ACTIVE'),
+            ('legal.counsel', 'legal@cms-flowable.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqyPJnbBNnbJYZ1XWJZ2jIm', 'Legal', 'Counsel', 'ACTIVE'),
+            ('security.analyst', 'security@cms-flowable.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqyPJnbBNnbJYZ1XWJZ2jIm', 'Security', 'Analyst', 'ACTIVE')
+            ON CONFLICT (username) DO NOTHING;
+        </sql>
+
+        <rollback>
+            <delete tableName="users" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Assign Roles to Users -->
+    <changeSet id="seed-005-assign-user-roles-v2" author="cms-migration">
+        <comment>Assign roles to default users - skip if user-role combinations exist</comment>
+        
+        <sql>
+            INSERT INTO cms_flowable_workflow.user_roles (user_id, role_id, is_active)
+            SELECT u.user_id, r.role_id, true
+            FROM (VALUES 
+                ('admin', 'ADMIN'),
+                ('intake.analyst', 'INTAKE_ANALYST'),
+                ('hr.specialist', 'HR_SPECIALIST'),
+                ('legal.counsel', 'LEGAL_COUNSEL'),
+                ('security.analyst', 'SECURITY_ANALYST')
+            ) AS user_role_mappings(username, role_code)
+            JOIN cms_flowable_workflow.users u ON u.username = user_role_mappings.username
+            JOIN cms_flowable_workflow.roles r ON r.role_code = user_role_mappings.role_code
+            ON CONFLICT (user_id, role_id) WHERE is_active = true DO NOTHING;
+        </sql>
+
+        <rollback>
+            <delete tableName="user_roles" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Set Department Managers -->
+    <changeSet id="seed-006-update-department-managers-v2" author="cms-migration">
+        <comment>Set department managers - only update if manager not already set</comment>
+        
+        <sql>
+            UPDATE cms_flowable_workflow.departments 
+            SET manager_user_id = u.user_id
+            FROM (VALUES 
+                ('ETHICS', 'admin'),
+                ('HR', 'hr.specialist'),
+                ('LEGAL', 'legal.counsel'),
+                ('SECURITY', 'security.analyst')
+            ) AS dept_manager_mappings(dept_code, username)
+            JOIN cms_flowable_workflow.users u ON u.username = dept_manager_mappings.username
+            WHERE departments.department_code = dept_manager_mappings.dept_code
+            AND departments.manager_user_id IS NULL;
+        </sql>
+
+        <rollback>
+            <update tableName="departments" schemaName="cms_flowable_workflow">
+                <column name="manager_user_id" value="NULL"/>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

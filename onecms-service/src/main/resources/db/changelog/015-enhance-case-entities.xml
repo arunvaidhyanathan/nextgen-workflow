@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <!-- Enhance Case Entities Table with additional fields from UI design -->
+    <changeSet id="015-001-add-missing-entity-fields" author="claude">
+        <comment>Add missing fields to case_entities table based on UI design requirements</comment>
+        
+        <addColumn tableName="case_entities" schemaName="cms_flowable_workflow">
+            <!-- Contact and Communication -->
+            <column name="preferred_contact_method" type="TEXT"/>
+            
+            <!-- Business/HR Fields -->
+            <column name="goc" type="VARCHAR(100)"/>
+            <column name="manager" type="VARCHAR(255)"/>
+            <column name="hire_date" type="DATE"/>
+            <column name="hr_responsible" type="VARCHAR(255)"/>
+            <column name="legal_vehicle" type="VARCHAR(100)"/>
+            <column name="managed_segment" type="VARCHAR(100)"/>
+            <column name="relationship_to_citi" type="VARCHAR(100)"/>
+            
+            <!-- Privacy and Confidentiality -->
+            <column name="anonymous" type="BOOLEAN" defaultValueBoolean="false"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Create indexes for new fields -->
+    <changeSet id="015-002-create-indexes-for-new-fields" author="claude">
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_goc">
+            <column name="goc"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_manager">
+            <column name="manager"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_legal_vehicle">
+            <column name="legal_vehicle"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_segment">
+            <column name="managed_segment"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_relationship">
+            <column name="relationship_to_citi"/>
+        </createIndex>
+        <createIndex tableName="case_entities" schemaName="cms_flowable_workflow" indexName="idx_case_entities_anonymous">
+            <column name="anonymous"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

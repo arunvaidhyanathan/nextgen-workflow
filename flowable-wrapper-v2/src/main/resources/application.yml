@@ -1,0 +1,133 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: flowable-core-workflow
+
+  # Database Configuration
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: none
+      default_schema: flowable
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: flowable
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  # Liquibase Configuration
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    liquibase-schema: flowable
+    default-schema: flowable
+    enabled: true
+
+# Flowable Configuration
+flowable:
+  database-schema-update: true
+  database-schema: flowable
+  async-executor-activate: true
+  history-level: full
+  check-process-definitions: false
+  process:
+    definition-cache-limit: 100
+  task:
+    app:
+      rest-enabled: false
+  admin:
+    app:
+      rest-enabled: false
+  modeler:
+    app:
+      rest-enabled: false
+  idm:
+    app:
+      rest-enabled: false
+  common:
+    app:
+      idm-url: http://localhost:8080/flowable-idm
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# Entitlement Service Configuration
+entitlement-service:
+  base-url: ${ENTITLEMENT_SERVICE_URL:http://localhost:8081}
+  timeout: ${ENTITLEMENT_SERVICE_TIMEOUT:5000}
+
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      entitlement-service:
+        baseConfig: default
+
+# Management and Monitoring Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# OpenAPI/Swagger configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+
+# Workflow Configuration
+workflow:
+  definitions:
+    path: ${WORKFLOW_DEFINITIONS_PATH:src/main/resources}
+
+# Logging Configuration
+logging:
+  level:
+    com.flowable.wrapper: INFO
+    org.flowable: INFO
+    org.springframework.cloud.circuitbreaker: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

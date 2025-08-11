@@ -1,0 +1,664 @@
+{
+  "config": {
+    "configFile": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/playwright.config.ts",
+    "rootDir": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 5
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "test-results/results.xml"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 5
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/Users/arunvaidhyanathan/Developer/Workflow_Application/CMS-UI-App/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.54.2",
+    "workers": 5,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:3000",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "final-auth-test.spec.ts",
+      "file": "final-auth-test.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Complete Authentication Fix Verification",
+          "file": "final-auth-test.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Complete End-to-End Authentication Test",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6086,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "🚀 Testing the complete authentication fix...\n"
+                        },
+                        {
+                          "text": "📍 Performing login...\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Tasks fetched: 0 tasks\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Cases fetched: 5 cases\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Dashboard stats fetched: {allOpenCases: 0, openInvestigations: 2, totalCases: 5}\n"
+                        },
+                        {
+                          "text": "\n=== AUTHENTICATION RESULTS ===\n"
+                        },
+                        {
+                          "text": "Final URL: http://localhost:3000/dashboard\n"
+                        },
+                        {
+                          "text": "Session ID stored: YES\n"
+                        },
+                        {
+                          "text": "User info stored: YES\n"
+                        },
+                        {
+                          "text": "On dashboard: true\n"
+                        },
+                        {
+                          "text": "\n=== API REQUEST ANALYSIS ===\n"
+                        },
+                        {
+                          "text": "Total API requests: 4\n"
+                        },
+                        {
+                          "text": "Proxy requests: 4\n"
+                        },
+                        {
+                          "text": "Direct requests: 0\n"
+                        },
+                        {
+                          "text": "✅ All requests use proxy correctly\n"
+                        },
+                        {
+                          "text": "\n=== ERROR ANALYSIS ===\n"
+                        },
+                        {
+                          "text": "Total errors: 0\n"
+                        },
+                        {
+                          "text": "✅ No CORS or authentication errors\n"
+                        },
+                        {
+                          "text": "Dashboard content loaded: YES\n"
+                        },
+                        {
+                          "text": "\n=== FINAL ASSESSMENT ===\n"
+                        },
+                        {
+                          "text": "🎉 COMPLETE SUCCESS! All authentication issues resolved:\n"
+                        },
+                        {
+                          "text": "   ✅ Login works correctly\n"
+                        },
+                        {
+                          "text": "   ✅ Session data stored properly\n"
+                        },
+                        {
+                          "text": "   ✅ All API calls use proxy\n"
+                        },
+                        {
+                          "text": "   ✅ No CORS errors\n"
+                        },
+                        {
+                          "text": "   ✅ Dashboard loads correctly\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-11T09:30:06.403Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "509b36b91ca95f2b92cc-cd851588c054d38e5ec1",
+              "file": "final-auth-test.spec.ts",
+              "line": 4,
+              "column": 3
+            },
+            {
+              "title": "Manual Dashboard API Test",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 4686,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "🚀 Testing dashboard API calls manually...\n"
+                        },
+                        {
+                          "text": "✅ Login successful, testing API calls...\n"
+                        },
+                        {
+                          "text": "\n=== API TEST RESULTS ===\n"
+                        },
+                        {
+                          "text": "✅ /api/cms/v1/cases/dashboard-stats: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Data: { allOpenCases: \u001b[33m0\u001b[39m, openInvestigations: \u001b[33m2\u001b[39m, totalCases: \u001b[33m5\u001b[39m }\n"
+                        },
+                        {
+                          "text": "✅ /api/cms/v1/cases/dashboard-cases: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Items: 5\n"
+                        },
+                        {
+                          "text": "✅ /api/workflow/my-tasks: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Items: 0\n"
+                        },
+                        {
+                          "text": "\nAll API tests successful: ✅ YES\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-11T09:30:06.388Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "509b36b91ca95f2b92cc-aaa110e225061ce3dc5d",
+              "file": "final-auth-test.spec.ts",
+              "line": 123,
+              "column": 3
+            },
+            {
+              "title": "Complete End-to-End Authentication Test",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 6611,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "🚀 Testing the complete authentication fix...\n"
+                        },
+                        {
+                          "text": "📍 Performing login...\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Cases fetched: 5 cases\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Dashboard stats fetched: JSHandle@object\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Tasks fetched: 0 tasks\n"
+                        },
+                        {
+                          "text": "\n=== AUTHENTICATION RESULTS ===\n"
+                        },
+                        {
+                          "text": "Final URL: http://localhost:3000/dashboard\n"
+                        },
+                        {
+                          "text": "Session ID stored: YES\n"
+                        },
+                        {
+                          "text": "User info stored: YES\n"
+                        },
+                        {
+                          "text": "On dashboard: true\n"
+                        },
+                        {
+                          "text": "\n=== API REQUEST ANALYSIS ===\n"
+                        },
+                        {
+                          "text": "Total API requests: 4\n"
+                        },
+                        {
+                          "text": "Proxy requests: 4\n"
+                        },
+                        {
+                          "text": "Direct requests: 0\n"
+                        },
+                        {
+                          "text": "✅ All requests use proxy correctly\n"
+                        },
+                        {
+                          "text": "\n=== ERROR ANALYSIS ===\n"
+                        },
+                        {
+                          "text": "Total errors: 0\n"
+                        },
+                        {
+                          "text": "✅ No CORS or authentication errors\n"
+                        },
+                        {
+                          "text": "Dashboard content loaded: YES\n"
+                        },
+                        {
+                          "text": "\n=== FINAL ASSESSMENT ===\n"
+                        },
+                        {
+                          "text": "🎉 COMPLETE SUCCESS! All authentication issues resolved:\n"
+                        },
+                        {
+                          "text": "   ✅ Login works correctly\n"
+                        },
+                        {
+                          "text": "   ✅ Session data stored properly\n"
+                        },
+                        {
+                          "text": "   ✅ All API calls use proxy\n"
+                        },
+                        {
+                          "text": "   ✅ No CORS errors\n"
+                        },
+                        {
+                          "text": "   ✅ Dashboard loads correctly\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-11T09:30:06.393Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "509b36b91ca95f2b92cc-7347f2f800615ce0c3d7",
+              "file": "final-auth-test.spec.ts",
+              "line": 4,
+              "column": 3
+            },
+            {
+              "title": "Manual Dashboard API Test",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 4925,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "🚀 Testing dashboard API calls manually...\n"
+                        },
+                        {
+                          "text": "✅ Login successful, testing API calls...\n"
+                        },
+                        {
+                          "text": "\n=== API TEST RESULTS ===\n"
+                        },
+                        {
+                          "text": "✅ /api/cms/v1/cases/dashboard-stats: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Data: { allOpenCases: \u001b[33m0\u001b[39m, openInvestigations: \u001b[33m2\u001b[39m, totalCases: \u001b[33m5\u001b[39m }\n"
+                        },
+                        {
+                          "text": "✅ /api/cms/v1/cases/dashboard-cases: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Items: 5\n"
+                        },
+                        {
+                          "text": "✅ /api/workflow/my-tasks: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Items: 0\n"
+                        },
+                        {
+                          "text": "\nAll API tests successful: ✅ YES\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-11T09:30:06.390Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "509b36b91ca95f2b92cc-7f30fbefdc5d08070714",
+              "file": "final-auth-test.spec.ts",
+              "line": 123,
+              "column": 3
+            },
+            {
+              "title": "Complete End-to-End Authentication Test",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 6254,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "🚀 Testing the complete authentication fix...\n"
+                        },
+                        {
+                          "text": "📍 Performing login...\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Tasks fetched: 0 tasks\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Dashboard stats fetched: {allOpenCases: 0, openInvestigations: 2, totalCases: 5}\n"
+                        },
+                        {
+                          "text": "✅ Success: ✅ Cases fetched: 5 cases\n"
+                        },
+                        {
+                          "text": "\n=== AUTHENTICATION RESULTS ===\n"
+                        },
+                        {
+                          "text": "Final URL: http://localhost:3000/dashboard\n"
+                        },
+                        {
+                          "text": "Session ID stored: YES\n"
+                        },
+                        {
+                          "text": "User info stored: YES\n"
+                        },
+                        {
+                          "text": "On dashboard: true\n"
+                        },
+                        {
+                          "text": "\n=== API REQUEST ANALYSIS ===\n"
+                        },
+                        {
+                          "text": "Total API requests: 4\n"
+                        },
+                        {
+                          "text": "Proxy requests: 4\n"
+                        },
+                        {
+                          "text": "Direct requests: 0\n"
+                        },
+                        {
+                          "text": "✅ All requests use proxy correctly\n"
+                        },
+                        {
+                          "text": "\n=== ERROR ANALYSIS ===\n"
+                        },
+                        {
+                          "text": "Total errors: 0\n"
+                        },
+                        {
+                          "text": "✅ No CORS or authentication errors\n"
+                        },
+                        {
+                          "text": "Dashboard content loaded: YES\n"
+                        },
+                        {
+                          "text": "\n=== FINAL ASSESSMENT ===\n"
+                        },
+                        {
+                          "text": "🎉 COMPLETE SUCCESS! All authentication issues resolved:\n"
+                        },
+                        {
+                          "text": "   ✅ Login works correctly\n"
+                        },
+                        {
+                          "text": "   ✅ Session data stored properly\n"
+                        },
+                        {
+                          "text": "   ✅ All API calls use proxy\n"
+                        },
+                        {
+                          "text": "   ✅ No CORS errors\n"
+                        },
+                        {
+                          "text": "   ✅ Dashboard loads correctly\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-11T09:30:06.388Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "509b36b91ca95f2b92cc-ac399325fbef9d410d1c",
+              "file": "final-auth-test.spec.ts",
+              "line": 4,
+              "column": 3
+            },
+            {
+              "title": "Manual Dashboard API Test",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit",
+                  "projectName": "webkit",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 4167,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "🚀 Testing dashboard API calls manually...\n"
+                        },
+                        {
+                          "text": "✅ Login successful, testing API calls...\n"
+                        },
+                        {
+                          "text": "\n=== API TEST RESULTS ===\n"
+                        },
+                        {
+                          "text": "✅ /api/cms/v1/cases/dashboard-stats: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Data: { allOpenCases: \u001b[33m0\u001b[39m, openInvestigations: \u001b[33m2\u001b[39m, totalCases: \u001b[33m5\u001b[39m }\n"
+                        },
+                        {
+                          "text": "✅ /api/cms/v1/cases/dashboard-cases: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Items: 5\n"
+                        },
+                        {
+                          "text": "✅ /api/workflow/my-tasks: 200 (SUCCESS)\n"
+                        },
+                        {
+                          "text": "   Items: 0\n"
+                        },
+                        {
+                          "text": "\nAll API tests successful: ✅ YES\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-11T09:30:11.860Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "509b36b91ca95f2b92cc-83f32be25edd2d97971c",
+              "file": "final-auth-test.spec.ts",
+              "line": 123,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-08-11T09:30:05.911Z",
+    "duration": 10256.734,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

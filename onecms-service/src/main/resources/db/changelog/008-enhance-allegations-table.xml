@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <!-- Add new columns to allegations table -->
+    <changeSet id="008-001-add-allegation-fields" author="claude">
+        <addColumn tableName="allegations" schemaName="cms_flowable_workflow">
+            <column name="allegation_number" type="VARCHAR(100)"/>
+            <column name="investigation_function" type="VARCHAR(50)"/>
+            <column name="subject_entity_id" type="VARCHAR(50)"/>
+            <column name="allegation_category" type="VARCHAR(20)"/>
+            <column name="grc_taxonomy_1" type="VARCHAR(100)"/>
+            <column name="grc_taxonomy_2" type="VARCHAR(100)"/>
+            <column name="grc_taxonomy_3" type="VARCHAR(100)"/>
+            <column name="grc_taxonomy_4" type="VARCHAR(100)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Add unique and foreign key constraints -->
+    <changeSet id="008-002-add-allegation-uk-fk-constraints" author="claude">
+        <addUniqueConstraint 
+            tableName="allegations" 
+            schemaName="cms_flowable_workflow"
+            columnNames="allegation_number"
+            constraintName="uk_allegations_number"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="allegations" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="subject_entity_id"
+            referencedTableName="case_entities" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="entity_id"
+            constraintName="fk_allegations_subject_entity"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <!-- Add check constraint -->
+    <changeSet id="008-002b-add-allegation-check-constraints" author="claude">
+        <sql>
+            ALTER TABLE cms_flowable_workflow.allegations 
+            ADD CONSTRAINT check_allegation_category 
+            CHECK (allegation_category IN ('TRACKED', 'NON_TRACKED'));
+        </sql>
+    </changeSet>
+
+    <!-- Create indexes -->
+    <changeSet id="008-003-create-allegation-indexes" author="claude">
+        <createIndex tableName="allegations" schemaName="cms_flowable_workflow" indexName="idx_allegations_number">
+            <column name="allegation_number"/>
+        </createIndex>
+        <createIndex tableName="allegations" schemaName="cms_flowable_workflow" indexName="idx_allegations_investigation_function">
+            <column name="investigation_function"/>
+        </createIndex>
+        <createIndex tableName="allegations" schemaName="cms_flowable_workflow" indexName="idx_allegations_subject_entity">
+            <column name="subject_entity_id"/>
+        </createIndex>
+        <createIndex tableName="allegations" schemaName="cms_flowable_workflow" indexName="idx_allegations_category">
+            <column name="allegation_category"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

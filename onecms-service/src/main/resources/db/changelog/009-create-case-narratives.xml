@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Create Case Narratives Table -->
+    <changeSet id="009-001-create-case-narratives" author="claude">
+        <createTable tableName="case_narratives" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="narrative_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="investigation_function" type="VARCHAR(50)"/>
+            <column name="narrative_type" type="VARCHAR(100)"/>
+            <column name="narrative_title" type="VARCHAR(255)"/>
+            <column name="narrative_text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_recalled" type="BOOLEAN" defaultValueBoolean="false"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign key constraints -->
+    <changeSet id="009-002-add-narrative-constraints" author="claude">
+        <addForeignKeyConstraint
+            baseTableName="case_narratives" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="case_id"
+            referencedTableName="cases" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="case_id"
+            constraintName="fk_case_narratives_case_id"
+            onDelete="CASCADE"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="case_narratives" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="created_by"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_case_narratives_created_by"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <!-- Create indexes -->
+    <changeSet id="009-003-create-narrative-indexes" author="claude">
+        <createIndex tableName="case_narratives" schemaName="cms_flowable_workflow" indexName="idx_case_narratives_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_narratives" schemaName="cms_flowable_workflow" indexName="idx_case_narratives_function">
+            <column name="investigation_function"/>
+        </createIndex>
+        <createIndex tableName="case_narratives" schemaName="cms_flowable_workflow" indexName="idx_case_narratives_type">
+            <column name="narrative_type"/>
+        </createIndex>
+        <createIndex tableName="case_narratives" schemaName="cms_flowable_workflow" indexName="idx_case_narratives_created_by">
+            <column name="created_by"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

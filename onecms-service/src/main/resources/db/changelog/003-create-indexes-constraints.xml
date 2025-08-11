@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ============================================ -->
+    <!-- INDEXES AND CONSTRAINTS WITH PRECONDITIONS  -->
+    <!-- ============================================ -->
+
+    <!-- Foreign Key Constraints -->
+    <changeSet id="fk-001-user-roles-constraints" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_user_roles_user_id" schemaName="cms_flowable_workflow"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key constraints for user_roles table</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_user_roles_user_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="user_roles"
+            baseColumnNames="user_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="users"
+            referencedColumnNames="user_id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_user_roles_role_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="user_roles"
+            baseColumnNames="role_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="roles"
+            referencedColumnNames="role_id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="user_roles" constraintName="fk_user_roles_user_id"/>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="user_roles" constraintName="fk_user_roles_role_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="fk-002-departments-constraints" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_departments_manager_user_id" schemaName="cms_flowable_workflow"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key constraints for departments table</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_departments_manager_user_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="departments"
+            baseColumnNames="manager_user_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="users"
+            referencedColumnNames="user_id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="departments" constraintName="fk_departments_manager_user_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="fk-003-cases-constraints" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_cases_case_type_id" schemaName="cms_flowable_workflow"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key constraints for cases table</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_cases_case_type_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="cases"
+            baseColumnNames="case_type_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="case_types"
+            referencedColumnNames="case_type_id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_cases_department_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="cases"
+            baseColumnNames="department_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="departments"
+            referencedColumnNames="department_id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_cases_assigned_to_user_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="cases"
+            baseColumnNames="assigned_to_user_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="users"
+            referencedColumnNames="user_id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_cases_created_by_user_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="cases"
+            baseColumnNames="created_by_user_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="users"
+            referencedColumnNames="user_id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="cases" constraintName="fk_cases_case_type_id"/>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="cases" constraintName="fk_cases_department_id"/>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="cases" constraintName="fk_cases_assigned_to_user_id"/>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="cases" constraintName="fk_cases_created_by_user_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="fk-004-allegations-constraints" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_allegations_case_id" schemaName="cms_flowable_workflow"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key constraints for allegations table</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_allegations_case_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="allegations"
+            baseColumnNames="case_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="cases"
+            referencedColumnNames="case_id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="allegations" constraintName="fk_allegations_case_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="fk-005-work-items-constraints" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_work_items_case_id" schemaName="cms_flowable_workflow"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key constraints for work_items table</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_work_items_case_id"
+            baseTableSchemaName="cms_flowable_workflow"
+            baseTableName="work_items"
+            baseColumnNames="case_id"
+            referencedTableSchemaName="cms_flowable_workflow"
+            referencedTableName="cases"
+            referencedColumnNames="case_id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="cms_flowable_workflow" baseTableName="work_items" constraintName="fk_work_items_case_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Performance Indexes -->
+    <changeSet id="idx-001-users-indexes" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_users_username" schemaName="cms_flowable_workflow" tableName="users"/>
+            </not>
+        </preConditions>
+        <comment>Create performance indexes for users table</comment>
+
+        <createIndex indexName="idx_users_username" tableName="users" schemaName="cms_flowable_workflow" unique="false">
+            <column name="username"/>
+        </createIndex>
+
+        <createIndex indexName="idx_users_email" tableName="users" schemaName="cms_flowable_workflow" unique="false">
+            <column name="email"/>
+        </createIndex>
+
+        <createIndex indexName="idx_users_status" tableName="users" schemaName="cms_flowable_workflow" unique="false">
+            <column name="user_status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_users_created_at" tableName="users" schemaName="cms_flowable_workflow" unique="false">
+            <column name="created_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_users_username" tableName="users" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_users_email" tableName="users" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_users_status" tableName="users" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_users_created_at" tableName="users" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="idx-002-roles-indexes" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_roles_code" schemaName="cms_flowable_workflow" tableName="roles"/>
+            </not>
+        </preConditions>
+        <comment>Create performance indexes for roles table</comment>
+
+        <createIndex indexName="idx_roles_code" tableName="roles" schemaName="cms_flowable_workflow" unique="false">
+            <column name="role_code"/>
+        </createIndex>
+
+        <createIndex indexName="idx_roles_active" tableName="roles" schemaName="cms_flowable_workflow" unique="false">
+            <column name="is_active"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_roles_code" tableName="roles" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_roles_active" tableName="roles" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="idx-003-user-roles-indexes" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_user_roles_user_id" schemaName="cms_flowable_workflow" tableName="user_roles"/>
+            </not>
+        </preConditions>
+        <comment>Create performance indexes for user_roles table</comment>
+
+        <createIndex indexName="idx_user_roles_user_id" tableName="user_roles" schemaName="cms_flowable_workflow" unique="false">
+            <column name="user_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_user_roles_role_id" tableName="user_roles" schemaName="cms_flowable_workflow" unique="false">
+            <column name="role_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_user_roles_active" tableName="user_roles" schemaName="cms_flowable_workflow" unique="false">
+            <column name="is_active"/>
+        </createIndex>
+
+        <!-- Unique constraint for active user-role combinations -->
+        <createIndex indexName="idx_user_roles_unique_active" tableName="user_roles" schemaName="cms_flowable_workflow" unique="true">
+            <column name="user_id"/>
+            <column name="role_id"/>
+            <column name="is_active"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_user_roles_user_id" tableName="user_roles" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_user_roles_role_id" tableName="user_roles" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_user_roles_active" tableName="user_roles" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_user_roles_unique_active" tableName="user_roles" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="idx-004-cases-indexes" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_cases_case_number" schemaName="cms_flowable_workflow" tableName="cases"/>
+            </not>
+        </preConditions>
+        <comment>Create performance indexes for cases table</comment>
+
+        <createIndex indexName="idx_cases_case_number" tableName="cases" schemaName="cms_flowable_workflow" unique="false">
+            <column name="case_number"/>
+        </createIndex>
+
+        <createIndex indexName="idx_cases_status" tableName="cases" schemaName="cms_flowable_workflow" unique="false">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_cases_priority" tableName="cases" schemaName="cms_flowable_workflow" unique="false">
+            <column name="priority"/>
+        </createIndex>
+
+        <createIndex indexName="idx_cases_assigned_to" tableName="cases" schemaName="cms_flowable_workflow" unique="false">
+            <column name="assigned_to_user_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_cases_created_by" tableName="cases" schemaName="cms_flowable_workflow" unique="false">
+            <column name="created_by_user_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_cases_created_at" tableName="cases" schemaName="cms_flowable_workflow" unique="false">
+            <column name="created_at"/>
+        </createIndex>
+
+        <createIndex indexName="idx_cases_department_id" tableName="cases" schemaName="cms_flowable_workflow" unique="false">
+            <column name="department_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_cases_case_number" tableName="cases" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_cases_status" tableName="cases" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_cases_priority" tableName="cases" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_cases_assigned_to" tableName="cases" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_cases_created_by" tableName="cases" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_cases_created_at" tableName="cases" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_cases_department_id" tableName="cases" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="idx-005-allegations-indexes" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_allegations_case_id" schemaName="cms_flowable_workflow" tableName="allegations"/>
+            </not>
+        </preConditions>
+        <comment>Create performance indexes for allegations table</comment>
+
+        <createIndex indexName="idx_allegations_case_id" tableName="allegations" schemaName="cms_flowable_workflow" unique="false">
+            <column name="case_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_allegations_type" tableName="allegations" schemaName="cms_flowable_workflow" unique="false">
+            <column name="allegation_type"/>
+        </createIndex>
+
+        <createIndex indexName="idx_allegations_severity" tableName="allegations" schemaName="cms_flowable_workflow" unique="false">
+            <column name="severity"/>
+        </createIndex>
+
+        <createIndex indexName="idx_allegations_classification" tableName="allegations" schemaName="cms_flowable_workflow" unique="false">
+            <column name="department_classification"/>
+        </createIndex>
+
+        <createIndex indexName="idx_allegations_assigned_group" tableName="allegations" schemaName="cms_flowable_workflow" unique="false">
+            <column name="assigned_group"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_allegations_case_id" tableName="allegations" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_allegations_type" tableName="allegations" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_allegations_severity" tableName="allegations" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_allegations_classification" tableName="allegations" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_allegations_assigned_group" tableName="allegations" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="idx-006-work-items-indexes" author="cms-migration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_work_items_case_id" schemaName="cms_flowable_workflow" tableName="work_items"/>
+            </not>
+        </preConditions>
+        <comment>Create performance indexes for work_items table</comment>
+
+        <createIndex indexName="idx_work_items_case_id" tableName="work_items" schemaName="cms_flowable_workflow" unique="false">
+            <column name="case_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_work_items_status" tableName="work_items" schemaName="cms_flowable_workflow" unique="false">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_work_items_classification" tableName="work_items" schemaName="cms_flowable_workflow" unique="false">
+            <column name="classification"/>
+        </createIndex>
+
+        <createIndex indexName="idx_work_items_assigned_group" tableName="work_items" schemaName="cms_flowable_workflow" unique="false">
+            <column name="assigned_group"/>
+        </createIndex>
+
+        <createIndex indexName="idx_work_items_flowable_process" tableName="work_items" schemaName="cms_flowable_workflow" unique="false">
+            <column name="flowable_process_instance_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_work_items_case_id" tableName="work_items" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_work_items_status" tableName="work_items" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_work_items_classification" tableName="work_items" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_work_items_assigned_group" tableName="work_items" schemaName="cms_flowable_workflow"/>
+            <dropIndex indexName="idx_work_items_flowable_process" tableName="work_items" schemaName="cms_flowable_workflow"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

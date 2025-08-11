@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="allegation-classification-dmn" name="Allegation Classification" namespace="http://flowable.org/dmn">
+  <decision id="allegation-classification" name="Allegation Classification">
+    <decisionTable id="DecisionTable_AllegationClassification" hitPolicy="FIRST">
+      <input id="InputClause_AllegationType" label="Allegation Type">
+        <inputExpression id="LiteralExpression_AllegationType" typeRef="string">
+          <text>allegationType</text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_Severity" label="Severity">
+        <inputExpression id="LiteralExpression_Severity" typeRef="string">
+          <text>severity</text>
+        </inputExpression>
+      </input>
+      <output id="OutputClause_Classification" label="Classification" name="classification" typeRef="string" />
+      <output id="OutputClause_AssignedGroup" label="Assigned Group" name="assignedGroup" typeRef="string" />
+      <output id="OutputClause_Priority" label="Priority" name="priority" typeRef="string" />
+
+      <!-- HR Related Cases -->
+      <rule id="Rule_HR_High_Severity">
+        <inputEntry id="Input_HR_High_Type">
+          <text>"Sexual Harassment", "Discrimination"</text>
+        </inputEntry>
+        <inputEntry id="Input_HR_High_Severity">
+          <text>"HIGH", "CRITICAL"</text>
+        </inputEntry>
+        <outputEntry id="Output_HR_High_Class">
+          <text>"HR"</text>
+        </outputEntry>
+        <outputEntry id="Output_HR_High_Group">
+          <text>"HR_GROUP"</text>
+        </outputEntry>
+        <outputEntry id="Output_HR_High_Priority">
+          <text>"CRITICAL"</text>
+        </outputEntry>
+      </rule>
+      <rule id="Rule_HR_Standard">
+        <inputEntry id="Input_HR_Std_Type">
+          <text>"Harassment", "Workplace Harassment", "Discrimination"</text>
+        </inputEntry>
+        <inputEntry id="Input_HR_Std_Severity">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="Output_HR_Std_Class">
+          <text>"HR"</text>
+        </outputEntry>
+        <outputEntry id="Output_HR_Std_Group">
+          <text>"HR_GROUP"</text>
+        </outputEntry>
+        <outputEntry id="Output_HR_Std_Priority">
+          <text>"MEDIUM"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- Legal Related Cases -->
+      <rule id="Rule_Legal_High_Severity">
+        <inputEntry id="Input_Legal_High_Type">
+          <text>"Financial Fraud", "Fraud", "Embezzlement"</text>
+        </inputEntry>
+        <inputEntry id="Input_Legal_High_Severity">
+          <text>"HIGH", "CRITICAL"</text>
+        </inputEntry>
+        <outputEntry id="Output_Legal_High_Class">
+          <text>"LEGAL"</text>
+        </outputEntry>
+        <outputEntry id="Output_Legal_High_Group">
+          <text>"LEGAL_GROUP"</text>
+        </outputEntry>
+        <outputEntry id="Output_Legal_High_Priority">
+          <text>"CRITICAL"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- CSIS Related Cases -->
+      <rule id="Rule_CSIS_High_Severity">
+        <inputEntry id="Input_CSIS_High_Type">
+          <text>"Data Breach", "Security Breach"</text>
+        </inputEntry>
+        <inputEntry id="Input_CSIS_High_Severity">
+          <text>"HIGH", "CRITICAL"</text>
+        </inputEntry>
+        <outputEntry id="Output_CSIS_High_Class">
+          <text>"CSIS"</text>
+        </outputEntry>
+        <outputEntry id="Output_CSIS_High_Group">
+          <text>"CSIS_GROUP"</text>
+        </outputEntry>
+        <outputEntry id="Output_CSIS_High_Priority">
+          <text>"CRITICAL"</text>
+        </outputEntry>
+      </rule>
+
+      <!-- Default Rule -->
+      <rule id="Rule_Default">
+        <inputEntry id="Input_Default_Type"><text>-</text></inputEntry>
+        <inputEntry id="Input_Default_Severity"><text>-</text></inputEntry>
+        <outputEntry id="Output_Default_Class"><text>"HR"</text></outputEntry>
+        <outputEntry id="Output_Default_Group"><text>"HR_GROUP"</text></outputEntry>
+        <outputEntry id="Output_Default_Priority"><text>"MEDIUM"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

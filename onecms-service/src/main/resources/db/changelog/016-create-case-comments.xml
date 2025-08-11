@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <!-- Create Case Comments Table -->
+    <changeSet id="016-001-create-case-comments" author="claude">
+        <comment>Create table for case comments with full audit trail</comment>
+        
+        <createTable tableName="case_comments" schemaName="cms_flowable_workflow">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="comment_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="case_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_comment_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            
+            <!-- Comment Content -->
+            <column name="comment_text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comment_type" type="VARCHAR(50)" defaultValue="GENERAL"/>
+            
+            <!-- Audit Fields -->
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_by" type="BIGINT"/>
+            
+            <!-- Status and Visibility -->
+            <column name="is_deleted" type="BOOLEAN" defaultValueBoolean="false"/>
+            <column name="is_internal" type="BOOLEAN" defaultValueBoolean="false"/>
+            <column name="is_confidential" type="BOOLEAN" defaultValueBoolean="false"/>
+            
+            <!-- Character count for validation -->
+            <column name="character_count" type="INTEGER" defaultValue="0"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign key constraints -->
+    <changeSet id="016-002-add-comment-constraints" author="claude">
+        <addForeignKeyConstraint
+            baseTableName="case_comments" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="case_id"
+            referencedTableName="cases" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="case_id"
+            constraintName="fk_case_comments_case_id"
+            onDelete="CASCADE"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="case_comments" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="created_by"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_case_comments_created_by"
+            onDelete="RESTRICT"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="case_comments" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="updated_by"
+            referencedTableName="users" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="user_id"
+            constraintName="fk_case_comments_updated_by"
+            onDelete="SET NULL"/>
+        
+        <addForeignKeyConstraint
+            baseTableName="case_comments" baseTableSchemaName="cms_flowable_workflow" baseColumnNames="parent_comment_id"
+            referencedTableName="case_comments" referencedTableSchemaName="cms_flowable_workflow" referencedColumnNames="id"
+            constraintName="fk_case_comments_parent"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <!-- Add check constraints -->
+    <changeSet id="016-003-add-check-constraints" author="claude">
+        <sql>
+            <![CDATA[
+            -- Character limit check (4000 characters as per UI design)
+            ALTER TABLE cms_flowable_workflow.case_comments 
+            ADD CONSTRAINT check_comment_length 
+            CHECK (LENGTH(comment_text) <= 4000);
+            
+            -- Comment type check
+            ALTER TABLE cms_flowable_workflow.case_comments 
+            ADD CONSTRAINT check_comment_type 
+            CHECK (comment_type IN ('GENERAL', 'INVESTIGATION', 'LEGAL', 'HR', 'ESCALATION', 'RESOLUTION', 'CLOSURE'));
+            
+            -- Character count should match actual text length
+            ALTER TABLE cms_flowable_workflow.case_comments 
+            ADD CONSTRAINT check_character_count 
+            CHECK (character_count = LENGTH(comment_text));
+            ]]>
+        </sql>
+    </changeSet>
+
+    <!-- Create indexes -->
+    <changeSet id="016-004-create-comment-indexes" author="claude">
+        <createIndex tableName="case_comments" schemaName="cms_flowable_workflow" indexName="idx_case_comments_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="cms_flowable_workflow" indexName="idx_case_comments_created_by">
+            <column name="created_by"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="cms_flowable_workflow" indexName="idx_case_comments_created_at">
+            <column name="created_at"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="cms_flowable_workflow" indexName="idx_case_comments_type">
+            <column name="comment_type"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="cms_flowable_workflow" indexName="idx_case_comments_parent">
+            <column name="parent_comment_id"/>
+        </createIndex>
+        <createIndex tableName="case_comments" schemaName="cms_flowable_workflow" indexName="idx_case_comments_not_deleted">
+            <column name="is_deleted"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add trigger to auto-update character_count -->
+    <changeSet id="016-005-create-character-count-trigger" author="claude">
+        <sql>
+            <![CDATA[
+            -- Function to update character count
+            CREATE OR REPLACE FUNCTION cms_flowable_workflow.update_comment_character_count()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.character_count = LENGTH(NEW.comment_text);
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            -- Trigger to auto-update character count and updated_at
+            CREATE TRIGGER trigger_update_comment_character_count
+                BEFORE INSERT OR UPDATE ON cms_flowable_workflow.case_comments
+                FOR EACH ROW
+                EXECUTE FUNCTION cms_flowable_workflow.update_comment_character_count();
+            ]]>
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,147 @@
+# Debug mode disabled for production
+debug: false
+
+server:
+  port: ${SERVER_PORT:8083}
+  servlet:
+    context-path: ${SERVER_CONTEXT_PATH:/api}
+  tomcat:
+    additional-tld-skip-patterns: "*.jar"
+    apr:
+      enabled: false
+
+spring:
+  application:
+    name: onecms-service
+  
+  profiles:
+    active: dev
+    
+  web:
+    resources:
+      add-mappings: true
+      static-locations: classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,classpath:/public/
+
+  # Single DataSource for both CMS and Flowable
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://ep-wispy-haze-a5xy9c41-pooler.us-east-2.aws.neon.tech/workflow?sslmode=require&currentSchema=onecms}
+    username: ${DB_USERNAME:wf_owner}
+    password: ${DB_PASSWORD:npg_7hrdeDKf6WyC}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: CMS-HikariCP
+      auto-commit: false
+        
+  # JPA Configuration for Business Tables
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none # Keep 'none' if you manage schema manually or with Flyway/Liquibase for your JPA entities
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false # You can set this to true temporarily if you want to see SQL queries
+    properties:
+      hibernate:
+        default_schema: ${DB_SCHEMA:onecms}
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        jdbc.batch_size: 25
+  data:
+    jpa:
+      repositories:
+        query-lookup-strategy: create-if-not-found
+
+  # Liquibase Configuration - Disabled for now since tables exist
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    default-schema: ${DB_SCHEMA:onecms}
+    enabled: false
+
+# Service Clients Configuration
+service:
+  clients:
+    entitlement-service:
+      base-url: ${ENTITLEMENT_SERVICE_URL:http://localhost:8081}
+      timeout: 30s
+    flowable-core-workflow:
+      base-url: ${FLOWABLE_WORKFLOW_SERVICE_URL:http://localhost:8082}
+      timeout: 30s
+
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      entitlement-service:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+      flowable-workflow-service:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+
+
+# Logging Configuration - Handled by logback-spring.xml
+# All logs go to logs/cms-flowable.log with rolling policy
+# Environment variables for log levels:
+# APP_LOG_LEVEL: Application log level (default: INFO)
+# FLOWABLE_LOG_LEVEL: Flowable engine log level (default: INFO) 
+# SQL_LOG_LEVEL: SQL query log level (default: WARN)
+logging:
+  config: classpath:logback-spring.xml
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Application Specific Configuration
+cms:
+  database:
+    schema: ${DB_SCHEMA:onecms}
+  case:
+    number-prefix: "${CASE_NUMBER_PREFIX:CMS}"
+    auto-assignment: ${CASE_AUTO_ASSIGNMENT:true}
+    max-allegations-per-case: ${CASE_MAX_ALLEGATIONS:10}
+  notification:
+    email:
+      enabled: ${EMAIL_ENABLED:false}
+      smtp:
+        host: ${EMAIL_SMTP_HOST:localhost}
+        port: ${EMAIL_SMTP_PORT:587}
+    sms:
+      enabled: ${SMS_ENABLED:false}
+  file:
+    upload:
+      max-size: ${FILE_UPLOAD_MAX_SIZE:10MB}
+      allowed-types: ${FILE_UPLOAD_ALLOWED_TYPES:pdf,doc,docx,txt,jpg,png}
+      storage-path: ${FILE_UPLOAD_STORAGE_PATH:/app/uploads}
+  deployment:
+    environment: ${DEPLOYMENT_ENV:development}
+    base-url: ${BASE_URL:http://localhost}
