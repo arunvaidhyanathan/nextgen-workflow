@@ -5,13 +5,19 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-    <!-- OneCMS Service Database Changelog Master File -->
+    <!-- ========================================= -->
+    <!-- ONECMS SERVICE DATABASE CHANGELOG MASTER -->
+    <!-- ========================================= -->
     <!-- This file coordinates all database migrations for the OneCMS service -->
+    <!-- Consolidated approach with single comprehensive migration -->
     
-    <!-- Core table creation (follows proper microservice schema design) -->
-    <include file="classpath:db/changelog/001-create-cms-core-tables.xml"/>
+    <!-- Single consolidated migration script containing all schema changes -->
+    <!-- This replaces the previous fragmented approach (001-019) with a clean, comprehensive migration -->
+    <include file="classpath:db/changelog/001-consolidated-onecms-schema.xml"/>
     
-    <!-- Add case transitions table for workflow tracking -->
-    <include file="classpath:db/changelog/019-create-case-transitions-table.xml"/>
+    <!-- Future migrations should be added here with incremental change sets -->
+    <!-- Example: -->
+    <!-- <include file="classpath:db/changelog/002-add-new-feature-tables.xml"/> -->
+    <!-- <include file="classpath:db/changelog/003-performance-improvements.xml"/> -->
     
 </databaseChangeLog>
