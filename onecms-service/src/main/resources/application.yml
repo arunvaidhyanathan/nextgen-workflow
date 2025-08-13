@@ -44,7 +44,7 @@ spring:
       ddl-auto: none # Keep 'none' if you manage schema manually or with Flyway/Liquibase for your JPA entities
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-    show-sql: false # You can set this to true temporarily if you want to see SQL queries
+    show-sql: true # Enable SQL logging for debugging
     properties:
       hibernate:
         default_schema: ${DB_SCHEMA:onecms}
@@ -59,7 +59,7 @@ spring:
       repositories:
         query-lookup-strategy: create-if-not-found
 
-  # Liquibase Configuration - Disabled for now since tables exist
+  # Liquibase Configuration - Disabled due to migration conflicts
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
     default-schema: ${DB_SCHEMA:onecms}
@@ -91,8 +91,8 @@ resilience4j:
         minimum-number-of-calls: 5
 
 
-# Logging Configuration - Handled by logback-spring.xml
-# All logs go to logs/cms-flowable.log with rolling policy
+# Centralized Logging Configuration - Handled by logback-spring.xml
+# All logs go to ../logs/onecms-service.log with rolling policy
 # Environment variables for log levels:
 # APP_LOG_LEVEL: Application log level (default: INFO)
 # FLOWABLE_LOG_LEVEL: Flowable engine log level (default: INFO) 
@@ -119,7 +119,7 @@ management:
       base-path: /actuator
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
 
 # Application Specific Configuration
 cms:

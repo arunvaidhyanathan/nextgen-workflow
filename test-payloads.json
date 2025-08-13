@@ -1,0 +1,83 @@
+{
+  "multi_department_case_basic": {
+    "title": "Multi-Department Investigation - John Doe",
+    "description": "Complex investigation involving harassment, financial fraud, and security violations",
+    "priority": "HIGH",
+    "category": "COMPLIANCE",
+    "complainantName": "Jane Smith",
+    "complainantEmail": "jane.smith@company.com",
+    "reporterId": "alice.intake",
+    "allegations": [
+      {
+        "allegationType": "Tracked",
+        "severity": "HIGH",
+        "description": "Initial allegation - HR Department involvement required"
+      }
+    ]
+  },
+  
+  "hr_allegation": {
+    "allegationType": "Tracked",
+    "subject": "John Doe (JD12345)",
+    "grcTaxonomyLevel1": "People Risk",
+    "grcTaxonomyLevel2": "Workplace Conduct",
+    "grcTaxonomyLevel3": "Harassment",
+    "grcTaxonomyLevel4": "Sexual Harassment",
+    "investigationFunction": "ER",
+    "severity": "HIGH",
+    "description": "Sexual harassment allegations requiring HR investigation and disciplinary action coordination"
+  },
+  
+  "legal_allegation": {
+    "allegationType": "Tracked",
+    "subject": "John Doe (JD12345)",
+    "grcTaxonomyLevel1": "Financial Crime",
+    "grcTaxonomyLevel2": "Fraud",
+    "grcTaxonomyLevel3": "Internal Fraud",
+    "grcTaxonomyLevel4": "Expense Fraud",
+    "investigationFunction": "ER",
+    "severity": "HIGH",
+    "description": "Financial fraud requiring Legal department involvement and potential prosecution"
+  },
+  
+  "security_allegation": {
+    "allegationType": "Tracked",
+    "subject": "John Doe (JD12345)",
+    "grcTaxonomyLevel1": "Information Security",
+    "grcTaxonomyLevel2": "Data Protection",
+    "grcTaxonomyLevel3": "Data Misuse",
+    "grcTaxonomyLevel4": "Unauthorized Access",
+    "investigationFunction": "CSIS",
+    "severity": "CRITICAL",
+    "description": "Data breach requiring Security team investigation and system hardening"
+  },
+  
+  "complainant_entity": {
+    "type": "Person",
+    "relationshipType": "Complainant",
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "emailAddress": "jane.smith@company.com",
+    "phoneNumber": "+1-555-0123",
+    "relationshipToCiti": "Current Employee",
+    "investigationFunction": "ER"
+  },
+  
+  "subject_entity": {
+    "type": "Person",
+    "relationshipType": "Subject",
+    "soeid": "JD12345",
+    "firstName": "John",
+    "lastName": "Doe",
+    "emailAddress": "john.doe@company.com",
+    "relationshipToCiti": "Senior Manager",
+    "investigationFunction": "ER"
+  },
+  
+  "investigation_narrative": {
+    "type": "Investigation Plan",
+    "title": "Multi-Department Coordination Strategy",
+    "narrative": "This case requires coordination between HR (harassment), Legal (fraud), and Security (data breach) teams. Each department will conduct parallel investigations with shared findings and coordinated timeline.",
+    "investigationFunction": "ER"
+  }
+}

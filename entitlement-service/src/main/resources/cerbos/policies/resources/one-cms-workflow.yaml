@@ -16,14 +16,12 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       roles:
         - "INTAKE_ANALYST" # Only intake analysts can start new workflow instances
-      description: "Intake analysts can initiate new workflow processes"
 
     - actions: ["terminate_workflow", "cancel_process"]
       effect: EFFECT_ALLOW
       roles:
         - "INVESTIGATION_MANAGER"
         - "EO_OFFICER"
-      description: "Managers and EO officers can terminate workflow instances"
 
     # ========================================
     # QUEUE ACCESS MANAGEMENT
@@ -36,7 +34,6 @@ resourcePolicy:
           # Allow ONLY if the requested queue is in the principal's entitled queues
           # Entitlement Service builds principal.attr.queues from business_app_roles.metadata.queues
           expr: request.resource.attr.currentQueue in request.principal.attr.queues
-      description: "Users can view queues they are entitled to based on their roles"
 
     # ========================================
     # TASK MANAGEMENT
@@ -48,7 +45,6 @@ resourcePolicy:
         match:
           # Allow if the task's queue is in the principal's entitled queues
           expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
-      description: "Users can view tasks in queues they have access to"
 
     - actions: ["claim_task", "assign_to_self"]
       effect: EFFECT_ALLOW
@@ -61,7 +57,6 @@ resourcePolicy:
               - expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
               # Rule 2: Task must be unassigned (null assignee)
               - expr: request.resource.attr.currentTask.assignee == null
-      description: "Users can claim unassigned tasks in their entitled queues"
 
     - actions: ["complete_task", "finish_task"]
       effect: EFFECT_ALLOW
@@ -70,7 +65,6 @@ resourcePolicy:
         match:
           # Allow ONLY if the principal is the current assignee of the task
           expr: request.resource.attr.currentTask.assignee == request.principal.id
-      description: "Only the assigned user can complete their tasks"
 
     - actions: ["delegate_task", "reassign_task"]
       effect: EFFECT_ALLOW
@@ -85,7 +79,6 @@ resourcePolicy:
               - expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
               # Current assignee can delegate their own task
               - expr: request.resource.attr.currentTask.assignee == request.principal.id
-      description: "Managers can delegate tasks, assignees can delegate their own tasks"
 
     # ========================================
     # TASK HISTORY AND AUDIT
@@ -100,7 +93,6 @@ resourcePolicy:
         match:
           # Can view history of tasks in their entitled queues
           expr: request.resource.attr.currentTask.queue in request.principal.attr.queues
-      description: "Managers and reviewers can view task history in their queues"
 
     # ========================================
     # PROCESS VARIABLE ACCESS
@@ -115,7 +107,6 @@ resourcePolicy:
             of:
               - expr: request.resource.attr.currentQueue in request.principal.attr.queues
               - expr: request.resource.attr.currentTask.assignee == request.principal.id
-      description: "Users can read process variables for their accessible tasks/queues"
 
     - actions: ["update_process_variables", "set_variables"]
       effect: EFFECT_ALLOW
@@ -124,7 +115,6 @@ resourcePolicy:
         - "EO_OFFICER"
       derivedRoles:
         - task_assignee
-      description: "Managers and current task assignees can update process variables"
 
     # ========================================
     # ESCALATION AND NOTIFICATIONS
@@ -136,7 +126,6 @@ resourcePolicy:
         - "EO_OFFICER"
       derivedRoles:
         - task_assignee # Assignee can escalate their own task
-      description: "Managers and assignees can escalate tasks and send notifications"
 
     # ========================================
     # ADMINISTRATIVE ACTIONS
@@ -145,9 +134,7 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       roles:
         - "EO_OFFICER" # Only ethics office can suspend/activate processes
-      description: "Only EO officers can suspend or activate workflow processes"
 
   # Default deny rule
   defaultRule:
     effect: EFFECT_DENY
-    description: "Default deny for any workflow action not explicitly allowed"

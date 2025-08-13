@@ -4,14 +4,14 @@ This directory contains end-to-end tests for the CMS Investigations Workflow App
 
 ## Test Coverage
 
-### 🔐 Authentication Tests (`authentication.spec.ts`)
+### Authentication Tests (`authentication.spec.ts`)
 - Login form validation
 - Valid/invalid credential handling
 - Session management
 - Network error handling
 - Form state management
 
-### 🏠 Dashboard Tests (`cms-investigations.spec.ts`)
+### Dashboard Tests (`cms-investigations.spec.ts`)
 - Login page functionality
 - Dashboard layout and navigation
 - Widget display
@@ -19,7 +19,7 @@ This directory contains end-to-end tests for the CMS Investigations Workflow App
 - Responsive design testing
 - Console monitoring
 
-### 🔍 API Monitoring (`api-monitoring.spec.ts`)
+### API Monitoring (`api-monitoring.spec.ts`)
 - API call monitoring
 - Error response handling
 - JWT token validation
@@ -92,17 +92,17 @@ The test configuration is in `playwright.config.ts`:
 
 ## Issues Discovered During Testing
 
-### 🚨 Authentication Issues
+### Authentication Issues
 1. **401 Unauthorized Errors**: Multiple API calls return 401 after successful login
 2. **Session Management**: Token may not be properly included in API requests
 3. **Error Recovery**: Dashboard shows error state due to failed API calls
 
-### 🚨 API Integration Issues
+### API Integration Issues
 1. **500 Internal Server Error**: Some endpoints return server errors
 2. **Missing Error Handling**: Frontend doesn't gracefully handle all API errors
 3. **Token Refresh**: No apparent token refresh mechanism
 
-### 💡 Recommendations
+### Recommendations
 1. **Fix Backend Authentication**: Resolve 401 errors in API calls
 2. **Implement Proper Error States**: Add user-friendly error messages
 3. **Add Token Refresh**: Implement automatic token refresh
@@ -116,7 +116,7 @@ Username: alice.intake
 Password: password123
 ```
 
-⚠️ **Security Note**: These are test credentials only. In production, use proper authentication mechanisms.
+**Security Note**: These are test credentials only. In production, use proper authentication mechanisms.
 
 ## Architecture
 
@@ -133,11 +133,11 @@ e2e-tests/
 
 ## Browser Support
 
-- ✅ Chromium (Chrome/Edge)
-- ✅ Firefox
-- ✅ WebKit (Safari)
-- ✅ Mobile Chrome (Pixel 5)
-- ✅ Mobile Safari (iPhone 12)
+- Chromium (Chrome/Edge)
+- Firefox
+- WebKit (Safari)
+- Mobile Chrome (Pixel 5)
+- Mobile Safari (iPhone 12)
 
 ## CI/CD Integration
 

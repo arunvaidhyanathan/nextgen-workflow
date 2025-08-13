@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <!-- Define the log directory -->
-    <property name="LOG_DIR" value="logs"/>
-    <property name="LOG_FILE" value="cms-flowable"/>
+    <!-- Define the centralized log directory -->
+    <property name="LOG_DIR" value="../logs"/>
+    <property name="LOG_FILE" value="onecms-service"/>
 
     <!-- Console Appender (for development) -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

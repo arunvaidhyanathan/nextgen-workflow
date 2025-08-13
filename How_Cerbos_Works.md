@@ -159,7 +159,7 @@ code
 Code
 +-----------------------------------+
 | 1. CMS Domain Service             |
-|    - User 'bob.hr' (with JWT)     |
+|    - User 'bob.hr' (session auth) |
 |      requests to read case-123    |
 |    - Calls its EntitlementGateway |
 +------------------+----------------+

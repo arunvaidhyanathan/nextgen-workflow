@@ -1,7 +1,6 @@
 # derived_roles/one-cms.yaml
 # Derived roles specific to the OneCMS application within the nextgen-workflow ecosystem
 apiVersion: "api.cerbos.dev/v1"
-description: "Derived roles for OneCMS case management system"
 derivedRoles:
   name: one_cms_derived_roles
   definitions:

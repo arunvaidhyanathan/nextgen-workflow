@@ -1,0 +1,136 @@
+{
+  "multi_department_case_1": {
+    "title": "Executive Financial Misconduct and Harassment Investigation",
+    "description": "Complex case involving multiple allegations against a senior executive including financial irregularities, sexual harassment, and security policy violations requiring coordination across HR, Legal, and Security departments.",
+    "priority": "HIGH",
+    "complainantName": "Jane Smith",
+    "complainantEmail": "jane.smith@company.com",
+    "allegations": [
+      {
+        "allegationType": "Sexual Harassment",
+        "severity": "HIGH", 
+        "description": "Inappropriate sexual advances and creating hostile work environment for female subordinates. Requires HR investigation and potential legal action."
+      },
+      {
+        "allegationType": "Financial Fraud",
+        "severity": "HIGH",
+        "description": "Misappropriation of company funds through fraudulent expense claims totaling $150,000. Requires Legal review for potential criminal charges."
+      },
+      {
+        "allegationType": "Security Policy Violation", 
+        "severity": "MEDIUM",
+        "description": "Unauthorized access to confidential systems and sharing sensitive client data. Requires Corporate Security investigation."
+      }
+    ]
+  },
+  
+  "multi_department_case_2": {
+    "title": "Data Breach and Employee Misconduct Investigation",
+    "description": "Investigation of potential insider threat involving unauthorized data access, policy violations, and potential regulatory compliance issues requiring multi-department coordination.",
+    "priority": "CRITICAL",
+    "complainantName": "Security Operations Center", 
+    "complainantEmail": "soc@company.com",
+    "allegations": [
+      {
+        "allegationType": "Data Breach",
+        "severity": "CRITICAL",
+        "description": "Employee accessed and potentially exfiltrated confidential customer data. Requires immediate Legal review for regulatory compliance and breach notification requirements."
+      },
+      {
+        "allegationType": "Policy Violation",
+        "severity": "HIGH", 
+        "description": "Multiple violations of company IT policy including using personal devices for work and bypassing security controls. Requires HR disciplinary action."
+      },
+      {
+        "allegationType": "Unauthorized Access",
+        "severity": "HIGH",
+        "description": "Used administrative credentials to access systems outside scope of role. Requires Corporate Security investigation to assess system compromise."
+      }
+    ]
+  },
+
+  "multi_department_case_3": {
+    "title": "Vendor Fraud and Conflict of Interest Investigation",
+    "description": "Investigation of employee's undisclosed relationship with vendor leading to fraudulent contracts, requiring legal, HR, and security review.",
+    "priority": "HIGH", 
+    "complainantName": "Internal Audit",
+    "complainantEmail": "audit@company.com",
+    "allegations": [
+      {
+        "allegationType": "Conflict of Interest",
+        "severity": "HIGH",
+        "description": "Employee failed to disclose personal relationship with vendor and approved inflated contracts. Requires HR investigation for policy compliance."
+      },
+      {
+        "allegationType": "Vendor Fraud", 
+        "severity": "HIGH",
+        "description": "Fraudulent vendor contracts resulting in $500,000 overpayment. Requires Legal review for recovery action and potential criminal referral."
+      },
+      {
+        "allegationType": "Document Falsification",
+        "severity": "MEDIUM",
+        "description": "Altered vendor evaluation documents to justify contract approvals. Requires Security investigation to assess document integrity controls."
+      }
+    ]
+  },
+
+  "hr_focused_case": {
+    "title": "Workplace Discrimination and Retaliation",
+    "description": "HR-focused case involving discrimination and retaliation claims that may require legal consultation.",
+    "priority": "MEDIUM",
+    "complainantName": "Employee Relations",
+    "complainantEmail": "er@company.com", 
+    "allegations": [
+      {
+        "allegationType": "Discrimination",
+        "severity": "HIGH",
+        "description": "Manager making discriminatory comments based on race and gender, affecting multiple employees."
+      },
+      {
+        "allegationType": "Retaliation",
+        "severity": "MEDIUM", 
+        "description": "Manager retaliating against employees who reported discriminatory behavior by giving poor performance reviews."
+      }
+    ]
+  },
+
+  "legal_focused_case": {
+    "title": "Regulatory Compliance Violation and Money Laundering",
+    "description": "Legal-focused case involving potential regulatory violations that may require coordinated investigation.",
+    "priority": "CRITICAL",
+    "complainantName": "Compliance Office",
+    "complainantEmail": "compliance@company.com",
+    "allegations": [
+      {
+        "allegationType": "AML Violation", 
+        "severity": "CRITICAL",
+        "description": "Failure to report suspicious transactions as required by anti-money laundering regulations, potentially exposing firm to regulatory penalties."
+      },
+      {
+        "allegationType": "Client Fraud",
+        "severity": "HIGH",
+        "description": "Employee assisted client in structuring transactions to avoid reporting requirements, potential criminal activity requiring investigation."
+      }
+    ]
+  },
+
+  "security_focused_case": {
+    "title": "Cyber Security Incident and Insider Threat",
+    "description": "Security-focused case involving potential cyber security breach and insider threat requiring investigation.",
+    "priority": "HIGH", 
+    "complainantName": "Cyber Security Team",
+    "complainantEmail": "cybersec@company.com",
+    "allegations": [
+      {
+        "allegationType": "Cyber Security Breach",
+        "severity": "HIGH",
+        "description": "Employee's credentials used to access systems outside normal working hours and download sensitive files to external devices."
+      },
+      {
+        "allegationType": "Insider Threat",
+        "severity": "MEDIUM",
+        "description": "Behavioral indicators suggesting employee may be planning to steal intellectual property before leaving the company."
+      }
+    ]
+  }
+}

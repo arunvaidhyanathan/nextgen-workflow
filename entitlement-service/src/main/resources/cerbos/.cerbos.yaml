@@ -1,0 +1,25 @@
+# Cerbos configuration file
+server:
+  httpListenAddr: ":3592"
+  grpcListenAddr: ":3593"
+
+# Enable audit logging for decision debugging
+audit:
+  enabled: true
+  decisionLogEntries:
+    inputs: true
+    outputs: true
+  backend: local
+  local:
+    storagePath: /tmp/cerbos/audit
+
+# Enable verbose logging
+log:
+  level: debug
+
+# Storage configuration
+storage:
+  driver: disk
+  disk:
+    directory: /policies
+    watchForChanges: true

@@ -68,6 +68,9 @@ public class Case {
     @Column(name = "workflow_instance_key")
     private Long workflowInstanceKey;
     
+    @Column(name = "process_instance_id")
+    private String processInstanceId;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -192,6 +195,9 @@ public class Case {
     
     public Long getWorkflowInstanceKey() { return workflowInstanceKey; }
     public void setWorkflowInstanceKey(Long workflowInstanceKey) { this.workflowInstanceKey = workflowInstanceKey; }
+    
+    public String getProcessInstanceId() { return processInstanceId; }
+    public void setProcessInstanceId(String processInstanceId) { this.processInstanceId = processInstanceId; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

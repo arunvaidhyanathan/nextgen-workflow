@@ -5,8 +5,9 @@ apiVersion: "api.cerbos.dev/v1"
 resourcePolicy:
   resource: "case"
   version: "1.0"
-  importDerivedRoles:
-    - one_cms_derived_roles
+  # Temporarily comment out derived roles to test basic policy
+  # importDerivedRoles:
+  #   - one_cms_derived_roles
   rules:
     # ========================================
     # CASE CREATION
@@ -14,8 +15,8 @@ resourcePolicy:
     - actions: ["create"]
       effect: EFFECT_ALLOW
       roles:
+        - "user"           # Allow any authenticated user (for testing)
         - "INTAKE_ANALYST" # Only intake analysts can create new cases
-      description: "Intake analysts can create new cases"
 
     # ========================================
     # CASE READING/VIEWING
@@ -35,7 +36,6 @@ resourcePolicy:
       derivedRoles:
         # Allow department members to view cases assigned to their department
         - case_department_member
-      description: "Authorized roles and department members can view cases"
 
     # ========================================
     # CASE UPDATING
@@ -48,7 +48,6 @@ resourcePolicy:
       derivedRoles:
         # Allow current assignee to update their assigned case
         - case_assignee
-      description: "Managers, EO officers, and current assignees can update cases"
 
     # ========================================
     # ALLEGATION MANAGEMENT
@@ -61,7 +60,6 @@ resourcePolicy:
         - "INVESTIGATOR"
       derivedRoles:
         - case_assignee
-      description: "Intake analysts, managers, investigators, and assignees can add allegations"
 
     - actions: ["update_allegation"]
       effect: EFFECT_ALLOW
@@ -70,7 +68,6 @@ resourcePolicy:
         - "INVESTIGATOR"
       derivedRoles:
         - case_assignee
-      description: "Managers, investigators, and assignees can update allegations"
 
     # ========================================
     # NARRATIVE MANAGEMENT
@@ -90,7 +87,6 @@ resourcePolicy:
             of:
               - expr: request.resource.attr.department_code in request.principal.attr.departments
               - expr: request.resource.attr.assigneeId == request.principal.id
-      description: "Specialists can add narratives to cases in their department or assigned to them"
 
     # ========================================
     # CASE ASSIGNMENT
@@ -100,7 +96,6 @@ resourcePolicy:
       roles:
         - "INVESTIGATION_MANAGER"
         - "EO_OFFICER"
-      description: "Managers and EO officers can assign/reassign cases"
 
     # ========================================
     # CASE STATUS CHANGES
@@ -110,7 +105,6 @@ resourcePolicy:
       roles:
         - "INVESTIGATION_MANAGER"
         - "EO_OFFICER"
-      description: "Only managers and EO officers can close or reopen cases"
 
     # ========================================
     # SENSITIVE OPERATIONS
@@ -123,7 +117,6 @@ resourcePolicy:
         match:
           # Additional safety check - only allow deletion of draft cases
           expr: request.resource.attr.status == "DRAFT"
-      description: "Only EO officers can delete draft cases"
 
     # ========================================
     # AUDIT AND REPORTING
@@ -134,9 +127,7 @@ resourcePolicy:
         - "INVESTIGATION_MANAGER"
         - "EO_OFFICER"
         - "AROG_REVIEWER"
-      description: "Managers, EO officers, and AROG reviewers can access audit functions"
 
-  # Default deny rule - explicitly deny any action not covered above
-  defaultRule:
-    effect: EFFECT_DENY
-    description: "Default deny for any action not explicitly allowed"
+  # Default deny rule - TEMPORARILY COMMENTED OUT FOR TESTING
+  # defaultRule:
+  #   effect: EFFECT_DENY

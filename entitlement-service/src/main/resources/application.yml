@@ -11,18 +11,39 @@ spring:
     username: ${DB_USERNAME:}
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 900000
+      pool-name: Entitlement-HikariCP
+      auto-commit: false
+      leak-detection-threshold: 15000
 
   # JPA Configuration
   jpa:
     hibernate:
       ddl-auto: none
       default_schema: entitlements
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         default_schema: entitlements
+        jdbc:
+          time_zone: UTC
+          batch_size: 20
+          fetch_size: 20
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
 
   # Liquibase Configuration
   liquibase:
@@ -44,7 +65,7 @@ eureka:
 # Cerbos Configuration
 cerbos:
   host: ${CERBOS_HOST:localhost}
-  port: ${CERBOS_PORT:3593}
+  port: ${CERBOS_PORT:3592}
   tls:
     enabled: ${CERBOS_TLS_ENABLED:false}
   policies:
@@ -60,15 +81,39 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,hikaricp
   endpoint:
     health:
       show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        hikaricp.connections: true
+      percentiles:
+        hikaricp.connections: 0.5, 0.95, 0.99
 
-# Logging Configuration
+# Centralized Logging Configuration
 logging:
   level:
-    com.workflow.entitlements: INFO
-    dev.cerbos: INFO
+    com.workflow.entitlements: DEBUG
+    com.workflow.entitlements.cerbos.CerbosAuthorizationService: DEBUG
+    dev.cerbos: TRACE
+    com.zaxxer.hikari: DEBUG
+    org.hibernate.SQL: INFO
+    org.hibernate.type: INFO
+    org.springframework.web: INFO
+    org.springframework.security: DEBUG
+    io.grpc: DEBUG
+    grpc.netty: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ../logs/entitlement-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+      total-size-cap: 1GB

@@ -2,16 +2,17 @@ package com.citi.onecms.controller;
 
 import com.citi.onecms.dto.CreateCaseWithAllegationsRequest;
 import com.citi.onecms.dto.CaseWithAllegationsResponse;
-import com.citi.onecms.service.CaseWorkflowService;
+import com.citi.onecms.service.AuthorizationService;
+import com.citi.onecms.service.CaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -21,10 +22,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/v1/cases")
 @Tag(name = "Case Management", description = "APIs for managing cases and workflow processes")
+@Slf4j
 public class CaseManagementController {
     
     @Autowired
-    private CaseWorkflowService caseWorkflowService;
+    private CaseService caseService;
+    
+    @Autowired
+    private AuthorizationService authorizationService;
     
     @GetMapping("/test")
     public ResponseEntity<String> test() {
@@ -32,73 +37,100 @@ public class CaseManagementController {
     }
     
     @GetMapping("/auth-test")
-    @Operation(summary = "Test authentication", description = "Test endpoint to verify authentication is working")
-    public ResponseEntity<Map<String, Object>> testAuth(Authentication authentication) {
+    @Operation(summary = "Test authentication", description = "Test endpoint to verify session-based authentication")
+    public ResponseEntity<Map<String, Object>> testAuth(HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         
-        if (authentication == null) {
+        String userId = authorizationService.extractUserId(request);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
             response.put("authenticated", false);
-            response.put("message", "No authentication found");
+            response.put("message", "No X-User-Id header found or invalid");
             return ResponseEntity.status(401).body(response);
         }
         
         response.put("authenticated", true);
-        response.put("username", authentication.getName());
-        response.put("authorities", authentication.getAuthorities().stream()
-            .map(auth -> auth.getAuthority())
-            .collect(java.util.stream.Collectors.toList()));
-        response.put("principal", authentication.getPrincipal().getClass().getSimpleName());
+        response.put("userId", userId);
+        response.put("authMethod", "session-based");
         
-        // Add detailed role analysis
-        List<String> roles = authentication.getAuthorities().stream()
-            .map(auth -> auth.getAuthority())
-            .collect(java.util.stream.Collectors.toList());
-            
-        response.put("hasDirectorGroup", roles.contains("DIRECTOR_GROUP"));
-        response.put("hasManagerGroup", roles.contains("MANAGER_GROUP"));
-        response.put("hasAnalystGroup", roles.contains("ANALYST_GROUP"));
-        response.put("hasIntakeAnalyst", roles.contains("INTAKE_ANALYST") || roles.contains("INTAKE_ANALYST_GROUP"));
-        
-        // Check what roles would allow access to /v1/cases
-        boolean canAccessCases = roles.contains("DIRECTOR_GROUP") || 
-                               roles.contains("MANAGER_GROUP") || 
-                               roles.contains("ANALYST_GROUP");
-        response.put("canAccessCases", canAccessCases);
+        // Test authorization for different actions
+        response.put("canCreateCase", authorizationService.checkCaseAuthorization(userId, null, "create"));
+        response.put("canViewCases", authorizationService.checkCaseAuthorization(userId, "test-case", "view"));
         
         return ResponseEntity.ok(response);
     }
     
     @PostMapping
     @Operation(summary = "Create a new case", description = "Create a new case with allegations and start the workflow process")
-    @PreAuthorize("hasPermission(#request, 'case', 'create')")
-    public ResponseEntity<CaseWithAllegationsResponse> createCase(@Valid @RequestBody CreateCaseWithAllegationsRequest request) {
-        System.out.println("🎯 Received case creation request for: " + request.getTitle());
-        CaseWithAllegationsResponse response = caseWorkflowService.createCaseWithWorkflow(request);
+    public ResponseEntity<CaseWithAllegationsResponse> createCase(
+            @Valid @RequestBody CreateCaseWithAllegationsRequest request,
+            HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        // Check authorization to create cases
+        if (!authorizationService.checkCaseAuthorization(userId, null, "create")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
+        log.info("🎯 Received case creation request for: {} by user: {}", request.getTitle(), userId);
+        
+        // CreatedBy will be set in the service using userId
+        
+        CaseWithAllegationsResponse response = caseService.createCase(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
     @PostMapping("/multi-department")
     @Operation(summary = "Create a multi-department case", description = "Create a complex case that requires multiple departments (HR, Legal, CSIS)")
-    @PreAuthorize("hasPermission(#request, 'case', 'create')")
-    public ResponseEntity<CaseWithAllegationsResponse> createMultiDepartmentCase(@Valid @RequestBody CreateCaseWithAllegationsRequest request) {
-        System.out.println("🎯 Creating multi-department case: " + request.getTitle());
+    public ResponseEntity<CaseWithAllegationsResponse> createMultiDepartmentCase(
+            @Valid @RequestBody CreateCaseWithAllegationsRequest request,
+            HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        // Check authorization to create cases
+        if (!authorizationService.checkCaseAuthorization(userId, null, "create")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
+        log.info("🎯 Creating multi-department case: {} by user: {}", request.getTitle(), userId);
         
         // Ensure the case will trigger multi-department workflow
         if (request.getAllegations() == null || request.getAllegations().size() < 2) {
             throw new IllegalArgumentException("Multi-department cases require at least 2 allegations with different classifications");
         }
         
-        CaseWithAllegationsResponse response = caseWorkflowService.createCaseWithWorkflow(request);
+        // CreatedBy will be set in the service using userId
+        
+        CaseWithAllegationsResponse response = caseService.createCase(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
     @GetMapping("/{caseNumber}")
     @Operation(summary = "Get case details", description = "Retrieve detailed information about a specific case")
-    @PreAuthorize("hasPermission(#caseNumber, 'case', 'view')")
     public ResponseEntity<CaseWithAllegationsResponse> getCaseDetails(
-            @Parameter(description = "Case number (e.g., CMS-2025-010)") @PathVariable String caseNumber) {
+            @Parameter(description = "Case number (e.g., CMS-2025-010)") @PathVariable String caseNumber,
+            HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        // Check authorization to view this case
+        if (!authorizationService.checkCaseAuthorization(userId, caseNumber, "view")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
         try {
-            CaseWithAllegationsResponse caseDetails = caseWorkflowService.getCaseDetailsByCaseNumber(caseNumber);
+            CaseWithAllegationsResponse caseDetails = caseService.getCaseByNumber(caseNumber);
             return ResponseEntity.ok(caseDetails);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
@@ -107,13 +139,24 @@ public class CaseManagementController {
     
     @GetMapping
     @Operation(summary = "Get all cases", description = "Retrieve a list of all cases in the system")
-    @PreAuthorize("hasAnyAuthority('DIRECTOR', 'IU_MANAGER', 'INTAKE_ANALYST', 'HR_SPECIALIST', 'LEGAL_COUNSEL', 'SECURITY_ANALYST', 'ADMIN')")
     public ResponseEntity<List<CaseWithAllegationsResponse>> getAllCases(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        // Check authorization to list cases
+        if (!authorizationService.checkCaseAuthorization(userId, "all", "list")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
         try {
-            List<CaseWithAllegationsResponse> cases = caseWorkflowService.getAllCases(page, size, status);
+            List<CaseWithAllegationsResponse> cases = caseService.getAllCases(page, size, status);
             return ResponseEntity.ok(cases);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -126,14 +169,15 @@ public class CaseManagementController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status,
-            Authentication authentication) {
+            HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
         try {
-            if (authentication == null) {
-                return ResponseEntity.status(401).build();
-            }
-            
-            // For now, return all cases - you can add user-specific filtering later
-            List<CaseWithAllegationsResponse> cases = caseWorkflowService.getAllCases(page, size, status);
+            List<CaseWithAllegationsResponse> cases = caseService.getAllCases(page, size, status);
             return ResponseEntity.ok(cases);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -146,39 +190,38 @@ public class CaseManagementController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status,
-            Authentication authentication) {
+            HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
         try {
-            if (authentication == null) {
-                return ResponseEntity.status(401).build();
-            }
+            log.info("Dashboard cases request from user: {}", userId);
             
-            // Log user details for debugging
-            System.out.println("🔍 Dashboard cases request from user: " + authentication.getName());
-            System.out.println("🔍 User authorities: " + authentication.getAuthorities());
-            
-            // Return cases without strict authorization for dashboard
-            List<CaseWithAllegationsResponse> cases = caseWorkflowService.getAllCases(page, size, status);
-            System.out.println("✅ Returning " + cases.size() + " cases for dashboard");
+            List<CaseWithAllegationsResponse> cases = caseService.getAllCases(page, size, status);
+            log.info("Returning {} cases for dashboard", cases.size());
             return ResponseEntity.ok(cases);
         } catch (Exception e) {
-            System.err.println("❌ Error fetching dashboard cases: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error fetching dashboard cases: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
     
     @GetMapping("/dashboard-stats")
     @Operation(summary = "Get dashboard statistics", description = "Get basic statistics for dashboard")
-    public ResponseEntity<Map<String, Object>> getDashboardStats(Authentication authentication) {
+    public ResponseEntity<Map<String, Object>> getDashboardStats(HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
         try {
-            if (authentication == null) {
-                return ResponseEntity.status(401).build();
-            }
+            log.info("Dashboard stats request from user: {}", userId);
             
-            System.out.println("🔍 Dashboard stats request from user: " + authentication.getName());
-            
-            // Get basic stats without strict authorization
-            List<CaseWithAllegationsResponse> allCases = caseWorkflowService.getAllCases(0, 1000, null);
+            List<CaseWithAllegationsResponse> allCases = caseService.getAllCases(0, 1000, null);
             
             long openCases = allCases.stream()
                 .filter(c -> "OPEN".equals(c.getStatus().toString()) || "IN_PROGRESS".equals(c.getStatus().toString()))
@@ -195,26 +238,24 @@ public class CaseManagementController {
             stats.put("openInvestigations", investigations);
             stats.put("totalCases", allCases.size());
             
-            System.out.println("✅ Dashboard stats - Open: " + openCases + ", Investigations: " + investigations);
+            log.info("Dashboard stats - Open: {}, Investigations: {}", openCases, investigations);
             
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
-            System.err.println("❌ Error fetching dashboard stats: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error fetching dashboard stats: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
     
     @GetMapping("/{caseNumber}/workflow-status")
     @Operation(summary = "Get workflow status", description = "Get the current workflow status and progress for a case")
-    @PreAuthorize("hasPermission(#caseNumber, 'case', 'view')")
     public ResponseEntity<Map<String, Object>> getWorkflowStatus(
             @Parameter(description = "Case number") @PathVariable String caseNumber) {
         try {
             Map<String, Object> workflowStatus = new HashMap<>();
             
             // Get the case details to determine workflow status
-            CaseWithAllegationsResponse caseDetails = caseWorkflowService.getCaseDetailsByCaseNumber(caseNumber);
+            CaseWithAllegationsResponse caseDetails = caseService.getCaseByNumber(caseNumber);
             
             if (caseDetails == null) {
                 workflowStatus.put("status", "NOT_FOUND");
@@ -238,7 +279,6 @@ public class CaseManagementController {
     
     @GetMapping("/{caseNumber}/journey")
     @Operation(summary = "Get workflow journey", description = "Track the complete journey of a case through the workflow")
-    @PreAuthorize("hasPermission(#caseNumber, 'case', 'view')")
     public ResponseEntity<Map<String, Object>> getWorkflowJourney(
             @Parameter(description = "Case number") @PathVariable String caseNumber) {
         try {
@@ -266,15 +306,25 @@ public class CaseManagementController {
     
     @PostMapping("/{caseNumber}/submit")
     @Operation(summary = "Submit case for workflow processing", description = "Submit a case to transition it to the next workflow step. Only Intake Analysts and Admins can submit cases.")
-    @PreAuthorize("hasAnyAuthority('INTAKE_ANALYST', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> submitCase(
             @Parameter(description = "Case number to submit") @PathVariable String caseNumber,
-            Authentication authentication) {
+            HttpServletRequest httpRequest) {
+        String userId = authorizationService.extractUserId(httpRequest);
+        
+        if (!authorizationService.validateUserPresence(userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        // Check authorization to submit cases
+        if (!authorizationService.checkCaseAuthorization(userId, caseNumber, "submit")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
         try {
-            System.out.println("🎯 Received case submission request for case: " + caseNumber + " by user: " + authentication.getName());
+            log.info("Received case submission request for case: {} by user: {}", caseNumber, userId);
             
             // Get the case details first
-            CaseWithAllegationsResponse caseDetails = caseWorkflowService.getCaseDetailsByCaseNumber(caseNumber);
+            CaseWithAllegationsResponse caseDetails = caseService.getCaseByNumber(caseNumber);
             
             if (caseDetails == null) {
                 Map<String, Object> errorResponse = new HashMap<>();
@@ -296,17 +346,17 @@ public class CaseManagementController {
             }
             
             // Submit the case (this will trigger the workflow transition)
-            CaseWithAllegationsResponse updatedCase = caseWorkflowService.submitCase(caseNumber, authentication.getName());
+            CaseWithAllegationsResponse updatedCase = caseService.submitCase(caseNumber, userId);
             
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Case submitted successfully");
             response.put("caseNumber", caseNumber);
             response.put("previousStatus", currentStatus);
             response.put("newStatus", updatedCase.getStatus().toString());
-            response.put("submittedBy", authentication.getName());
+            response.put("submittedBy", userId);
             response.put("submittedAt", java.time.Instant.now().toString());
             
-            System.out.println("✅ Case " + caseNumber + " submitted successfully. Status changed from " + currentStatus + " to " + updatedCase.getStatus());
+            log.info("Case {} submitted successfully. Status changed from {} to {}", caseNumber, currentStatus, updatedCase.getStatus());
             
             return ResponseEntity.ok(response);
             

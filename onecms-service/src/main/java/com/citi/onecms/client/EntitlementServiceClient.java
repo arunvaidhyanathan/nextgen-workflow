@@ -1,100 +1,113 @@
 package com.citi.onecms.client;
 
-import com.citi.onecms.dto.AuthorizationCheckRequest;
 import com.citi.onecms.dto.AuthorizationCheckResponse;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Client for communicating with the Entitlement Service for authorization checks
+ */
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class EntitlementServiceClient {
-
-    private final WebClient webClient;
-    private final String baseUrl;
-    private final Duration timeout;
-
-    public EntitlementServiceClient(WebClient.Builder webClientBuilder,
-                                  @Value("${service.clients.entitlement-service.base-url:http://localhost:8081}") String baseUrl,
-                                  @Value("${entitlement-service.timeout:5000}") int timeoutMs) {
-        this.baseUrl = baseUrl;
-        this.timeout = Duration.ofMillis(timeoutMs);
-        this.webClient = webClientBuilder
-                .baseUrl(baseUrl)
-                .build();
+    
+    private final RestTemplate restTemplate;
+    
+    @Value("${service.clients.entitlement-service.base-url:http://localhost:8081}")
+    private String baseUrl;
+    
+    /**
+     * Check authorization using Cerbos via entitlement service
+     */
+    @CircuitBreaker(name = "entitlement-service", fallbackMethod = "checkAuthorizationFallback")
+    public AuthorizationCheckResponse checkAuthorization(String userId, List<String> userRoles, 
+                                                        String resourceKind, String resourceId, 
+                                                        Map<String, Object> resourceAttributes, String action) {
         
-        log.info("EntitlementServiceClient initialized with baseUrl: {} and timeout: {}ms", baseUrl, timeoutMs);
-    }
-
-    @CircuitBreaker(name = "entitlement-service", fallbackMethod = "fallbackAuthorizationCheck")
-    public AuthorizationCheckResponse checkAuthorization(String userId, List<String> userRoles,
-                                                        String resourceKind, String resourceId,
-                                                        Map<String, Object> resourceAttributes,
-                                                        String action) {
-        log.debug("Checking authorization for user: {}, action: {}, resource: {}/{}", 
-                  userId, action, resourceKind, resourceId);
+        log.debug("Checking authorization: user={}, resource={}/{}, action={}", userId, resourceKind, resourceId, action);
         
-        AuthorizationCheckRequest request = AuthorizationCheckRequest.builder()
-                .principal(AuthorizationCheckRequest.Principal.builder()
-                        .id(userId)
-                        .roles(userRoles)
-                        .build())
-                .resource(AuthorizationCheckRequest.Resource.builder()
-                        .kind(resourceKind)
-                        .id(resourceId)
-                        .attributes(resourceAttributes)
-                        .build())
-                .action(action)
-                .build();
-
         try {
-            AuthorizationCheckResponse response = webClient.post()
-                    .uri("/api/entitlements/check")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Mono.just(request), AuthorizationCheckRequest.class)
-                    .retrieve()
-                    .onStatus(status -> status.is4xxClientError(), clientResponse -> {
-                        log.warn("Client error when checking authorization: {}", clientResponse.statusCode());
-                        return Mono.error(new RuntimeException("Authorization check failed with client error"));
-                    })
-                    .onStatus(status -> status.is5xxServerError(), serverResponse -> {
-                        log.error("Server error when checking authorization: {}", serverResponse.statusCode());
-                        return Mono.error(new RuntimeException("Authorization service unavailable"));
-                    })
-                    .bodyToMono(AuthorizationCheckResponse.class)
-                    .timeout(timeout)
-                    .block();
-
-            log.debug("Authorization check result for user {}: {}", userId, response.isAllowed());
-            return response;
-
-        } catch (WebClientResponseException e) {
-            log.error("Error calling entitlement service: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new RuntimeException("Authorization check failed", e);
+            String url = baseUrl + "/api/entitlements/check";
+            
+            // Build request payload in the format expected by EntitlementService
+            Map<String, Object> principal = new HashMap<>();
+            principal.put("id", userId);
+            principal.put("attributes", new HashMap<>());
+            
+            Map<String, Object> resource = new HashMap<>();
+            resource.put("kind", resourceKind);
+            resource.put("id", resourceId);
+            resource.put("attributes", resourceAttributes != null ? resourceAttributes : new HashMap<>());
+            
+            Map<String, Object> request = new HashMap<>();
+            request.put("principal", principal);
+            request.put("resource", resource);
+            request.put("action", action);
+            
+            // Set headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Content-Type", "application/json");
+            headers.set("X-User-Id", userId);
+            
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            
+            ResponseEntity<AuthorizationCheckResponse> response = restTemplate.exchange(
+                url, HttpMethod.POST, entity, AuthorizationCheckResponse.class);
+            
+            AuthorizationCheckResponse authResponse = response.getBody();
+            
+            log.info("Authorization check result: user={}, action={}, allowed={}", 
+                    userId, action, authResponse != null ? authResponse.isAllowed() : false);
+            
+            return authResponse;
+            
         } catch (Exception e) {
-            log.error("Unexpected error during authorization check", e);
-            throw new RuntimeException("Authorization check failed", e);
+            log.error("Failed to check authorization for user {} action {}: {}", userId, action, e.getMessage());
+            throw new RuntimeException("Authorization service call failed", e);
         }
     }
-
-    // Circuit breaker fallback method
-    public AuthorizationCheckResponse fallbackAuthorizationCheck(String userId, List<String> userRoles,
-                                                               String resourceKind, String resourceId,
-                                                               Map<String, Object> resourceAttributes,
-                                                               String action, Exception ex) {
-        log.error("Authorization service circuit breaker opened. Denying access for user: {} action: {} resource: {}/{}. Error: {}", 
-                  userId, action, resourceKind, resourceId, ex.getMessage());
+    
+    /**
+     * Fallback method for authorization checks
+     */
+    public AuthorizationCheckResponse checkAuthorizationFallback(String userId, List<String> userRoles, 
+                                                               String resourceKind, String resourceId, 
+                                                               Map<String, Object> resourceAttributes, String action, 
+                                                               Exception ex) {
+        log.warn("Authorization service unavailable, using fallback for user {} action {}: {}", 
+                userId, action, ex.getMessage());
         
-        // Security-first approach: Deny access when authorization service is unavailable
-        return AuthorizationCheckResponse.denied("Authorization service unavailable");
+        // Fail-safe fallback - deny access when service is down
+        AuthorizationCheckResponse response = new AuthorizationCheckResponse();
+        response.setAllowed(false);
+        response.setReason("Authorization service unavailable - access denied for safety");
+        return response;
+    }
+    
+    /**
+     * Simple authorization check for basic operations
+     */
+    public boolean isAuthorized(String userId, String resourceKind, String resourceId, String action) {
+        try {
+            AuthorizationCheckResponse response = checkAuthorization(
+                userId, null, resourceKind, resourceId, null, action);
+            return response != null && response.isAllowed();
+        } catch (Exception e) {
+            log.error("Authorization check failed: {}", e.getMessage());
+            return false;
+        }
     }
 }

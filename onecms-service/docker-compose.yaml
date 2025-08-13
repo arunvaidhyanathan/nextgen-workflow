@@ -8,8 +8,9 @@ services:
       - "3592:3592" # HTTP API
       - "3593:3593" # gRPC API (default for SDK)
     volumes:
-      - ./cerbos-policies:/policies # Mount your policies directory
-    command: ["server"]
+      - ../entitlement-service/src/main/resources/cerbos/policies:/policies # Mount your policies directory
+      - ../entitlement-service/src/main/resources/cerbos/.cerbos.yaml:/.cerbos.yaml # Mount config file
+    command: ["server", "--config", "/.cerbos.yaml"]
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3592/health"]

@@ -72,6 +72,12 @@ public class Allegation {
     @Column(name = "grc_taxonomy_4", length = 100)
     private String grcTaxonomy4;
     
+    @Column(name = "subject", length = 255)
+    private String subject;
+    
+    @Column(name = "narrative", columnDefinition = "TEXT")
+    private String narrative;
+    
     // Constructors
     public Allegation() {}
     
@@ -195,6 +201,12 @@ public class Allegation {
     
     public String getGrcTaxonomy4() { return grcTaxonomy4; }
     public void setGrcTaxonomy4(String grcTaxonomy4) { this.grcTaxonomy4 = grcTaxonomy4; }
+    
+    public String getSubject() { return subject; }
+    public void setSubject(String subject) { this.subject = subject; }
+    
+    public String getNarrative() { return narrative; }
+    public void setNarrative(String narrative) { this.narrative = narrative; }
     
     // Enum for Allegation Category
     public enum AllegationCategory {

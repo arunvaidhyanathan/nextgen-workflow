@@ -43,6 +43,11 @@
 **/*.out
 **/*.err
 
+# Centralized logs directory - exclude log files but keep directory structure
+logs/*.log
+logs/*.gz
+!logs/README.md
+
 # Temporary files
 **/tmp/
 **/temp/

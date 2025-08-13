@@ -2,7 +2,7 @@
 
 A comprehensive microservices-based workflow management system designed for case management, investigations, and business process automation. Built with Spring Boot, React, and Flowable BPMN engine.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 This application follows a microservices architecture with:
 
@@ -12,7 +12,7 @@ This application follows a microservices architecture with:
 - **User Management Service**: Authentication and authorization
 - **React Frontend**: Modern UI built with TypeScript and Tailwind CSS
 
-## 🚀 Key Features
+## Key Features
 
 - **Session-Based Authentication**: Simple, secure authentication with X-Session-Id headers
 - **Case Management**: Complete lifecycle management for investigation cases
@@ -22,7 +22,7 @@ This application follows a microservices architecture with:
 - **RESTful APIs**: Comprehensive OpenAPI 3.0 specification
 - **Real-Time Notifications**: Task assignments and status updates
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 - **Java 17** with Spring Boot 3.x
@@ -38,7 +38,7 @@ This application follows a microservices architecture with:
 - **TanStack Query** for data fetching
 - **React Router** for navigation
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 ├── api-gateway-service/          # Central API Gateway with authentication
@@ -52,7 +52,7 @@ This application follows a microservices architecture with:
 └── NextGen-Workflow-API-Collection.json        # Postman testing collection
 ```
 
-## 🏁 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -101,7 +101,7 @@ npm run dev
 - **[API Documentation](nextgen-workflow-openapi-session-auth.yaml)**: OpenAPI 3.0 specification
 - **[Frontend Guide](CMS-UI-App/CLAUDE.md)**: React application structure and development guide
 
-## 🔐 Authentication
+## Authentication
 
 The application uses session-based authentication:
 
@@ -116,7 +116,7 @@ curl -X POST http://localhost:8080/api/auth/login \
   -d '{"username": "alice.intake", "password": "password123"}'
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Backend Testing
 ```bash
@@ -137,7 +137,7 @@ npm run lint
 ### API Testing
 Import `NextGen-Workflow-API-Collection.json` into Postman for comprehensive API testing.
 
-## 📊 Sample Data
+## Sample Data
 
 The application includes pre-configured test users:
 
@@ -148,7 +148,7 @@ The application includes pre-configured test users:
 | sarah.legal | password123 | Legal Counsel | Legal |
 | mike.admin | password123 | Administrator | IT |
 
-## 🚀 Deployment
+## Deployment
 
 ### Development
 ```bash
@@ -160,13 +160,13 @@ docker-compose -f docker-compose.dev.yml up
 docker-compose -f docker-compose.prod.yml up
 ```
 
-## 📈 Monitoring & Observability
+## Monitoring & Observability
 
 - **Health Checks**: `/actuator/health` for all services
 - **Metrics**: Prometheus-compatible metrics at `/actuator/prometheus`
 - **Logging**: Structured JSON logging with correlation IDs
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
@@ -174,7 +174,7 @@ docker-compose -f docker-compose.prod.yml up
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
-## 📞 Support
+## Support
 
 For questions and support:
 - **Documentation**: See [nextgen-workflow.md](nextgen-workflow.md)

@@ -16,8 +16,11 @@
     <include file="classpath:db/changelog/001-consolidated-onecms-schema.xml"/>
     
     <!-- Future migrations should be added here with incremental change sets -->
-    <!-- Example: -->
-    <!-- <include file="classpath:db/changelog/002-add-new-feature-tables.xml"/> -->
+    
+    <!-- Add case transitions audit table for comprehensive audit trail tracking -->
+    <include file="classpath:db/changelog/002-add-case-transitions-audit-table.xml"/>
+    
+    <!-- Future migrations -->
     <!-- <include file="classpath:db/changelog/003-performance-improvements.xml"/> -->
     
 </databaseChangeLog>
