@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Create workflow_metadata table -->
+    <changeSet id="001-create-workflow-metadata-table" author="flowable-core-workflow">
+        <createTable tableName="workflow_metadata" schemaName="flowable">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="process_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="process_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="version" type="INTEGER" defaultValue="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="business_app_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="candidate_group_mappings" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_queue_mappings" type="JSONB"/>
+            <column name="metadata" type="JSONB"/>
+            <column name="active" type="BOOLEAN" defaultValue="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deployed" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deployment_id" type="VARCHAR(255)"/>
+            <column name="created_by" type="VARCHAR(255)" defaultValue="system">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create queue_tasks table -->
+    <changeSet id="002-create-queue-tasks-table" author="flowable-core-workflow">
+        <createTable tableName="queue_tasks" schemaName="flowable">
+            <column name="task_id" type="VARCHAR(255)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="process_instance_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="process_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="queue_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assignee" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(50)" defaultValue="OPEN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="INTEGER" defaultValue="50"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="claimed_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="completed_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="task_data" type="JSONB"/>
+        </createTable>
+        
+        <!-- Add indexes for better query performance -->
+        <createIndex tableName="queue_tasks" indexName="idx_queue_tasks_queue_status" schemaName="flowable">
+            <column name="queue_name"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex tableName="queue_tasks" indexName="idx_queue_tasks_assignee_status" schemaName="flowable">
+            <column name="assignee"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex tableName="queue_tasks" indexName="idx_queue_tasks_process_instance" schemaName="flowable">
+            <column name="process_instance_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

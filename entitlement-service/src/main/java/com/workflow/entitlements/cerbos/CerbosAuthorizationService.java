@@ -2,9 +2,11 @@ package com.workflow.entitlements.cerbos;
 
 import com.workflow.entitlements.dto.request.AuthorizationCheckRequest;
 import com.workflow.entitlements.dto.response.AuthorizationCheckResponse;
+import com.workflow.entitlements.entity.User;
 import com.workflow.entitlements.entity.UserBusinessAppRole;
 import com.workflow.entitlements.repository.UserBusinessAppRoleRepository;
 import com.workflow.entitlements.repository.UserDepartmentRepository;
+import com.workflow.entitlements.repository.UserRepository;
 import dev.cerbos.sdk.CerbosBlockingClient;
 import dev.cerbos.sdk.CheckResult;
 import dev.cerbos.sdk.CerbosException;
@@ -26,6 +28,7 @@ public class CerbosAuthorizationService {
     private final CerbosBlockingClient cerbosClient;
     private final UserBusinessAppRoleRepository userBusinessAppRoleRepository;
     private final UserDepartmentRepository userDepartmentRepository;
+    private final UserRepository userRepository;
     
     /**
      * Perform authorization check using Cerbos
@@ -97,11 +100,19 @@ public class CerbosAuthorizationService {
         // Get user's roles across all business applications
         List<UserBusinessAppRole> userRoles = userBusinessAppRoleRepository.findAllActiveUserRoles(userId);
         
-        // Extract role names
-        List<String> roles = userRoles.stream()
+        // Extract role names from business app roles
+        List<String> businessAppRoles = userRoles.stream()
                 .map(uar -> uar.getBusinessAppRole().getRoleName())
                 .distinct()
                 .collect(Collectors.toList());
+        
+        // TEMPORARY: Also extract roles from user.attributes JSON until full RBAC is implemented
+        List<String> attributeRoles = extractRolesFromUserAttributes(userId);
+        
+        // Combine both sources of roles
+        Set<String> allRolesSet = new HashSet<>(businessAppRoles);
+        allRolesSet.addAll(attributeRoles);
+        List<String> roles = new ArrayList<>(allRolesSet);
         
         // Extract business applications
         List<String> businessApps = userRoles.stream()
@@ -161,6 +172,35 @@ public class CerbosAuthorizationService {
                 userId, roles, departments, queues, businessApps);
         
         return principal;
+    }
+    
+    /**
+     * TEMPORARY: Extract roles from user.attributes JSON field
+     * This is a fallback until full RBAC structure is implemented
+     */
+    @SuppressWarnings("unchecked")
+    private List<String> extractRolesFromUserAttributes(String userId) {
+        try {
+            Optional<User> userOptional = userRepository.findById(userId);
+            if (userOptional.isPresent()) {
+                User user = userOptional.get();
+                Map<String, Object> attributes = user.getAttributes();
+                
+                if (attributes != null && attributes.containsKey("roles")) {
+                    Object rolesObj = attributes.get("roles");
+                    if (rolesObj instanceof List) {
+                        List<String> roles = (List<String>) rolesObj;
+                        log.debug("Extracted roles from user attributes for user {}: {}", userId, roles);
+                        return roles;
+                    }
+                }
+            }
+            log.debug("No roles found in user attributes for user: {}", userId);
+            return new ArrayList<>();
+        } catch (Exception e) {
+            log.warn("Failed to extract roles from user attributes for user {}: {}", userId, e.getMessage());
+            return new ArrayList<>();
+        }
     }
     
     /**
@@ -227,19 +267,25 @@ public class CerbosAuthorizationService {
                     .map(uar -> uar.getBusinessAppRole().getRoleName())
                     .collect(Collectors.toSet());
             
+            // ALSO extract roles from user attributes JSON (temporary until full RBAC)
+            List<String> attributeRoles = extractRolesFromUserAttributes(userId);
+            userRoleNames.addAll(attributeRoles);
+            
             log.debug("BYPASS: Checking authorization for user={}, roles={}, resource={}, action={}", 
                     userId, userRoleNames, resourceKind, action);
             
-            // Only handle 'case' resource for now
-            if (!"case".equals(resourceKind)) {
+            // Handle 'case' and 'workflow' resources
+            if ("case".equals(resourceKind)) {
+                return checkCasePermissions(userRoleNames, action, request) ?
+                        AuthorizationCheckResponse.allowed() :
+                        AuthorizationCheckResponse.denied("Database policy evaluation denied access");
+            } else if ("workflow".equals(resourceKind)) {
+                return checkWorkflowPermissions(userRoleNames, action, request) ?
+                        AuthorizationCheckResponse.allowed() :
+                        AuthorizationCheckResponse.denied("Database policy evaluation denied access");
+            } else {
                 return null; // Fall back to Cerbos for other resources
             }
-            
-            boolean allowed = checkCasePermissions(userRoleNames, action, request);
-            
-            return allowed ? 
-                    AuthorizationCheckResponse.allowed() : 
-                    AuthorizationCheckResponse.denied("Database policy evaluation denied access");
                     
         } catch (Exception e) {
             log.error("BYPASS: Error in database authorization check", e);
@@ -322,6 +368,47 @@ public class CerbosAuthorizationService {
             default:
                 log.debug("BYPASS: Unknown action '{}', denying access", action);
                 return false;
+        }
+    }
+    
+    /**
+     * Check workflow permissions based on database roles (mapped from workflow.yaml policy)
+     */
+    private boolean checkWorkflowPermissions(Set<String> userRoles, String action, AuthorizationCheckRequest request) {
+        // For now, get roles from user attributes as fallback
+        String userId = request.getPrincipal().getId();
+        try {
+            // Try to get roles from user JSON attributes since business app roles are not populated
+            Set<String> allRoles = new HashSet<>(userRoles);
+            
+            // Also try to extract roles from user attributes JSON
+            // This is a temporary solution until full RBAC is implemented
+            log.debug("WORKFLOW BYPASS: Checking workflow permissions for user={}, roles={}, action={}", 
+                     userId, allRoles, action);
+            
+            switch (action) {
+                case "register":
+                case "deploy":
+                    // Allow admin and eo-head to register/deploy workflows
+                    return allRoles.contains("admin") || 
+                           allRoles.contains("eo-head") ||
+                           allRoles.contains("system-admin");
+                           
+                case "view":
+                    // Allow multiple roles to view workflows
+                    return allRoles.contains("admin") ||
+                           allRoles.contains("eo-head") ||
+                           allRoles.contains("investigation-manager") ||
+                           allRoles.contains("csis-manager") ||
+                           allRoles.contains("system-admin");
+                           
+                default:
+                    log.debug("WORKFLOW BYPASS: Unknown action '{}', denying access", action);
+                    return false;
+            }
+        } catch (Exception e) {
+            log.error("Error checking workflow permissions for user {}: {}", userId, e.getMessage());
+            return false;
         }
     }
     

@@ -1,0 +1,97 @@
+---
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "case"
+  version: "1_0"
+  importDerivedRoles:
+    - common_roles
+    - one_cms_roles
+    
+  rules:
+    # Any authenticated user can create a new case
+    - actions: ["create"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      
+    # Case assignee can view and edit their assigned cases
+    - actions: ["view", "edit", "addNarrative", "addComment"]
+      effect: EFFECT_ALLOW  
+      derivedRoles: ["case_assignee"]
+      
+    # Department members can view cases in their department
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["case_department_member"]
+      
+    # Case creator can view their created cases
+    - actions: ["view", "edit"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["case_creator"]
+      
+    # Unit managers can view, assign, review, and reassign cases in their department
+    - actions: ["view", "assign", "review", "reassign", "addComment"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["unit_manager"]
+      
+    # Department heads can approve closures for cases in their department
+    - actions: ["approveClosure", "rejectClosure"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["unit_manager"]
+      roles: ["EO_HEAD"]
+      
+    # Investigation managers can assign investigators and review cases
+    - actions: ["view", "assignInvestigator", "review", "reassign"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["case_department_member"]
+      roles: ["ER_INVESTIGATION_MANAGER", "CSIS_INVESTIGATION_MANAGER"]
+      
+    # Multi-department coordinators can view and coordinate across departments
+    - actions: ["view", "coordinate", "assign"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["multi_dept_coordinator"]
+      
+    # Specific workflow actions based on phase and role
+    - actions: ["submitForInvestigation"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["case_assignee", "unit_manager"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.phase) && R.attr.phase == "INTAKE" &&
+            has(P.attr.roles) && (
+              "EO_INTAKE_ANALYST" in P.attr.roles ||
+              "ER_INTAKE_ANALYST" in P.attr.roles ||
+              "CSIS_INTAKE_ANALYST" in P.attr.roles ||
+              "EO_OFFICER" in P.attr.roles
+            )
+    
+    # Investigation-specific actions
+    - actions: ["conductInvestigation", "createInvestigationReport"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["case_assignee"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.phase) && R.attr.phase == "INVESTIGATION" &&
+            has(P.attr.roles) && (
+              "ER_INVESTIGATOR" in P.attr.roles ||
+              "CSIS_INVESTIGATOR" in P.attr.roles
+            )
+    
+    # Closure-specific actions
+    - actions: ["closeCaseForIntelligence", "finalClosure"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["unit_manager"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.phase) && R.attr.phase == "CLOSURE" &&
+            has(P.attr.roles) && (
+              "CSIS_INTAKE_MANAGER" in P.attr.roles ||
+              "CSIS_INVESTIGATION_MANAGER" in P.attr.roles
+            )
+    
+    # Default deny all other actions
+    - actions: ["*"]
+      effect: EFFECT_DENY
+      roles: ["*"]

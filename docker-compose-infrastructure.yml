@@ -1,0 +1,75 @@
+services:
+  # PostgreSQL 16 Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextgen-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: nextgen_workflow
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+      TZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nextgen_workflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nextgen-network
+    restart: unless-stopped
+
+  # Cerbos Policy Decision Point
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:0.46.0
+    container_name: nextgen-cerbos
+    ports:
+      - "3592:3592"  # gRPC port
+      - "3593:3593"  # HTTP port (for health checks and admin)
+    volumes:
+      - ./cerbos/policies:/policies:ro
+      - ./cerbos/config.yaml:/config.yaml:ro
+    command: ["server", "--config=/config.yaml"]
+    environment:
+      CERBOS_LOG_LEVEL: INFO
+      TZ: UTC
+    healthcheck:
+      test: ["CMD", "cerbos", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nextgen-network
+    restart: unless-stopped
+
+  # PgAdmin for PostgreSQL management (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nextgen-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@nextgen.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - nextgen-network
+    profiles:
+      - tools
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  nextgen-network:
+    driver: bridge
+    name: nextgen-network

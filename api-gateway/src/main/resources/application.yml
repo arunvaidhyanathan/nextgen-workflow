@@ -37,13 +37,27 @@ spring:
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
                 methods: GET,POST,PUT,DELETE
 
-        # Route for Flowable Core Workflow Service
-        - id: flowable-core-workflow-route
+        # Route for Flowable Core Workflow Service - Direct business app routing
+        - id: flowable-workflow-direct-route
+          uri: lb://flowable-core-workflow
+          predicates:
+            - Path=/api/onecms/workflow-metadata/**,/api/onecms/process-instances/**,/api/onecms/tasks/**
+          filters:
+            - name: HeaderUserExtractionFilter
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+        
+        # Route for legacy workflow endpoints  
+        - id: flowable-core-workflow-legacy-route
           uri: lb://flowable-core-workflow
           predicates:
             - Path=/api/workflow/**
           filters:
             - name: HeaderUserExtractionFilter
+            - RewritePath=/api/workflow/(?<segment>.*), /api/onecms/$\{segment}
             - name: Retry
               args:
                 retries: 3

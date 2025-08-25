@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="001-1" author="system">
+        <comment>Create sequences for entitlements schema</comment>
+        
+        <createSequence sequenceName="user_id_seq" 
+                       startValue="1000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="department_id_seq" 
+                       startValue="100" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="role_id_seq" 
+                       startValue="100" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="queue_id_seq" 
+                       startValue="100" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="permission_id_seq" 
+                       startValue="1000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="user_role_id_seq" 
+                       startValue="10000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="user_department_id_seq" 
+                       startValue="10000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="user_queue_access_id_seq" 
+                       startValue="10000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="role_permission_id_seq" 
+                       startValue="10000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="workflow_permission_id_seq" 
+                       startValue="10000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+        
+        <createSequence sequenceName="session_id_seq" 
+                       startValue="100000" 
+                       incrementBy="1"
+                       schemaName="entitlements"/>
+    </changeSet>
+    
+</databaseChangeLog>

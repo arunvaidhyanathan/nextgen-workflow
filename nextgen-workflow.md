@@ -42,7 +42,7 @@ The NextGen Workflow system is built using a microservices architecture pattern 
 │ Entitlement    │    │ Core Workflow       │    │ OneCMS Service   │
 │ Service        │    │ Engine              │    │ (Port 8083)      │
 │ (Port 8081)    │    │ (Port 8082)         │    │                  │
-│  + Cerbos      │    │  + Flowable 7.1.0   │    │                  │
+│  + Cerbos      │    │  + Flowable 7.2.0   │    │                  │
 └───────┬────────┘    └──────────┬──────────┘    └─────────┬────────┘
         │                        │                         │
 ┌───────▼────────┐    ┌──────────▼──────────┐    ┌─────────▼────────┐
@@ -256,9 +256,9 @@ All endpoints are proxied through the gateway:
 The Entitlement Service manages user authentication, authorization, and role-based access control using Cerbos policy engine for fine-grained permissions.
 
 ### High-Level Design
-- **Technology**: Spring Boot 3.3.4, Spring Security 6, Cerbos SDK
+- **Technology**: Spring Boot 3.3.4, Spring Security 6, Cerbos SDK 0.14.0
 - **Port**: 8081
-- **Database**: PostgreSQL (Schema: entitlements)
+- **Database**: PostgreSQL 16.x (Schema: entitlements)
 - **Purpose**: User management, role-based access control, policy enforcement
 
 ### Low-Level Design
@@ -424,9 +424,9 @@ The Entitlement Service manages user authentication, authorization, and role-bas
 The Core Workflow Engine is built on Flowable BPMN 7.1.0 engine and provides workflow orchestration capabilities with queue-based task management and event-driven architecture.
 
 ### High-Level Design
-- **Technology**: Spring Boot 3.3.4, Flowable 7.1.0, PostgreSQL
+- **Technology**: Spring Boot 3.3.4, Flowable 7.2.0, PostgreSQL 16.x
 - **Port**: 8082
-- **Database**: PostgreSQL (Schema: flowable)
+- **Database**: PostgreSQL 16.x (Schema: flowable)
 - **Purpose**: Workflow execution, task management, process orchestration
 
 ### Low-Level Design
@@ -709,9 +709,9 @@ Security is enforced at the API level with automatic denial when authorization s
 The OneCMS Service manages the complete case lifecycle including allegations, entities, and narratives. It integrates with the workflow engine for process orchestration and entitlement service for authorization.
 
 ### High-Level Design
-- **Technology**: Spring Boot 3.3.4, Spring Data JPA, PostgreSQL
+- **Technology**: Spring Boot 3.3.4, Spring Data JPA, PostgreSQL 16.x
 - **Port**: 8083
-- **Database**: PostgreSQL (Schema: onecms)
+- **Database**: PostgreSQL 16.x (Schema: onecms)
 - **Purpose**: Case management domain logic, business operations
 
 ### Low-Level Design
@@ -1032,9 +1032,26 @@ Entitlements DB                  Flowable DB                  OneCMS DB
 └─────────────────┘  └─────────────────┘  └─────────────────┘
 
 ┌─────────────────┐  ┌─────────────────┐  
-│   PostgreSQL    │  │     Cerbos      │  
-│   (5432)        │  │   (3593)        │  
+│ PostgreSQL 16   │  │  Cerbos 0.14.0  │  
+│   (5432)        │  │   (3592/3593)   │  
 └─────────────────┘  └─────────────────┘ 
+```
+
+### Infrastructure Setup
+
+The project includes centralized infrastructure components:
+
+1. **docker-compose-infrastructure.yml** - Provides PostgreSQL 16 and Cerbos 0.14.0
+2. **database/** - Centralized Liquibase migration scripts for all services
+3. **cerbos/** - Cerbos configuration and policy files
+
+To start the infrastructure:
+```bash
+# Start PostgreSQL and Cerbos
+docker-compose -f docker-compose-infrastructure.yml up -d
+
+# Optional: Include PgAdmin for database management
+docker-compose -f docker-compose-infrastructure.yml --profile tools up -d
 ```
 
 ## Authentication Architecture

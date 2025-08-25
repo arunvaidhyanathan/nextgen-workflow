@@ -1,0 +1,1265 @@
+openapi: 3.0.3
+info:
+  title: NextGen Workflow API
+  description: |
+    # NextGen Workflow - Complete API Specification
+    
+    Enterprise-grade case management and workflow automation system with comprehensive security, monitoring, and multi-tenancy support.
+    
+    ## Key Features
+    - **Session-based Authentication** with fine-grained authorization via Cerbos
+    - **BPMN 2.0 Workflow Engine** with security validation
+    - **Multi-tenant Architecture** with tenant isolation
+    - **Real-time Monitoring** with Prometheus metrics
+    - **Case Management** with full lifecycle support
+    - **Policy-based Authorization** with derived roles
+    
+    ## Authentication
+    All API endpoints require session-based authentication. Include the `X-Session-Id` header obtained from the login endpoint.
+    
+    ## Multi-tenancy
+    Optional tenant context can be provided via `X-Tenant-Id` header for multi-tenant deployments.
+    
+    ## Base URL
+    All API endpoints are accessible through the API Gateway at `http://localhost:8080/api`
+    
+  version: 2.0.0
+  contact:
+    name: NextGen Workflow Team
+    email: support@nextgen-workflow.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api
+    description: Development API Gateway
+  - url: https://api.nextgen-workflow.com/api
+    description: Production API Gateway
+
+security:
+  - SessionAuth: []
+  - TenantAuth: []
+
+paths:
+  # ==================== AUTHENTICATION ENDPOINTS ====================
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User Login
+      description: Authenticate user and create session
+      operationId: loginUser
+      security: []  # No auth required for login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: alice.intake
+              password: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                success: true
+                sessionId: "27009cfe-828b-4e21-a39f-573b234532cb"
+                message: "Login successful"
+                user:
+                  id: "user-001"
+                  username: "alice.intake"
+                  email: "alice.intake@company.com"
+                  firstName: "Alice"
+                  lastName: "Johnson"
+                  isActive: true
+                  attributes:
+                    roles: ["intake_analyst", "user"]
+                    department: "intake"
+                    queue: "intake-analyst-queue"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /auth/validate-session:
+    get:
+      tags:
+        - Authentication
+      summary: Validate Session
+      description: Validate current session and return user information
+      operationId: validateSession
+      responses:
+        '200':
+          description: Session is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionValidationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User Logout
+      description: Invalidate current session
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+
+  # ==================== CASE MANAGEMENT ENDPOINTS ====================
+  /cms/v1/cases:
+    get:
+      tags:
+        - Case Management
+      summary: List Cases
+      description: Retrieve list of cases with pagination and filtering
+      operationId: listCases
+      parameters:
+        - name: page
+          in: query
+          description: Page number (0-based)
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Page size
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          description: Filter by case status
+          schema:
+            $ref: '#/components/schemas/CaseStatus'
+        - name: priority
+          in: query
+          description: Filter by priority level
+          schema:
+            $ref: '#/components/schemas/Priority'
+        - name: department
+          in: query
+          description: Filter by department
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cases retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseListResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+    post:
+      tags:
+        - Case Management
+      summary: Create Case
+      description: Create a new case with automatic workflow initiation
+      operationId: createCase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCaseRequest'
+            example:
+              title: "Employee Misconduct Investigation"
+              description: "Investigation into alleged policy violations"
+              priority: "HIGH"
+              routingStrategy: "AUTO"
+              allegations:
+                - allegationType: "HARASSMENT"
+                  severity: "HIGH"
+                  description: "Workplace harassment allegation"
+                - allegationType: "POLICY_VIOLATION"
+                  severity: "MEDIUM"
+                  description: "Company policy violation"
+      responses:
+        '201':
+          description: Case created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /cms/v1/cases/{caseNumber}:
+    get:
+      tags:
+        - Case Management
+      summary: Get Case Details
+      description: Retrieve detailed information about a specific case
+      operationId: getCaseByNumber
+      parameters:
+        - name: caseNumber
+          in: path
+          required: true
+          description: Case number (e.g., CMS-2025-000001)
+          schema:
+            type: string
+            pattern: '^CMS-\d{4}-\d{6}$'
+      responses:
+        '200':
+          description: Case details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseDetailsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /cms/v1/cases/{caseNumber}/workflow-status:
+    get:
+      tags:
+        - Case Management
+      summary: Get Workflow Status
+      description: Retrieve workflow status and current tasks for a case
+      operationId: getCaseWorkflowStatus
+      parameters:
+        - name: caseNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowStatusResponse'
+
+  /cms/v1/cases/my-cases:
+    get:
+      tags:
+        - Case Management
+      summary: Get My Cases
+      description: Retrieve cases assigned to current user
+      operationId: getMyCases
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CaseStatus'
+      responses:
+        '200':
+          description: User cases retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseListResponse'
+
+  # ==================== WORKFLOW MANAGEMENT ENDPOINTS ====================
+  /onecms/workflow-metadata/register:
+    post:
+      tags:
+        - Workflow Management
+      summary: Register Workflow Metadata
+      description: Register a new workflow with task-to-queue mappings
+      operationId: registerWorkflowMetadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterWorkflowRequest'
+            example:
+              processDefinitionKey: "oneCmsUnifiedWorkflow"
+              processName: "OneCMS Unified Workflow"
+              description: "Complete case management workflow"
+              businessAppName: "onecms"
+              candidateGroupMappings:
+                INTAKE_ANALYST_GROUP: "intake-analyst-queue"
+                INVESTIGATOR_GROUP: "investigation-queue"
+                HR_LEGAL_GROUP: "hr-legal-queue"
+      responses:
+        '201':
+          description: Workflow metadata registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /onecms/workflow-metadata/deploy:
+    post:
+      tags:
+        - Workflow Management
+      summary: Deploy BPMN Workflow
+      description: Deploy BPMN workflow with comprehensive security validation
+      operationId: deployWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeployWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow deployed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          description: Security validation failed or invalid BPMN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecurityValidationError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /onecms/workflow-metadata/deploy-from-file:
+    post:
+      tags:
+        - Workflow Management
+      summary: Deploy BPMN from File
+      description: Deploy BPMN workflow from file with security validation
+      operationId: deployWorkflowFromFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeployFromFileRequest'
+      responses:
+        '200':
+          description: Workflow deployed successfully from file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+
+  /onecms/workflow-metadata/{processDefinitionKey}:
+    get:
+      tags:
+        - Workflow Management
+      summary: Get Workflow Metadata
+      description: Retrieve workflow metadata by process definition key
+      operationId: getWorkflowMetadata
+      parameters:
+        - name: processDefinitionKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+
+  # ==================== TASK MANAGEMENT ENDPOINTS ====================
+  /onecms/tasks/my-tasks:
+    get:
+      tags:
+        - Task Management
+      summary: Get My Tasks
+      description: Retrieve tasks assigned to current user
+      operationId: getMyTasks
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+      responses:
+        '200':
+          description: User tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+
+  /onecms/tasks/queue/{queueName}:
+    get:
+      tags:
+        - Task Management
+      summary: Get Tasks by Queue
+      description: Retrieve tasks from a specific queue
+      operationId: getTasksByQueue
+      parameters:
+        - name: queueName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: unassignedOnly
+          in: query
+          description: Only return unassigned tasks
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Queue tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+
+  /onecms/tasks/{taskId}/claim:
+    post:
+      tags:
+        - Task Management
+      summary: Claim Task
+      description: Claim a task for current user
+      operationId: claimTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+
+  /onecms/tasks/{taskId}/complete:
+    post:
+      tags:
+        - Task Management
+      summary: Complete Task
+      description: Complete a task with process variables
+      operationId: completeTask
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTaskRequest'
+      responses:
+        '200':
+          description: Task completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+
+  # ==================== ENTITLEMENT & AUTHORIZATION ENDPOINTS ====================
+  /entitlements/check:
+    post:
+      tags:
+        - Authorization
+      summary: Check Authorization
+      description: Check if user is authorized for specific resource and action
+      operationId: checkAuthorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizationCheckRequest'
+            example:
+              principalId: "user-001"
+              resourceType: "case"
+              resourceId: "CMS-2025-000001"
+              action: "read"
+              attributes:
+                department: "intake"
+                priority: "HIGH"
+      responses:
+        '200':
+          description: Authorization check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationResponse'
+
+  # ==================== MONITORING & HEALTH ENDPOINTS ====================
+  /actuator/health:
+    get:
+      tags:
+        - Monitoring
+      summary: Health Check
+      description: Check system health status
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: System health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /actuator/metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: System Metrics
+      description: Retrieve system metrics for monitoring
+      operationId: getMetrics
+      security: []
+      responses:
+        '200':
+          description: System metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: header
+      name: X-Session-Id
+      description: Session-based authentication using session ID from login
+    TenantAuth:
+      type: apiKey
+      in: header
+      name: X-Tenant-Id
+      description: Optional tenant context for multi-tenant deployments
+
+  schemas:
+    # ==================== AUTHENTICATION SCHEMAS ====================
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: User login name
+          example: alice.intake
+        password:
+          type: string
+          format: password
+          description: User password
+          example: password123
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        sessionId:
+          type: string
+          description: Session ID for subsequent API calls
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    SessionValidationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    LogoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: user-001
+        username:
+          type: string
+          example: alice.intake
+        email:
+          type: string
+          format: email
+          example: alice.intake@company.com
+        firstName:
+          type: string
+          example: Alice
+        lastName:
+          type: string
+          example: Johnson
+        isActive:
+          type: boolean
+        attributes:
+          type: object
+          properties:
+            roles:
+              type: array
+              items:
+                type: string
+            department:
+              type: string
+            queue:
+              type: string
+
+    # ==================== CASE MANAGEMENT SCHEMAS ====================
+    CreateCaseRequest:
+      type: object
+      required:
+        - title
+        - description
+        - priority
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          description: Case title
+          example: Employee Misconduct Investigation
+        description:
+          type: string
+          maxLength: 2000
+          description: Case description
+          example: Investigation into alleged policy violations
+        priority:
+          $ref: '#/components/schemas/Priority'
+        routingStrategy:
+          $ref: '#/components/schemas/RoutingStrategy'
+        allegations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Allegation'
+
+    CaseResponse:
+      type: object
+      properties:
+        caseId:
+          type: string
+        caseNumber:
+          type: string
+          pattern: '^CMS-\d{4}-\d{6}$'
+          example: CMS-2025-000001
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/CaseStatus'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        processInstanceId:
+          type: string
+          description: Workflow process instance ID
+        workflowMetadata:
+          $ref: '#/components/schemas/WorkflowInstanceMetadata'
+
+    CaseDetailsResponse:
+      allOf:
+        - $ref: '#/components/schemas/CaseResponse'
+        - type: object
+          properties:
+            allegations:
+              type: array
+              items:
+                $ref: '#/components/schemas/Allegation'
+            entities:
+              type: array
+              items:
+                $ref: '#/components/schemas/CaseEntity'
+            comments:
+              type: array
+              items:
+                $ref: '#/components/schemas/CaseComment'
+            transitions:
+              type: array
+              items:
+                $ref: '#/components/schemas/CaseTransition'
+
+    CaseListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseResponse'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+
+    Allegation:
+      type: object
+      required:
+        - allegationType
+        - severity
+      properties:
+        id:
+          type: string
+        allegationType:
+          $ref: '#/components/schemas/AllegationType'
+        severity:
+          $ref: '#/components/schemas/Severity'
+        description:
+          type: string
+          maxLength: 1000
+        evidence:
+          type: string
+
+    CaseEntity:
+      type: object
+      properties:
+        id:
+          type: string
+        entityType:
+          $ref: '#/components/schemas/EntityType'
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        department:
+          type: string
+
+    CaseComment:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        commentType:
+          $ref: '#/components/schemas/CommentType'
+
+    CaseTransition:
+      type: object
+      properties:
+        id:
+          type: string
+        fromStatus:
+          $ref: '#/components/schemas/CaseStatus'
+        toStatus:
+          $ref: '#/components/schemas/CaseStatus'
+        reason:
+          type: string
+        transitionedBy:
+          type: string
+        transitionedAt:
+          type: string
+          format: date-time
+
+    # ==================== WORKFLOW SCHEMAS ====================
+    RegisterWorkflowRequest:
+      type: object
+      required:
+        - processDefinitionKey
+        - processName
+        - businessAppName
+        - candidateGroupMappings
+      properties:
+        processDefinitionKey:
+          type: string
+          description: Unique process definition key
+          example: oneCmsUnifiedWorkflow
+        processName:
+          type: string
+          description: Human-readable process name
+          example: OneCMS Unified Workflow
+        description:
+          type: string
+          example: Complete case management workflow
+        businessAppName:
+          type: string
+          description: Business application name
+          example: onecms
+        candidateGroupMappings:
+          type: object
+          additionalProperties:
+            type: string
+          description: Mapping of candidate groups to queues
+          example:
+            INTAKE_ANALYST_GROUP: intake-analyst-queue
+            INVESTIGATOR_GROUP: investigation-queue
+        metadata:
+          type: object
+          additionalProperties: true
+
+    DeployWorkflowRequest:
+      type: object
+      required:
+        - processDefinitionKey
+        - bpmnXml
+      properties:
+        processDefinitionKey:
+          type: string
+        bpmnXml:
+          type: string
+          description: BPMN 2.0 XML content
+        deploymentName:
+          type: string
+          description: Optional deployment name
+
+    DeployFromFileRequest:
+      type: object
+      required:
+        - processDefinitionKey
+        - filename
+      properties:
+        processDefinitionKey:
+          type: string
+        filename:
+          type: string
+          description: BPMN file name in definitions directory
+          example: OneCMS_Nextgen_WF.bpmn20.xml
+
+    WorkflowMetadataResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        processDefinitionKey:
+          type: string
+        processName:
+          type: string
+        description:
+          type: string
+        version:
+          type: integer
+        businessAppName:
+          type: string
+        candidateGroupMappings:
+          type: object
+          additionalProperties:
+            type: string
+        taskQueueMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskQueueMapping'
+        deployed:
+          type: boolean
+        deploymentId:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TaskQueueMapping:
+      type: object
+      properties:
+        taskId:
+          type: string
+        taskName:
+          type: string
+        candidateGroups:
+          type: array
+          items:
+            type: string
+        queue:
+          type: string
+        metadata:
+          type: object
+
+    WorkflowInstanceMetadata:
+      type: object
+      properties:
+        processInstanceId:
+          type: string
+        processDefinitionKey:
+          type: string
+        workflowStatus:
+          type: string
+          enum: [STARTED, RUNNING, COMPLETED, SUSPENDED, TERMINATED]
+        currentTask:
+          $ref: '#/components/schemas/CurrentTask'
+
+    CurrentTask:
+      type: object
+      properties:
+        taskId:
+          type: string
+        taskName:
+          type: string
+        queueName:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        assignee:
+          type: string
+
+    WorkflowStatusResponse:
+      type: object
+      properties:
+        processInstanceId:
+          type: string
+        status:
+          type: string
+        currentTasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/CurrentTask'
+        completedTasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompletedTask'
+
+    # ==================== TASK MANAGEMENT SCHEMAS ====================
+    TaskListResponse:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskResponse'
+        totalCount:
+          type: integer
+
+    TaskResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+        taskName:
+          type: string
+        processInstanceId:
+          type: string
+        assignee:
+          type: string
+        candidateGroups:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date-time
+        variables:
+          type: object
+          additionalProperties: true
+
+    CompleteTaskRequest:
+      type: object
+      properties:
+        variables:
+          type: object
+          additionalProperties: true
+          description: Process variables to set when completing task
+        comment:
+          type: string
+          description: Optional completion comment
+
+    CompletedTask:
+      type: object
+      properties:
+        taskId:
+          type: string
+        taskName:
+          type: string
+        assignee:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: Task duration in milliseconds
+
+    # ==================== AUTHORIZATION SCHEMAS ====================
+    AuthorizationCheckRequest:
+      type: object
+      required:
+        - principalId
+        - resourceType
+        - action
+      properties:
+        principalId:
+          type: string
+          description: User ID making the request
+        resourceType:
+          type: string
+          description: Type of resource being accessed
+          enum: [case, task, workflow, queue]
+        resourceId:
+          type: string
+          description: Specific resource identifier
+        action:
+          type: string
+          description: Action being performed
+          enum: [create, read, update, delete, assign, claim, complete, approve]
+        attributes:
+          type: object
+          additionalProperties: true
+          description: Additional context attributes
+
+    AuthorizationResponse:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+          description: Whether the action is authorized
+        reason:
+          type: string
+          description: Reason for authorization decision
+        policy:
+          type: string
+          description: Policy that made the decision
+
+    # ==================== SECURITY VALIDATION SCHEMAS ====================
+    SecurityValidationError:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          enum: [SECURITY_VALIDATION_FAILED, MALICIOUS_CONTENT, RESOURCE_LIMIT_EXCEEDED]
+        message:
+          type: string
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SecurityViolation'
+        warnings:
+          type: array
+          items:
+            type: string
+
+    SecurityViolation:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [INVALID_XML, MALICIOUS_CONTENT, UNAUTHORIZED_SCRIPT, RESOURCE_LIMIT]
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [CRITICAL, WARNING]
+
+    # ==================== MONITORING SCHEMAS ====================
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, UNKNOWN]
+        components:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+              details:
+                type: object
+
+    MetricsResponse:
+      type: object
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+        measurements:
+          type: object
+          additionalProperties:
+            type: object
+
+    # ==================== UTILITY SCHEMAS ====================
+    PageInfo:
+      type: object
+      properties:
+        number:
+          type: integer
+          description: Current page number (0-based)
+        size:
+          type: integer
+          description: Page size
+        totalElements:
+          type: integer
+          description: Total number of elements
+        totalPages:
+          type: integer
+          description: Total number of pages
+        first:
+          type: boolean
+          description: Whether this is the first page
+        last:
+          type: boolean
+          description: Whether this is the last page
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+        requestId:
+          type: string
+
+    # ==================== ENUMS ====================
+    CaseStatus:
+      type: string
+      enum: [OPEN, IN_PROGRESS, UNDER_REVIEW, COMPLETED, CLOSED, SUSPENDED]
+      description: Case status enumeration
+
+    Priority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, CRITICAL]
+      description: Priority level enumeration
+
+    Severity:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, CRITICAL]
+      description: Severity level enumeration
+
+    TaskStatus:
+      type: string
+      enum: [OPEN, CLAIMED, COMPLETED]
+      description: Task status enumeration
+
+    AllegationType:
+      type: string
+      enum: [HARASSMENT, DISCRIMINATION, FRAUD, POLICY_VIOLATION, MISCONDUCT, DATA_BREACH, REGULATORY]
+      description: Types of allegations
+
+    EntityType:
+      type: string
+      enum: [COMPLAINANT, RESPONDENT, WITNESS, INVESTIGATOR]
+      description: Types of entities involved in cases
+
+    CommentType:
+      type: string
+      enum: [NOTE, EVIDENCE, DECISION, ESCALATION]
+      description: Types of case comments
+
+    RoutingStrategy:
+      type: string
+      enum: [AUTO, MANUAL, DEPARTMENT_SPECIFIC]
+      default: AUTO
+      description: Strategy for routing cases to workflows
+
+  responses:
+    BadRequestError:
+      description: Bad request - invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-08-24T10:00:00Z"
+            status: 400
+            error: "Bad Request"
+            message: "Invalid request parameters"
+            path: "/api/cms/v1/cases"
+            requestId: "abc-123"
+
+    UnauthorizedError:
+      description: Unauthorized - authentication required or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-08-24T10:00:00Z"
+            status: 401
+            error: "Unauthorized"
+            message: "Authentication required"
+            path: "/api/cms/v1/cases"
+            requestId: "def-456"
+
+    ForbiddenError:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-08-24T10:00:00Z"
+            status: 403
+            error: "Forbidden"
+            message: "Insufficient permissions for this resource"
+            path: "/api/cms/v1/cases"
+            requestId: "ghi-789"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-08-24T10:00:00Z"
+            status: 404
+            error: "Not Found"
+            message: "Case not found"
+            path: "/api/cms/v1/cases/CMS-2025-000001"
+            requestId: "jkl-012"
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Case Management
+    description: Core case management operations
+  - name: Workflow Management
+    description: BPMN workflow deployment and management
+  - name: Task Management
+    description: Workflow task operations
+  - name: Authorization
+    description: Permission and authorization checking
+  - name: Monitoring
+    description: System health and metrics monitoring

@@ -8,6 +8,8 @@ import com.flowable.wrapper.exception.ResourceNotFoundException;
 import com.flowable.wrapper.exception.WorkflowException;
 import com.flowable.wrapper.model.TaskQueueMapping;
 import com.flowable.wrapper.repository.WorkflowMetadataRepository;
+import com.flowable.wrapper.security.BpmnSecurityValidator;
+import com.flowable.wrapper.security.BpmnValidationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
@@ -38,6 +40,7 @@ public class WorkflowMetadataService {
     
     private final WorkflowMetadataRepository workflowMetadataRepository;
     private final RepositoryService repositoryService;
+    private final BpmnSecurityValidator bpmnSecurityValidator;
     
     @Value("${workflow.definitions.path:/app/definitions}")
     private String definitionsPath;
@@ -88,6 +91,23 @@ public class WorkflowMetadataService {
                 .orElseThrow(() -> new ResourceNotFoundException("Workflow metadata", request.getProcessDefinitionKey()));
         
         try {
+            // Security validation of BPMN content
+            log.info("Performing security validation for BPMN: {}", request.getProcessDefinitionKey());
+            BpmnValidationResult validationResult = bpmnSecurityValidator.validateBpmnXml(
+                request.getBpmnXml(), request.getProcessDefinitionKey());
+            
+            if (!validationResult.isValid()) {
+                log.error("BPMN security validation failed for {}: {}", 
+                    request.getProcessDefinitionKey(), validationResult.getSummary());
+                throw new WorkflowException("SECURITY_VALIDATION_FAILED", 
+                    "BPMN security validation failed: " + validationResult.getSummary());
+            }
+            
+            if (validationResult.getWarningCount() > 0) {
+                log.warn("BPMN security validation warnings for {}: {}", 
+                    request.getProcessDefinitionKey(), validationResult.getSummary());
+            }
+            
             // Deploy to Flowable
             String deploymentName = request.getDeploymentName() != null ? 
                 request.getDeploymentName() : metadata.getProcessName();
@@ -233,6 +253,23 @@ public class WorkflowMetadataService {
             
             String bpmnXml = Files.readString(filePath, StandardCharsets.UTF_8);
             log.info("Read BPMN file successfully: {}", filename);
+            
+            // Security validation of BPMN file content
+            log.info("Performing security validation for BPMN file: {}", filename);
+            BpmnValidationResult validationResult = bpmnSecurityValidator.validateBpmnXml(
+                bpmnXml, processDefinitionKey);
+            
+            if (!validationResult.isValid()) {
+                log.error("BPMN file security validation failed for {}: {}", 
+                    filename, validationResult.getSummary());
+                throw new WorkflowException("SECURITY_VALIDATION_FAILED", 
+                    "BPMN file security validation failed: " + validationResult.getSummary());
+            }
+            
+            if (validationResult.getWarningCount() > 0) {
+                log.warn("BPMN file security validation warnings for {}: {}", 
+                    filename, validationResult.getSummary());
+            }
             
             // Create deploy request and use existing deploy method
             DeployWorkflowRequest deployRequest = new DeployWorkflowRequest();

@@ -1,0 +1,108 @@
+---
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "queue"
+  version: "1_0"
+  importDerivedRoles:
+    - common_roles
+    - one_cms_roles
+    
+  rules:
+    # Queue members can view their assigned queues
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["queue_member"]
+      
+    # All users can view "My Work Items" queue (personal tasks)
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.queueName) && R.attr.queueName == "my-work-items"
+    
+    # Department members can view "All Open Cases" for their department
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["case_department_member"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.queueName) && R.attr.queueName == "all-open-cases"
+    
+    # Investigators can view "My Open Investigations"
+    - actions: ["view", "process"]
+      effect: EFFECT_ALLOW
+      roles: ["ER_INVESTIGATOR", "CSIS_INVESTIGATOR"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.queueName) && R.attr.queueName == "my-open-investigations"
+    
+    # Intake analysts can view and process intake queues
+    - actions: ["view", "process"]
+      effect: EFFECT_ALLOW
+      roles: ["EO_INTAKE_ANALYST", "ER_INTAKE_ANALYST", "CSIS_INTAKE_ANALYST"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.queueType) && R.attr.queueType == "INTAKE" &&
+            has(R.attr.departmentId) && has(P.attr.department) &&
+            R.attr.departmentId == P.attr.department
+    
+    # Investigation managers can view all investigation queues in their department
+    - actions: ["view", "process", "manage"]
+      effect: EFFECT_ALLOW
+      roles: ["ER_INVESTIGATION_MANAGER", "CSIS_INVESTIGATION_MANAGER"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.queueType) && R.attr.queueType == "INVESTIGATION" &&
+            has(R.attr.departmentId) && has(P.attr.department) &&
+            R.attr.departmentId == P.attr.department
+    
+    # EO Head can view and manage all EO queues
+    - actions: ["view", "process", "manage", "assign"]
+      effect: EFFECT_ALLOW
+      roles: ["EO_HEAD"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.departmentId) && R.attr.departmentId == "EO"
+    
+    # CSIS managers can handle intelligence-specific queues
+    - actions: ["view", "process", "manage"]
+      effect: EFFECT_ALLOW
+      roles: ["CSIS_INTAKE_MANAGER", "CSIS_INVESTIGATION_MANAGER"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.queueName) && (
+              R.attr.queueName == "csis-intake-manager-queue" ||
+              R.attr.queueName == "intelligence-retention-queue"
+            )
+    
+    # Managers can delegate queue access to their team members
+    - actions: ["delegate"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["unit_manager"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.departmentId) && has(P.attr.department) &&
+            R.attr.departmentId == P.attr.department
+    
+    # Cross-department queue access for multi-department cases
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["multi_dept_coordinator"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.allowCrossDepartment) && R.attr.allowCrossDepartment == true
+    
+    # Default deny all other actions
+    - actions: ["*"]
+      effect: EFFECT_DENY
+      roles: ["*"]

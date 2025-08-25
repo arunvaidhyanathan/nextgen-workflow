@@ -1,0 +1,72 @@
+groups:
+  - name: nextgen-workflow-alerts
+    rules:
+      # Service Health Alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute."
+
+      # Database Connection Alerts
+      - alert: DatabaseConnectionFailure
+        expr: hikaricp_connections_active{pool="HikariPool-1"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failure in {{ $labels.job }}"
+          description: "No active database connections available in {{ $labels.job }}"
+
+      # Memory Usage Alerts
+      - alert: HighMemoryUsage
+        expr: (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.job }}"
+          description: "Memory usage is above 85% on {{ $labels.job }}"
+
+      # HTTP Error Rate Alerts
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"5.*"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is above 10% on {{ $labels.job }}"
+
+      # Workflow Process Alerts
+      - alert: WorkflowProcessStuck
+        expr: increase(flowable_process_instances_started_total[10m]) == 0 AND flowable_process_instances_active > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Workflow processes may be stuck"
+          description: "No new processes started in 10 minutes but {{ $value }} processes are still active"
+
+      # Authentication Failures
+      - alert: HighAuthenticationFailureRate
+        expr: rate(cerbos_authorization_denied_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication denial rate is above 50% in the last 5 minutes"
+
+      # Disk Space Alerts
+      - alert: LowDiskSpace
+        expr: (disk_free_bytes / disk_total_bytes) * 100 < 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space on {{ $labels.path }}"
+          description: "Disk space is below 10% on {{ $labels.path }}"

@@ -7,9 +7,9 @@ spring:
 
   # Database Configuration
   datasource:
-    url: ${DB_URL:}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nextgen_workflow?currentSchema=flowable}
+    username: ${DB_USERNAME:flowable_user}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -119,7 +119,29 @@ springdoc:
 # Workflow Configuration
 workflow:
   definitions:
-    path: ${WORKFLOW_DEFINITIONS_PATH:src/main/resources}
+    path: ${WORKFLOW_DEFINITIONS_PATH:/Users/arunvaidhyanathan/Developer/nextgen-workflow/flowable-wrapper-v2/src/main/resources/bpmn}
+  security:
+    validation-enabled: true
+    strict-mode: false
+    max-process-elements: 200
+    max-script-length: 1000
+    max-expression-length: 500
+    max-deployment-size: 5242880  # 5MB in bytes
+    allowed-script-formats:
+      - groovy
+      - javascript
+      - juel
+    blocked-java-packages:
+      - java.lang.Runtime
+      - java.lang.ProcessBuilder
+      - java.io.File
+      - java.nio.file
+      - java.lang.System
+      - java.lang.reflect
+    whitelisted-packages:
+      - com.flowable.
+      - com.workflow.
+      - org.flowable.
 
 # Centralized Logging Configuration
 logging:

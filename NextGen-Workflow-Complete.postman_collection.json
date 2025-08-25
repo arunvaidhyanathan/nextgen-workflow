@@ -1,0 +1,1362 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "NextGen Workflow - Complete API Collection",
+		"description": "Comprehensive API testing collection for NextGen Workflow System\n\n## Key Features\n- **Session-based Authentication** with fine-grained authorization via Cerbos\n- **BPMN 2.0 Workflow Engine** with security validation\n- **Multi-tenant Architecture** with tenant isolation\n- **Real-time Monitoring** with Prometheus metrics\n- **Case Management** with full lifecycle support\n- **Policy-based Authorization** with derived roles\n\n## Usage\n1. Start with Authentication → Login to get sessionId\n2. Session ID will be automatically set for subsequent requests\n3. All endpoints require X-Session-Id header (set automatically)\n4. Optional X-Tenant-Id header for multi-tenant scenarios\n\n## Base URL\nAll endpoints route through API Gateway: `http://localhost:8080/api`\n\n## Test Users\n- alice.intake / password123 - Intake Analyst\n- edward.inv / password123 - Investigator\n- sarah.legal / password123 - Legal Counsel\n- mike.admin / password123 - System Administrator\n- jane.manager / password123 - Investigation Manager\n- tom.hr / password123 - HR Specialist",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract session ID from response and set as environment variable",
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.success && jsonData.sessionId) {",
+									"        pm.environment.set(\"sessionId\", jsonData.sessionId);",
+									"        pm.environment.set(\"userId\", jsonData.user.id);",
+									"        pm.environment.set(\"username\", jsonData.user.username);",
+									"        console.log(\"Session ID set:\", jsonData.sessionId);",
+									"        console.log(\"User ID set:\", jsonData.user.id);",
+									"        ",
+									"        pm.test(\"Login successful\", function () {",
+									"            pm.expect(jsonData.success).to.be.true;",
+									"            pm.expect(jsonData.sessionId).to.not.be.empty;",
+									"        });",
+									"    }",
+									"} else {",
+									"    pm.test(\"Login failed - check credentials\", function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"alice.intake\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Authenticate user and create session. Updates environment variables with sessionId for subsequent requests."
+					}
+				},
+				{
+					"name": "Validate Session",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/validate-session",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "validate-session"]
+						},
+						"description": "Validate current session and return user information"
+					}
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Clear session variables on successful logout",
+									"if (pm.response.code === 200) {",
+									"    pm.environment.unset(\"sessionId\");",
+									"    pm.environment.unset(\"userId\");",
+									"    pm.environment.unset(\"username\");",
+									"    console.log(\"Session variables cleared\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "logout"]
+						},
+						"description": "Invalidate current session and clear environment variables"
+					}
+				}
+			],
+			"description": "User authentication and session management"
+		},
+		{
+			"name": "Case Management",
+			"item": [
+				{
+					"name": "List Cases",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases?page=0&size=20",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Page number (0-based)"
+								},
+								{
+									"key": "size",
+									"value": "20",
+									"description": "Page size"
+								},
+								{
+									"key": "status",
+									"value": "OPEN",
+									"description": "Filter by case status",
+									"disabled": true
+								},
+								{
+									"key": "priority",
+									"value": "HIGH",
+									"description": "Filter by priority level",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieve list of cases with pagination and filtering"
+					}
+				},
+				{
+					"name": "Create Case",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Store created case details for use in other requests",
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set(\"caseId\", jsonData.caseId);",
+									"    pm.environment.set(\"caseNumber\", jsonData.caseNumber);",
+									"    pm.environment.set(\"processInstanceId\", jsonData.processInstanceId);",
+									"    console.log(\"Case created:\", jsonData.caseNumber);",
+									"    console.log(\"Process Instance ID:\", jsonData.processInstanceId);",
+									"    ",
+									"    pm.test(\"Case created successfully\", function () {",
+									"        pm.expect(jsonData.caseId).to.not.be.empty;",
+									"        pm.expect(jsonData.caseNumber).to.match(/^CMS-\\d{4}-\\d{6}$/);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Employee Misconduct Investigation\",\n  \"description\": \"Investigation into alleged policy violations and workplace misconduct\",\n  \"priority\": \"HIGH\",\n  \"routingStrategy\": \"AUTO\",\n  \"allegations\": [\n    {\n      \"allegationType\": \"HARASSMENT\",\n      \"severity\": \"HIGH\",\n      \"description\": \"Workplace harassment allegation involving inappropriate behavior\"\n    },\n    {\n      \"allegationType\": \"POLICY_VIOLATION\",\n      \"severity\": \"MEDIUM\",\n      \"description\": \"Company policy violation regarding conduct standards\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases"]
+						},
+						"description": "Create a new case with automatic workflow initiation"
+					}
+				},
+				{
+					"name": "Create Multi-Department Case",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Complex Multi-Department Investigation\",\n  \"description\": \"Complex case requiring coordination between multiple departments\",\n  \"priority\": \"CRITICAL\",\n  \"routingStrategy\": \"AUTO\",\n  \"allegations\": [\n    {\n      \"allegationType\": \"FRAUD\",\n      \"severity\": \"HIGH\",\n      \"description\": \"Financial fraud involving expense reimbursements\"\n    },\n    {\n      \"allegationType\": \"HARASSMENT\",\n      \"severity\": \"HIGH\",\n      \"description\": \"Concurrent harassment allegations\"\n    },\n    {\n      \"allegationType\": \"REGULATORY\",\n      \"severity\": \"CRITICAL\",\n      \"description\": \"Potential regulatory compliance violations\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/multi-department",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "multi-department"]
+						},
+						"description": "Create a multi-department case that triggers the OneCMS_MultiDepartment_Workflow"
+					}
+				},
+				{
+					"name": "Get Case Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/{{caseNumber}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "{{caseNumber}}"]
+						},
+						"description": "Retrieve detailed information about a specific case"
+					}
+				},
+				{
+					"name": "Get My Cases",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/my-cases",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "my-cases"],
+							"query": [
+								{
+									"key": "status",
+									"value": "OPEN",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieve cases assigned to current user"
+					}
+				},
+				{
+					"name": "Get Dashboard Cases",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/dashboard-cases",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "dashboard-cases"]
+						},
+						"description": "Get cases for dashboard display"
+					}
+				},
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/dashboard-stats",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "dashboard-stats"]
+						},
+						"description": "Get dashboard statistics"
+					}
+				},
+				{
+					"name": "Get Workflow Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/{{caseNumber}}/workflow-status",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "{{caseNumber}}", "workflow-status"]
+						},
+						"description": "Retrieve workflow status and current tasks for a case"
+					}
+				},
+				{
+					"name": "Get Workflow Journey",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/{{caseNumber}}/journey",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "{{caseNumber}}", "journey"]
+						},
+						"description": "Get complete workflow journey for a case"
+					}
+				},
+				{
+					"name": "Submit Case",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"comment\": \"Case submitted for workflow processing after initial review\",\n  \"variables\": {\n    \"approverComments\": \"Initial intake review completed successfully\",\n    \"nextStage\": \"INVESTIGATION\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/cms/v1/cases/{{caseNumber}}/submit",
+							"host": ["{{baseUrl}}"],
+							"path": ["cms", "v1", "cases", "{{caseNumber}}", "submit"]
+						},
+						"description": "Submit case for workflow processing"
+					}
+				}
+			],
+			"description": "Core case management operations"
+		},
+		{
+			"name": "Workflow Management",
+			"item": [
+				{
+					"name": "Register Workflow Metadata",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Store workflow metadata ID for deployment",
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set(\"workflowMetadataId\", jsonData.id);",
+									"    pm.environment.set(\"processDefinitionKey\", jsonData.processDefinitionKey);",
+									"    console.log(\"Workflow registered:\", jsonData.processDefinitionKey);",
+									"    ",
+									"    pm.test(\"Workflow metadata registered\", function () {",
+									"        pm.expect(jsonData.id).to.not.be.empty;",
+									"        pm.expect(jsonData.processDefinitionKey).to.equal(\"oneCmsUnifiedWorkflow\");",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"processDefinitionKey\": \"oneCmsUnifiedWorkflow\",\n  \"processName\": \"OneCMS Unified Workflow\",\n  \"description\": \"Complete case management workflow with multi-department support\",\n  \"businessAppName\": \"onecms\",\n  \"candidateGroupMappings\": {\n    \"INTAKE_ANALYST_GROUP\": \"intake-analyst-queue\",\n    \"IU_ANALYST_GROUP\": \"iu-intake-queue\",\n    \"IU_MANAGER_GROUP\": \"iu-intake-queue\",\n    \"INVESTIGATOR_GROUP\": \"investigation-queue\",\n    \"INVESTIGATION_MANAGER_GROUP\": \"findings-assessment-queue\",\n    \"HR_LEGAL_ADJUDICATION_GROUP\": \"hr-legal-queue\",\n    \"HR_GROUP\": \"hr-discipline-queue\",\n    \"AROG_GROUP\": \"arog-review-queue\",\n    \"DIRECTOR_GROUP\": \"final-closure-queue\",\n    \"WORK_ITEM_GROUP\": \"work-item-queue\"\n  },\n  \"metadata\": {\n    \"version\": \"1.0\",\n    \"author\": \"NextGen Workflow Team\",\n    \"category\": \"case-management\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/onecms/workflow-metadata/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "workflow-metadata", "register"]
+						},
+						"description": "Register a new workflow with task-to-queue mappings"
+					}
+				},
+				{
+					"name": "Deploy BPMN from File",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Verify deployment success",
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set(\"deploymentId\", jsonData.deploymentId);",
+									"    console.log(\"BPMN deployed with ID:\", jsonData.deploymentId);",
+									"    ",
+									"    pm.test(\"BPMN deployed successfully\", function () {",
+									"        pm.expect(jsonData.deployed).to.be.true;",
+									"        pm.expect(jsonData.deploymentId).to.not.be.empty;",
+									"    });",
+									"} else if (pm.response.code === 400) {",
+									"    console.log(\"Security validation failed:\", pm.response.text());",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"processDefinitionKey\": \"oneCmsUnifiedWorkflow\",\n  \"filename\": \"OneCMS_Nextgen_WF.bpmn20.xml\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/onecms/workflow-metadata/deploy-from-file",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "workflow-metadata", "deploy-from-file"]
+						},
+						"description": "Deploy BPMN workflow from file with comprehensive security validation"
+					}
+				},
+				{
+					"name": "Get Workflow Metadata",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/workflow-metadata/oneCmsUnifiedWorkflow",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "workflow-metadata", "oneCmsUnifiedWorkflow"]
+						},
+						"description": "Retrieve workflow metadata by process definition key"
+					}
+				},
+				{
+					"name": "Start Process Instance",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Store process instance details",
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set(\"testProcessInstanceId\", jsonData.processInstanceId);",
+									"    console.log(\"Process started:\", jsonData.processInstanceId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"processDefinitionKey\": \"oneCmsUnifiedWorkflow\",\n  \"businessKey\": \"test-case-001\",\n  \"variables\": {\n    \"caseId\": \"test-case-001\",\n    \"caseNumber\": \"CMS-2025-000001\",\n    \"priority\": \"HIGH\",\n    \"initiatedBy\": \"{{username}}\",\n    \"department\": \"intake\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/onecms/process-instances/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "process-instances", "start"]
+						},
+						"description": "Start a new process instance"
+					}
+				},
+				{
+					"name": "Get Process Instance Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/process-instances/{{processInstanceId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "process-instances", "{{processInstanceId}}"]
+						},
+						"description": "Get detailed information about a process instance"
+					}
+				}
+			],
+			"description": "BPMN workflow deployment and process management"
+		},
+		{
+			"name": "Task Management",
+			"item": [
+				{
+					"name": "Get My Tasks",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/tasks/my-tasks",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "tasks", "my-tasks"],
+							"query": [
+								{
+									"key": "status",
+									"value": "OPEN",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieve tasks assigned to current user"
+					}
+				},
+				{
+					"name": "Get Tasks by Queue",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/tasks/queue/intake-analyst-queue?unassignedOnly=true",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "tasks", "queue", "intake-analyst-queue"],
+							"query": [
+								{
+									"key": "unassignedOnly",
+									"value": "true"
+								}
+							]
+						},
+						"description": "Retrieve tasks from a specific queue"
+					}
+				},
+				{
+					"name": "Get Next Task from Queue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Store task ID for claim/complete operations",
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.taskId) {",
+									"        pm.environment.set(\"taskId\", jsonData.taskId);",
+									"        console.log(\"Next task ID:\", jsonData.taskId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/tasks/queue/intake-analyst-queue/next",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "tasks", "queue", "intake-analyst-queue", "next"]
+						},
+						"description": "Get next available task from queue"
+					}
+				},
+				{
+					"name": "Get Task Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/tasks/{{taskId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "tasks", "{{taskId}}"]
+						},
+						"description": "Get detailed information about a specific task"
+					}
+				},
+				{
+					"name": "Claim Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/tasks/{{taskId}}/claim",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "tasks", "{{taskId}}", "claim"]
+						},
+						"description": "Claim a task for current user"
+					}
+				},
+				{
+					"name": "Unclaim Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/onecms/tasks/{{taskId}}/unclaim",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "tasks", "{{taskId}}", "unclaim"]
+						},
+						"description": "Release a claimed task back to the queue"
+					}
+				},
+				{
+					"name": "Complete Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"variables\": {\n    \"taskOutcome\": \"APPROVED\",\n    \"reviewComments\": \"Task completed successfully after thorough review\",\n    \"nextAssignee\": \"edward.inv\",\n    \"priority\": \"HIGH\",\n    \"completedBy\": \"{{username}}\",\n    \"completedAt\": \"{{$isoTimestamp}}\"\n  },\n  \"comment\": \"Task completed with all requirements satisfied\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/onecms/tasks/{{taskId}}/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["onecms", "tasks", "{{taskId}}", "complete"]
+						},
+						"description": "Complete a task with process variables and comments"
+					}
+				}
+			],
+			"description": "Workflow task operations and queue management"
+		},
+		{
+			"name": "Authorization",
+			"item": [
+				{
+					"name": "Check Case Authorization",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"principalId\": \"{{userId}}\",\n  \"resourceType\": \"case\",\n  \"resourceId\": \"{{caseNumber}}\",\n  \"action\": \"read\",\n  \"attributes\": {\n    \"department\": \"intake\",\n    \"priority\": \"HIGH\",\n    \"status\": \"OPEN\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/entitlements/check",
+							"host": ["{{baseUrl}}"],
+							"path": ["entitlements", "check"]
+						},
+						"description": "Check authorization for case access"
+					}
+				},
+				{
+					"name": "Check Task Authorization",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"principalId\": \"{{userId}}\",\n  \"resourceType\": \"task\",\n  \"resourceId\": \"{{taskId}}\",\n  \"action\": \"claim\",\n  \"attributes\": {\n    \"queueName\": \"intake-analyst-queue\",\n    \"taskName\": \"Initial Review\",\n    \"processInstanceId\": \"{{processInstanceId}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/entitlements/check",
+							"host": ["{{baseUrl}}"],
+							"path": ["entitlements", "check"]
+						},
+						"description": "Check authorization for task operations"
+					}
+				},
+				{
+					"name": "Check Workflow Authorization",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"principalId\": \"{{userId}}\",\n  \"resourceType\": \"workflow\",\n  \"resourceId\": \"oneCmsUnifiedWorkflow\",\n  \"action\": \"deploy\",\n  \"attributes\": {\n    \"businessAppName\": \"onecms\",\n    \"processDefinitionKey\": \"oneCmsUnifiedWorkflow\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/entitlements/check",
+							"host": ["{{baseUrl}}"],
+							"path": ["entitlements", "check"]
+						},
+						"description": "Check authorization for workflow operations"
+					}
+				},
+				{
+					"name": "Check Queue Authorization",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Session-Id",
+								"value": "{{sessionId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"principalId\": \"{{userId}}\",\n  \"resourceType\": \"queue\",\n  \"resourceId\": \"intake-analyst-queue\",\n  \"action\": \"read\",\n  \"attributes\": {\n    \"queueType\": \"task-queue\",\n    \"department\": \"intake\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/entitlements/check",
+							"host": ["{{baseUrl}}"],
+							"path": ["entitlements", "check"]
+						},
+						"description": "Check authorization for queue access"
+					}
+				}
+			],
+			"description": "Permission and authorization checking via Cerbos"
+		},
+		{
+			"name": "Monitoring & Health",
+			"item": [
+				{
+					"name": "System Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["actuator", "health"]
+						},
+						"description": "Check overall system health status"
+					}
+				},
+				{
+					"name": "System Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/metrics",
+							"host": ["{{baseUrl}}"],
+							"path": ["actuator", "metrics"]
+						},
+						"description": "Retrieve system metrics for monitoring"
+					}
+				},
+				{
+					"name": "API Gateway Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8080/actuator/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["actuator", "health"]
+						},
+						"description": "Direct health check of API Gateway"
+					}
+				},
+				{
+					"name": "Entitlement Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/actuator/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8081",
+							"path": ["actuator", "health"]
+						},
+						"description": "Direct health check of Entitlement Service"
+					}
+				},
+				{
+					"name": "Workflow Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/actuator/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8082",
+							"path": ["actuator", "health"]
+						},
+						"description": "Direct health check of Workflow Service"
+					}
+				},
+				{
+					"name": "OneCMS Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8083/actuator/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8083",
+							"path": ["actuator", "health"]
+						},
+						"description": "Direct health check of OneCMS Service"
+					}
+				}
+			],
+			"description": "System health monitoring and metrics"
+		},
+		{
+			"name": "Test Scenarios",
+			"item": [
+				{
+					"name": "Complete Workflow Test",
+					"item": [
+						{
+							"name": "1. Login as Alice (Intake Analyst)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Login successful\", function () {",
+											"    pm.expect(pm.response.code).to.equal(200);",
+											"    const jsonData = pm.response.json();",
+											"    pm.expect(jsonData.success).to.be.true;",
+											"    pm.environment.set(\"sessionId\", jsonData.sessionId);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"alice.intake\",\n  \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": ["{{baseUrl}}"],
+									"path": ["auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "2. Create High Priority Case",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Case created\", function () {",
+											"    pm.expect(pm.response.code).to.equal(201);",
+											"    const jsonData = pm.response.json();",
+											"    pm.environment.set(\"workflowTestCaseId\", jsonData.caseId);",
+											"    pm.environment.set(\"workflowTestCaseNumber\", jsonData.caseNumber);",
+											"    pm.environment.set(\"workflowTestProcessId\", jsonData.processInstanceId);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Session-Id",
+										"value": "{{sessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"Workflow Test Case - Complete End-to-End\",\n  \"description\": \"Test case for complete workflow validation from intake to closure\",\n  \"priority\": \"HIGH\",\n  \"routingStrategy\": \"AUTO\",\n  \"allegations\": [\n    {\n      \"allegationType\": \"HARASSMENT\",\n      \"severity\": \"HIGH\",\n      \"description\": \"Comprehensive workflow test scenario\"\n    }\n  ]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cms/v1/cases",
+									"host": ["{{baseUrl}}"],
+									"path": ["cms", "v1", "cases"]
+								}
+							}
+						},
+						{
+							"name": "3. Get My Tasks (Should see Initial Review task)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Tasks retrieved\", function () {",
+											"    pm.expect(pm.response.code).to.equal(200);",
+											"    const jsonData = pm.response.json();",
+											"    if (jsonData.tasks && jsonData.tasks.length > 0) {",
+											"        pm.environment.set(\"firstTaskId\", jsonData.tasks[0].taskId);",
+											"        console.log(\"First task ID:\", jsonData.tasks[0].taskId);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{sessionId}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/onecms/tasks/my-tasks",
+									"host": ["{{baseUrl}}"],
+									"path": ["onecms", "tasks", "my-tasks"]
+								}
+							}
+						},
+						{
+							"name": "4. Claim Task",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{sessionId}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/onecms/tasks/{{firstTaskId}}/claim",
+									"host": ["{{baseUrl}}"],
+									"path": ["onecms", "tasks", "{{firstTaskId}}", "claim"]
+								}
+							}
+						},
+						{
+							"name": "5. Complete Task (Move to Investigation)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Session-Id",
+										"value": "{{sessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"variables\": {\n    \"taskOutcome\": \"PROCEED_TO_INVESTIGATION\",\n    \"reviewComments\": \"Initial review completed. Case requires full investigation.\",\n    \"nextStage\": \"INVESTIGATION\",\n    \"priority\": \"HIGH\",\n    \"approvedBy\": \"alice.intake\"\n  },\n  \"comment\": \"Initial intake review completed - proceeding to investigation phase\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/onecms/tasks/{{firstTaskId}}/complete",
+									"host": ["{{baseUrl}}"],
+									"path": ["onecms", "tasks", "{{firstTaskId}}", "complete"]
+								}
+							}
+						},
+						{
+							"name": "6. Check Workflow Status",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Session-Id",
+										"value": "{{sessionId}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/cms/v1/cases/{{workflowTestCaseNumber}}/workflow-status",
+									"host": ["{{baseUrl}}"],
+									"path": ["cms", "v1", "cases", "{{workflowTestCaseNumber}}", "workflow-status"]
+								}
+							}
+						}
+					],
+					"description": "Complete end-to-end workflow test scenario"
+				},
+				{
+					"name": "Multi-User Authorization Test",
+					"item": [
+						{
+							"name": "Login as Mike (Admin)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"mike.admin\",\n  \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": ["{{baseUrl}}"],
+									"path": ["auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "Admin - Register Workflow",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Session-Id",
+										"value": "{{sessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"processDefinitionKey\": \"testWorkflow\",\n  \"processName\": \"Test Authorization Workflow\",\n  \"description\": \"Workflow for testing authorization\",\n  \"businessAppName\": \"onecms\",\n  \"candidateGroupMappings\": {\n    \"ADMIN_GROUP\": \"admin-queue\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/onecms/workflow-metadata/register",
+									"host": ["{{baseUrl}}"],
+									"path": ["onecms", "workflow-metadata", "register"]
+								}
+							}
+						},
+						{
+							"name": "Login as Alice (Intake) - Should Fail to Deploy",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"alice.intake\",\n  \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": ["{{baseUrl}}"],
+									"path": ["auth", "login"]
+								}
+							}
+						},
+						{
+							"name": "Alice - Try Deploy (Should Get 403)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Authorization properly denied\", function () {",
+											"    pm.expect(pm.response.code).to.equal(403);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Session-Id",
+										"value": "{{sessionId}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"processDefinitionKey\": \"testWorkflow\",\n  \"filename\": \"OneCMS_Nextgen_WF.bpmn20.xml\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/onecms/workflow-metadata/deploy-from-file",
+									"host": ["{{baseUrl}}"],
+									"path": ["onecms", "workflow-metadata", "deploy-from-file"]
+								}
+							}
+						}
+					],
+					"description": "Test multi-user authorization scenarios"
+				}
+			],
+			"description": "Comprehensive test scenarios for end-to-end validation"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-set X-Session-Id header if sessionId exists in environment",
+					"if (pm.environment.get(\"sessionId\")) {",
+					"    pm.request.headers.add({",
+					"        key: 'X-Session-Id',",
+					"        value: pm.environment.get(\"sessionId\")",
+					"    });",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test for session expiration",
+					"if (pm.response.code === 401) {",
+					"    pm.test(\"Session expired - please re-login\", function () {",
+					"        console.log(\"Session expired, clearing sessionId\");",
+					"        pm.environment.unset(\"sessionId\");",
+					"        pm.expect(pm.response.code).to.not.equal(401);",
+					"    });",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api",
+			"type": "string"
+		},
+		{
+			"key": "sessionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "username",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "caseId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "caseNumber",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "processInstanceId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "taskId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "workflowMetadataId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "processDefinitionKey",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "deploymentId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

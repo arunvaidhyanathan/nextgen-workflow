@@ -1,0 +1,107 @@
+---
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "task"
+  version: "1_0"
+  importDerivedRoles:
+    - common_roles
+    - one_cms_roles
+    
+  rules:
+    # Queue members can view tasks in their queues
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["queue_member"]
+      
+    # Queue members with correct roles can claim tasks
+    - actions: ["claim"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["queue_member", "phase_participant"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.status) && R.attr.status == "OPEN" &&
+            has(R.attr.candidateGroups) && has(P.attr.roles) &&
+            (
+              ("INTAKE_ANALYST_GROUP" in R.attr.candidateGroups && 
+               ("EO_INTAKE_ANALYST" in P.attr.roles || 
+                "ER_INTAKE_ANALYST" in P.attr.roles || 
+                "CSIS_INTAKE_ANALYST" in P.attr.roles)) ||
+              ("INVESTIGATOR_GROUP" in R.attr.candidateGroups && 
+               ("ER_INVESTIGATOR" in P.attr.roles || 
+                "CSIS_INVESTIGATOR" in P.attr.roles)) ||
+              ("IU_MANAGER_GROUP" in R.attr.candidateGroups && 
+               ("ER_INVESTIGATION_MANAGER" in P.attr.roles || 
+                "CSIS_INVESTIGATION_MANAGER" in P.attr.roles)) ||
+              ("DIRECTOR_GROUP" in R.attr.candidateGroups && 
+               "EO_HEAD" in P.attr.roles)
+            )
+    
+    # Task assignee can complete their assigned tasks
+    - actions: ["complete", "view", "edit"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["task_assignee"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.status) && R.attr.status == "CLAIMED"
+    
+    # Task assignee can unclaim their tasks
+    - actions: ["unclaim"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["task_assignee"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.status) && R.attr.status == "CLAIMED"
+    
+    # Managers in the same department can reassign tasks
+    - actions: ["reassign"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["unit_manager"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.departmentId) && has(P.attr.department) &&
+            R.attr.departmentId == P.attr.department
+    
+    # Investigation managers can assign investigation tasks
+    - actions: ["assign", "reassign"]
+      effect: EFFECT_ALLOW
+      roles: ["ER_INVESTIGATION_MANAGER", "CSIS_INVESTIGATION_MANAGER"]
+      derivedRoles: ["case_department_member"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.taskType) && (
+              R.attr.taskType == "INVESTIGATION" ||
+              R.attr.taskType == "ASSIGN_INVESTIGATOR"
+            )
+    
+    # EO Officers can handle EO-specific tasks
+    - actions: ["claim", "complete"]
+      effect: EFFECT_ALLOW
+      roles: ["EO_OFFICER"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.candidateGroups) && 
+            "EO_OFFICER_GROUP" in R.attr.candidateGroups &&
+            has(R.attr.departmentId) && R.attr.departmentId == "EO"
+    
+    # CSIS managers can handle intelligence retention tasks
+    - actions: ["claim", "complete"]
+      effect: EFFECT_ALLOW
+      roles: ["CSIS_INTAKE_MANAGER", "CSIS_INVESTIGATION_MANAGER"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.taskType) && (
+              R.attr.taskType == "CLOSE_FOR_INTELLIGENCE" ||
+              R.attr.taskType == "RETENTION_REVIEW"
+            )
+    
+    # Default deny all other actions
+    - actions: ["*"]
+      effect: EFFECT_DENY
+      roles: ["*"]

@@ -25,10 +25,10 @@ This application follows a microservices architecture with:
 ## Technology Stack
 
 ### Backend
-- **Java 17** with Spring Boot 3.x
-- **PostgreSQL** databases per service
-- **Flowable BPMN Engine** for workflow automation
-- **Cerbos** for policy-based authorization
+- **Java 21** with Spring Boot 3.3.4
+- **PostgreSQL 16.x** databases per service
+- **Flowable BPMN Engine 7.2.0** for workflow automation
+- **Cerbos 0.14.0** for policy-based authorization
 - **Docker** containerization
 
 ### Frontend
@@ -41,13 +41,17 @@ This application follows a microservices architecture with:
 ## Project Structure
 
 ```
-├── api-gateway-service/          # Central API Gateway with authentication
-├── case-management-service/      # Core case management microservice
-├── workflow-service/             # Flowable BPMN workflow engine
-├── user-management-service/      # User authentication and management
-├── CMS-UI-App/                   # React frontend application
-├── docker-compose.yml            # Multi-service orchestration
-├── nextgen-workflow.md           # Comprehensive architecture documentation
+├── api-gateway/                  # Central API Gateway with authentication
+├── onecms-service/              # Core case management microservice
+├── flowable-wrapper-v2/         # Flowable BPMN workflow engine
+├── entitlement-service/         # User authentication and management
+├── service-registry/            # Eureka service discovery
+├── CMS-UI-App/                  # React frontend application
+├── database/                    # Centralized Liquibase migrations
+├── cerbos/                      # Cerbos policy configuration
+├── scripts/                     # Database initialization scripts
+├── docker-compose-infrastructure.yml  # Infrastructure services
+├── nextgen-workflow.md          # Comprehensive architecture documentation
 ├── nextgen-workflow-openapi-session-auth.yaml  # OpenAPI specification
 └── NextGen-Workflow-API-Collection.json        # Postman testing collection
 ```
@@ -56,10 +60,11 @@ This application follows a microservices architecture with:
 
 ### Prerequisites
 
-- **Java 17+**
+- **Java 21+**
 - **Node.js 18+**
-- **PostgreSQL 13+**
+- **PostgreSQL 16.x**
 - **Docker & Docker Compose**
+- **Cerbos 0.14.0** (via Docker)
 
 ### 1. Clone Repository
 
@@ -68,20 +73,30 @@ git clone <repository-url>
 cd NextGen-Workflow-Application
 ```
 
-### 2. Start Backend Services
+### 2. Start Infrastructure Components
 
 ```bash
-# Start all services with Docker Compose
-docker-compose up -d
+# Start PostgreSQL and Cerbos
+docker-compose -f docker-compose-infrastructure.yml up -d
 
-# Or start individual services:
-cd api-gateway-service && ./mvnw spring-boot:run
-cd case-management-service && ./mvnw spring-boot:run
-cd workflow-service && ./mvnw spring-boot:run
-cd user-management-service && ./mvnw spring-boot:run
+# Wait for services to be ready
+docker-compose -f docker-compose-infrastructure.yml ps
 ```
 
-### 3. Start Frontend
+### 3. Start Backend Services
+
+```bash
+# Start Service Registry first
+cd service-registry && ./mvnw spring-boot:run
+
+# Then start other services (in separate terminals):
+cd entitlement-service && ./mvnw spring-boot:run
+cd flowable-wrapper-v2 && ./mvnw spring-boot:run
+cd onecms-service && ./mvnw spring-boot:run
+cd api-gateway && ./mvnw spring-boot:run
+```
+
+### 4. Start Frontend
 
 ```bash
 cd CMS-UI-App
@@ -89,11 +104,23 @@ npm install
 npm run dev
 ```
 
-### 4. Access Application
+### 5. Access Application
 
 - **Frontend**: http://localhost:3000
 - **API Gateway**: http://localhost:8080/api
-- **API Documentation**: http://localhost:8080/swagger-ui.html
+- **Service Registry (Eureka)**: http://localhost:8761
+- **Cerbos Admin**: http://localhost:3593
+- **PgAdmin** (if started): http://localhost:5050
+
+### Service Ports
+- **Service Registry**: 8761
+- **API Gateway**: 8080
+- **Entitlement Service**: 8081
+- **Flowable Workflow Engine**: 8082
+- **OneCMS Service**: 8083
+- **PostgreSQL**: 5432
+- **Cerbos gRPC**: 3592
+- **Cerbos HTTP**: 3593
 
 ## 📚 Documentation
 

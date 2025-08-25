@@ -24,9 +24,9 @@ spring:
 
   # Single DataSource for both CMS and Flowable
   datasource:
-    url: ${DB_URL:}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nextgen_workflow?currentSchema=onecms}
+    username: ${DB_USERNAME:onecms_user}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20

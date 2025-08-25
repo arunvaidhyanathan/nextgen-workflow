@@ -1,0 +1,74 @@
+---
+apiVersion: "api.cerbos.dev/v1"
+derivedRoles:
+  name: one_cms_roles
+  definitions:
+    # User is assigned to the case
+    - name: case_assignee
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.assigneeIds) && P.id in R.attr.assigneeIds
+    
+    # User belongs to the same department as the case
+    - name: case_department_member
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: |
+            has(P.attr.department) && has(R.attr.department) &&
+            P.attr.department == R.attr.department
+    
+    # User has access to the specific queue
+    - name: queue_member
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: |
+            has(P.attr.queues) && has(R.attr.queueName) &&
+            R.attr.queueName in P.attr.queues
+    
+    # User can participate in the current workflow phase
+    - name: phase_participant
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.phase) && has(P.attr.allowedPhases) &&
+            R.attr.phase in P.attr.allowedPhases
+    
+    # User created the case
+    - name: case_creator
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.createdBy) && P.id == R.attr.createdBy
+    
+    # User is assigned to a specific task
+    - name: task_assignee
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.assignee) && P.id == R.attr.assignee
+    
+    # User is in the same department and has manager role
+    - name: unit_manager
+      parentRoles: ["manager"]
+      condition:
+        match:
+          expr: |
+            has(P.attr.department) && has(R.attr.department) &&
+            P.attr.department == R.attr.department
+    
+    # Multi-department case coordinator (for cases spanning departments)
+    - name: multi_dept_coordinator
+      parentRoles: ["manager"]
+      condition:
+        match:
+          expr: |
+            has(R.attr.departments) && has(P.attr.department) &&
+            P.attr.department in R.attr.departments && 
+            size(R.attr.departments) > 1
