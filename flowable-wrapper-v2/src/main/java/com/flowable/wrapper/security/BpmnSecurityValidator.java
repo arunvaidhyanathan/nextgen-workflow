@@ -286,10 +286,10 @@ public class BpmnSecurityValidator {
     private void validateExpression(String expression, String context, BpmnValidationResult result) {
         if (expression == null || expression.trim().isEmpty()) return;
         
-        if (expression.length() > MAX_EXPRESSION_LENGTH) {
+        if (expression.length() > securityConfig.getMaxExpressionLength()) {
             result.addViolation(BpmnViolationType.RESOURCE_LIMIT, 
                 String.format("Expression too long in %s: %d chars (max: %d)", 
-                    context, expression.length(), MAX_EXPRESSION_LENGTH));
+                    context, expression.length(), securityConfig.getMaxExpressionLength()));
         }
         
         // Check for dangerous patterns in expressions
@@ -336,7 +336,7 @@ public class BpmnSecurityValidator {
      */
     private void validateJavaClass(String className, String context, BpmnValidationResult result) {
         // Check for blocked packages
-        for (String blockedPackage : BLOCKED_JAVA_PACKAGES) {
+        for (String blockedPackage : securityConfig.getBlockedJavaPackages()) {
             if (className.startsWith(blockedPackage)) {
                 result.addViolation(BpmnViolationType.UNAUTHORIZED_API, 
                     String.format("Blocked Java class in %s: %s", context, className));

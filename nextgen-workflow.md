@@ -500,9 +500,14 @@ taskQueueMappings:
     queue: "management-queue"
     candidateGroups: ["MANAGER"]
 candidateGroupMappings:
-  INTAKE_ANALYST: "intake-queue"
-  INVESTIGATOR: "investigation-queue"
-  MANAGER: "management-queue"
+  GROUP_EO_HEAD: "eo-head-queue"
+  GROUP_EO_OFFICER: "eo-officer-queue"
+  GROUP_CSIS_INTAKE_MANAGER: "csis-intake-manager-queue"
+  GROUP_CSIS_INTAKE_ANALYST: "csis-intake-analyst-queue"
+  GROUP_ER_INTAKE_ANALYST: "er-intake-analyst-queue"
+  GROUP_LEGAL_INTAKE_ANALYST: "legal-intake-analyst-queue"
+  GROUP_INVESTIGATION_MANAGER: "investigation-manager-queue"
+  GROUP_INVESTIGATOR: "investigator-queue"
 ```
 
 #### Workflow Registration API

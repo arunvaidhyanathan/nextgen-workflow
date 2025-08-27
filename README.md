@@ -16,11 +16,12 @@ This application follows a microservices architecture with:
 
 - **Session-Based Authentication**: Simple, secure authentication with X-Session-Id headers
 - **Case Management**: Complete lifecycle management for investigation cases
-- **Workflow Automation**: BPMN 2.0 compliant business process execution
+- **Workflow Automation**: BPMN 2.0 compliant business process execution with OneCMS Unified Workflow
 - **Role-Based Access Control**: Fine-grained permissions with Cerbos policy engine
-- **Multi-Department Support**: HR, Legal, Security, and Investigation workflows
+- **Multi-Department Support**: Ethics Office (EO), Corporate Security (CSIS), Employee Relations (ER), Legal, and Investigation workflows
 - **RESTful APIs**: Comprehensive OpenAPI 3.0 specification
 - **Real-Time Notifications**: Task assignments and status updates
+- **Queue-Based Task Management**: Automated task routing to department-specific queues
 
 ## Technology Stack
 
@@ -174,6 +175,28 @@ The application includes pre-configured test users:
 | edward.inv | password123 | Investigator | Investigation |
 | sarah.legal | password123 | Legal Counsel | Legal |
 | mike.admin | password123 | Administrator | IT |
+
+## Workflow Roles and Personas
+
+The OneCMS Unified Workflow supports the following roles:
+
+### Ethics Office (EO)
+- **EO Head** (`GROUP_EO_HEAD`): Reviews and approves cases before departmental routing
+- **EO Officer** (`GROUP_EO_OFFICER`): Performs case triage and routing decisions
+
+### Corporate Security & Information Security (CSIS)
+- **CSIS Intake Manager** (`GROUP_CSIS_INTAKE_MANAGER`): Reviews cases and assigns analysts
+- **CSIS Intake Analyst** (`GROUP_CSIS_INTAKE_ANALYST`): Performs detailed case analysis
+
+### Employee Relations (ER)
+- **ER Intake Analyst** (`GROUP_ER_INTAKE_ANALYST`): Reviews ER cases and routes to HR or Investigation
+
+### Legal Department
+- **Legal Intake Analyst** (`GROUP_LEGAL_INTAKE_ANALYST`): Reviews legal matters and routes appropriately
+
+### Investigation Unit
+- **Investigation Manager** (`GROUP_INVESTIGATION_MANAGER`): Reviews cases and assigns investigators
+- **Investigator** (`GROUP_INVESTIGATOR`): Executes investigation plans and tasks
 
 ## Deployment
 
