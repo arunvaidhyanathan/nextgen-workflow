@@ -1,0 +1,1156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://www.onecms.com/workflow"
+             exporter="Camunda Modeler"
+             exporterVersion="5.35.0">
+  <process id="oneCmsEnhancedWorkflow" name="OneCMS Enhanced Case Workflow" isExecutable="true">
+    <laneSet>
+      <lane id="lane_end_events" name="End Events">
+        <flowNodeRef>end_case_completed</flowNodeRef>
+        <flowNodeRef>end_case_retained_intel</flowNodeRef>
+        <flowNodeRef>end_case_sent_hr</flowNodeRef>
+        <flowNodeRef>end_case_not_valid</flowNodeRef>
+        <flowNodeRef>end_case_cancelled</flowNodeRef>
+        <flowNodeRef>end_case_parked</flowNodeRef>
+      </lane>
+      <lane id="lane_investigator" name="Investigator">
+        <flowNodeRef>task_investigator_assignment_review</flowNodeRef>
+        <flowNodeRef>task_investigator_create_plan</flowNodeRef>
+        <flowNodeRef>task_conduct_investigation</flowNodeRef>
+        <flowNodeRef>task_finalize_investigation</flowNodeRef>
+        <flowNodeRef>timer_escalation</flowNodeRef>
+        <flowNodeRef>gateway_investigator_decision</flowNodeRef>
+        <flowNodeRef>gateway_investigation_complete</flowNodeRef>
+      </lane>
+      <lane id="lane_investigation_manager" name="Investigation Manager">
+        <flowNodeRef>task_inv_manager_review</flowNodeRef>
+        <flowNodeRef>task_escalation_review</flowNodeRef>
+        <flowNodeRef>gateway_inv_manager_decision</flowNodeRef>
+      </lane>
+      <lane id="lane_legal_intake_analyst" name="Legal Intake Analyst">
+        <flowNodeRef>task_legal_create_new_case</flowNodeRef>
+        <flowNodeRef>task_legal_enter_information</flowNodeRef>
+        <flowNodeRef>task_legal_intake_review</flowNodeRef>
+        <flowNodeRef>gateway_legal_case_action</flowNodeRef>
+        <flowNodeRef>gateway_legal_intake_decision</flowNodeRef>
+      </lane>
+      <lane id="lane_er_intake_analyst" name="ER Intake Analyst">
+        <flowNodeRef>task_er_create_new_case</flowNodeRef>
+        <flowNodeRef>task_er_enter_information</flowNodeRef>
+        <flowNodeRef>task_er_intake_review</flowNodeRef>
+        <flowNodeRef>gateway_er_case_action</flowNodeRef>
+        <flowNodeRef>gateway_er_intake_decision</flowNodeRef>
+      </lane>
+      <lane id="lane_csis_intake_analyst" name="CSIS Intake Analyst">
+        <flowNodeRef>task_csis_analyst_create</flowNodeRef>
+        <flowNodeRef>task_csis_analyst_enter_info</flowNodeRef>
+        <flowNodeRef>task_csis_analyst_vetting</flowNodeRef>
+        <flowNodeRef>task_csis_dept_detailed_analysis</flowNodeRef>
+        <flowNodeRef>task_csis_retain_intel</flowNodeRef>
+        <flowNodeRef>gateway_csis_analyst_action</flowNodeRef>
+        <flowNodeRef>gateway_csis_vetting_decision</flowNodeRef>
+        <flowNodeRef>gateway_csis_analysis_decision</flowNodeRef>
+      </lane>
+      <lane id="lane_csis_intake_manager" name="CSIS Intake Manager">
+        <flowNodeRef>task_csis_manager_create</flowNodeRef>
+        <flowNodeRef>task_csis_manager_enter_info</flowNodeRef>
+        <flowNodeRef>task_csis_manager_approval</flowNodeRef>
+        <flowNodeRef>task_csis_dept_initial_triage</flowNodeRef>
+        <flowNodeRef>task_csis_manager_final_review</flowNodeRef>
+        <flowNodeRef>start_csis_case</flowNodeRef>
+        <flowNodeRef>gateway_csis_initiator</flowNodeRef>
+        <flowNodeRef>gateway_csis_manager_action</flowNodeRef>
+        <flowNodeRef>gateway_csis_final_decision</flowNodeRef>
+        <flowNodeRef>gateway_csis_dept_decision</flowNodeRef>
+        <flowNodeRef>gateway_csis_manager_final</flowNodeRef>
+      </lane>
+      <lane id="lane_eo_officer" name="EO Officer">
+        <flowNodeRef>task_eo_officer_triage</flowNodeRef>
+        <flowNodeRef>gateway_eo_officer_action</flowNodeRef>
+        <flowNodeRef>gateway_parallel_departments</flowNodeRef>
+        <flowNodeRef>gateway_parallel_join</flowNodeRef>
+      </lane>
+      <lane id="lane_eo_head" name="EO Head">
+        <flowNodeRef>task_eo_assign_head</flowNodeRef>
+        <flowNodeRef>task_eo_head_review</flowNodeRef>
+        <flowNodeRef>gateway_eo_head_decision</flowNodeRef>
+      </lane>
+      <lane id="lane_eo_intake_analyst" name="EO Intake Analyst">
+        <flowNodeRef>task_eo_intake_initial</flowNodeRef>
+        <flowNodeRef>task_eo_create_new_case</flowNodeRef>
+        <flowNodeRef>task_eo_enter_information</flowNodeRef>
+        <flowNodeRef>start_eo_case_received</flowNodeRef>
+        <flowNodeRef>gateway_eo_intake_decision</flowNodeRef>
+        <flowNodeRef>gateway_eo_case_action</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="start_eo_case_received" name="EO Case Received" flowable:initiator="initiator">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'INTAKE')}" />
+      </extensionElements>
+    </startEvent>
+    <userTask id="task_eo_intake_initial" name="EO: Initial Case Intake" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
+      <documentation>Initial review and decision on case validity</documentation>
+    </userTask>
+    <exclusiveGateway id="gateway_eo_intake_decision" name="Intake Decision" />
+    <userTask id="task_eo_create_new_case" name="Create a New Case" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
+      <documentation>Create new case record</documentation>
+    </userTask>
+    <userTask id="task_eo_enter_information" name="Enter Case Information" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
+      <documentation>Fill in case details, entities, allegations, narratives</documentation>
+    </userTask>
+    <exclusiveGateway id="gateway_eo_case_action" name="Case Action Decision" />
+    <userTask id="task_eo_assign_head" name="Assign for EO Head Review" flowable:candidateGroups="GROUP_EO_HEAD">
+      <documentation>Assign case to EO Head for strategic review</documentation>
+    </userTask>
+    <userTask id="task_eo_head_review" name="EO Head: Review Case" flowable:candidateGroups="GROUP_EO_HEAD">
+      <documentation>Review case details and add narrative</documentation>
+    </userTask>
+    <exclusiveGateway id="gateway_eo_head_decision" name="EO Head Decision" />
+    <userTask id="task_eo_officer_triage" name="EO Officer: Triage &amp; Route Case" flowable:candidateGroups="GROUP_EO_OFFICER">
+      <documentation>Final triage and departmental routing decision</documentation>
+    </userTask>
+    <exclusiveGateway id="gateway_eo_officer_action" name="EO Officer Action" />
+    <parallelGateway id="gateway_parallel_departments" name="Route to Multiple Departments" />
+    <parallelGateway id="gateway_parallel_join" name="Join Department Results" />
+    <startEvent id="start_csis_case" name="CSIS Case Initiated" flowable:initiator="initiator" />
+    <exclusiveGateway id="gateway_csis_initiator" name="CSIS Initiator Role" />
+    <userTask id="task_csis_manager_create" name="CSIS Manager: Create Case" flowable:assignee="${initiator}" />
+    <userTask id="task_csis_manager_enter_info" name="CSIS Manager: Enter Information" flowable:assignee="${initiator}" />
+    <exclusiveGateway id="gateway_csis_manager_action" name="CSIS Manager Action" />
+    <userTask id="task_csis_analyst_create" name="CSIS Analyst: Create Case" flowable:assignee="${initiator}" />
+    <userTask id="task_csis_analyst_enter_info" name="CSIS Analyst: Enter Information" flowable:assignee="${initiator}" />
+    <exclusiveGateway id="gateway_csis_analyst_action" name="CSIS Analyst Action" />
+    <userTask id="task_csis_analyst_vetting" name="CSIS: Vet Case for Investigation" flowable:candidateGroups="GROUP_CSIS_INTAKE_ANALYST" />
+    <exclusiveGateway id="gateway_csis_vetting_decision" name="CSIS Vetting Decision" />
+    <userTask id="task_csis_manager_approval" name="CSIS Manager: Final Approval" flowable:candidateGroups="GROUP_CSIS_INTAKE_MANAGER" />
+    <exclusiveGateway id="gateway_csis_final_decision" name="CSIS Final Decision" />
+    <userTask id="task_csis_dept_initial_triage" name="CSIS: Initial Triage" flowable:candidateGroups="GROUP_CSIS_INTAKE_MANAGER" />
+    <exclusiveGateway id="gateway_csis_dept_decision" name="CSIS Department Decision" />
+    <userTask id="task_csis_dept_detailed_analysis" name="CSIS: Detailed Analysis" flowable:candidateGroups="GROUP_CSIS_INTAKE_ANALYST" />
+    <exclusiveGateway id="gateway_csis_analysis_decision" name="CSIS Analysis Decision" />
+    <userTask id="task_csis_retain_intel" name="CSIS: Retain for Intelligence" flowable:candidateGroups="GROUP_CSIS_INTAKE_ANALYST" />
+    <userTask id="task_csis_manager_final_review" name="CSIS Manager: Final Review" flowable:candidateGroups="GROUP_CSIS_INTAKE_MANAGER" />
+    <exclusiveGateway id="gateway_csis_manager_final" name="CSIS Manager Final" />
+    <userTask id="task_er_create_new_case" name="ER: Create a New Case" flowable:candidateGroups="GROUP_ER_INTAKE_ANALYST" />
+    <userTask id="task_er_enter_information" name="ER: Enter Case Information" flowable:candidateGroups="GROUP_ER_INTAKE_ANALYST" />
+    <exclusiveGateway id="gateway_er_case_action" name="ER Case Action" />
+    <userTask id="task_er_intake_review" name="ER: Intake Review" flowable:candidateGroups="GROUP_ER_INTAKE_ANALYST" />
+    <exclusiveGateway id="gateway_er_intake_decision" name="ER Intake Decision" />
+    <userTask id="task_legal_create_new_case" name="Legal: Create a New Case" flowable:candidateGroups="GROUP_LEGAL_INTAKE_ANALYST" />
+    <userTask id="task_legal_enter_information" name="Legal: Enter Case Information" flowable:candidateGroups="GROUP_LEGAL_INTAKE_ANALYST" />
+    <exclusiveGateway id="gateway_legal_case_action" name="Legal Case Action" />
+    <userTask id="task_legal_intake_review" name="Legal: Intake Review" flowable:candidateGroups="GROUP_LEGAL_INTAKE_ANALYST" />
+    <exclusiveGateway id="gateway_legal_intake_decision" name="Legal Intake Decision" />
+    <userTask id="task_inv_manager_review" name="Investigation Manager: Review &amp; Prepare Assignment" flowable:candidateGroups="GROUP_INVESTIGATION_MANAGER">
+      <documentation>Review case and prepare for investigator assignment</documentation>
+    </userTask>
+    <exclusiveGateway id="gateway_inv_manager_decision" name="Investigation Manager Decision" />
+    <userTask id="task_investigator_assignment_review" name="Investigator: Accept/Reject Assignment" flowable:candidateGroups="GROUP_INVESTIGATOR">
+      <documentation>Review assignment and accept or reject due to conflict</documentation>
+    </userTask>
+    <exclusiveGateway id="gateway_investigator_decision" name="Investigator Assignment Decision" />
+    <userTask id="task_investigator_create_plan" name="Create Investigation Plan &amp; Initial Contact" flowable:candidateGroups="GROUP_INVESTIGATOR">
+      <documentation>Create detailed investigation plan and establish initial contact</documentation>
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'ACTIVE_INVESTIGATION')}" />
+      </extensionElements>
+    </userTask>
+    <userTask id="task_conduct_investigation" name="Conduct Investigation" flowable:candidateGroups="GROUP_INVESTIGATOR" />
+    <boundaryEvent id="timer_escalation" cancelActivity="false" attachedToRef="task_conduct_investigation">
+      <timerEventDefinition>
+        <timeDuration>P30D</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <userTask id="task_escalation_review" name="Escalation Review" flowable:candidateGroups="GROUP_INVESTIGATION_MANAGER" />
+    <exclusiveGateway id="gateway_investigation_complete" name="Investigation Complete?" />
+    <userTask id="task_finalize_investigation" name="Finalize Investigation" flowable:candidateGroups="GROUP_INVESTIGATOR" />
+    <endEvent id="end_case_completed" name="Case Completed">
+      <documentation>Case investigation completed successfully</documentation>
+    </endEvent>
+    <endEvent id="end_case_cancelled" name="Case Cancelled">
+      <documentation>Case cancelled or abandoned</documentation>
+    </endEvent>
+    <endEvent id="end_case_parked" name="Case Parked">
+      <documentation>Case saved and parked for later action</documentation>
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'PARKED')}" />
+      </extensionElements>
+    </endEvent>
+    <endEvent id="end_case_retained_intel" name="Retained for Intelligence">
+      <documentation>Case retained by CSIS for intelligence purposes</documentation>
+    </endEvent>
+    <endEvent id="end_case_sent_hr" name="Sent to HR">
+      <documentation>Case sent to HR for non-investigation handling</documentation>
+    </endEvent>
+    <endEvent id="end_case_not_valid" name="Not a Valid Case">
+      <documentation>Case rejected as not valid or other correspondence</documentation>
+    </endEvent>
+    <sequenceFlow id="flow_eo_start" sourceRef="start_eo_case_received" targetRef="task_eo_intake_initial" />
+    <sequenceFlow id="flow_eo_intake_decision_point" sourceRef="task_eo_intake_initial" targetRef="gateway_eo_intake_decision" />
+    <sequenceFlow id="flow_eo_create_case" name="Create Case" sourceRef="gateway_eo_intake_decision" targetRef="task_eo_create_new_case">
+      <conditionExpression xsi:type="tFormalExpression">${eoIntakeAction == 'CREATE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_not_valid" name="Not Valid Case" sourceRef="gateway_eo_intake_decision" targetRef="end_case_not_valid">
+      <conditionExpression xsi:type="tFormalExpression">${eoIntakeAction == 'NOT_VALID'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_other_correspondence" name="Other Correspondence" sourceRef="gateway_eo_intake_decision" targetRef="end_case_not_valid">
+      <conditionExpression xsi:type="tFormalExpression">${eoIntakeAction == 'OTHER_CORRESPONDENCE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_enter_info" sourceRef="task_eo_create_new_case" targetRef="task_eo_enter_information" />
+    <sequenceFlow id="flow_eo_case_action_point" sourceRef="task_eo_enter_information" targetRef="gateway_eo_case_action" />
+    <sequenceFlow id="flow_eo_create" name="Create" sourceRef="gateway_eo_case_action" targetRef="task_eo_assign_head">
+      <conditionExpression xsi:type="tFormalExpression">${eoUserAction == 'CREATE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_save" name="Save" sourceRef="gateway_eo_case_action" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${eoUserAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_cancel" name="Cancel" sourceRef="gateway_eo_case_action" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${eoUserAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_head_assign" sourceRef="task_eo_assign_head" targetRef="task_eo_head_review" />
+    <sequenceFlow id="flow_eo_head_decision_point" sourceRef="task_eo_head_review" targetRef="gateway_eo_head_decision" />
+    <sequenceFlow id="flow_eo_head_approve" name="Approve" sourceRef="gateway_eo_head_decision" targetRef="task_eo_officer_triage">
+      <conditionExpression xsi:type="tFormalExpression">${eoHeadAction == 'APPROVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_head_reject" name="Reject" sourceRef="gateway_eo_head_decision" targetRef="task_eo_assign_head">
+      <conditionExpression xsi:type="tFormalExpression">${eoHeadAction == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_head_cancel" name="Cancel" sourceRef="gateway_eo_head_decision" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${eoHeadAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_officer_action_point" sourceRef="task_eo_officer_triage" targetRef="gateway_eo_officer_action" />
+    <sequenceFlow id="flow_eo_send_iu" name="Send to IU" sourceRef="gateway_eo_officer_action" targetRef="gateway_parallel_departments">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'SEND_TO_IU'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_send_back" name="Send Back to EO Intake" sourceRef="gateway_eo_officer_action" targetRef="task_eo_intake_initial">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_save_close" name="Save &amp; Close" sourceRef="gateway_eo_officer_action" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'SAVE_CLOSE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_eo_officer_cancel" name="Cancel" sourceRef="gateway_eo_officer_action" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_to_csis_dept" name="To CSIS" sourceRef="gateway_parallel_departments" targetRef="task_csis_dept_initial_triage" />
+    <sequenceFlow id="flow_to_er_dept" name="To ER" sourceRef="gateway_parallel_departments" targetRef="task_er_intake_review" />
+    <sequenceFlow id="flow_to_legal_dept" name="To Legal" sourceRef="gateway_parallel_departments" targetRef="task_legal_intake_review" />
+    <sequenceFlow id="flow_csis_start" sourceRef="start_csis_case" targetRef="gateway_csis_initiator" />
+    <sequenceFlow id="flow_csis_manager_init" name="Manager" sourceRef="gateway_csis_initiator" targetRef="task_csis_manager_create">
+      <conditionExpression xsi:type="tFormalExpression">${initiatorRole == 'CSIS_MANAGER'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_analyst_init" name="Analyst" sourceRef="gateway_csis_initiator" targetRef="task_csis_analyst_create">
+      <conditionExpression xsi:type="tFormalExpression">${initiatorRole == 'CSIS_ANALYST'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_mgr_enter_info" sourceRef="task_csis_manager_create" targetRef="task_csis_manager_enter_info" />
+    <sequenceFlow id="flow_csis_mgr_action_point" sourceRef="task_csis_manager_enter_info" targetRef="gateway_csis_manager_action" />
+    <sequenceFlow id="flow_csis_mgr_assign_analyst" name="Assign to Analyst" sourceRef="gateway_csis_manager_action" targetRef="task_csis_analyst_vetting">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrAction == 'ASSIGN_ANALYST'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_mgr_fast_track" name="Fast Track to Investigation" sourceRef="gateway_csis_manager_action" targetRef="task_inv_manager_review">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrAction == 'FAST_TRACK'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_mgr_retain" name="Retain for Intelligence" sourceRef="gateway_csis_manager_action" targetRef="end_case_retained_intel">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrAction == 'RETAIN_INTEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_mgr_save" name="Save" sourceRef="gateway_csis_manager_action" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_mgr_cancel" name="Cancel" sourceRef="gateway_csis_manager_action" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_analyst_enter_info" sourceRef="task_csis_analyst_create" targetRef="task_csis_analyst_enter_info" />
+    <sequenceFlow id="flow_csis_analyst_action_point" sourceRef="task_csis_analyst_enter_info" targetRef="gateway_csis_analyst_action" />
+    <sequenceFlow id="flow_csis_analyst_assign_mgr" name="Assign to Manager" sourceRef="gateway_csis_analyst_action" targetRef="task_csis_manager_approval">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalystAction == 'ASSIGN_MANAGER'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_analyst_retain" name="Retain for Intelligence" sourceRef="gateway_csis_analyst_action" targetRef="end_case_retained_intel">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalystAction == 'RETAIN_INTEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_analyst_save" name="Save" sourceRef="gateway_csis_analyst_action" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalystAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_analyst_cancel" name="Cancel" sourceRef="gateway_csis_analyst_action" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalystAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_vetting_decision_point" sourceRef="task_csis_analyst_vetting" targetRef="gateway_csis_vetting_decision" />
+    <sequenceFlow id="flow_csis_recommend" name="Recommend" sourceRef="gateway_csis_vetting_decision" targetRef="task_csis_manager_approval">
+      <conditionExpression xsi:type="tFormalExpression">${csisVettingAction == 'RECOMMEND'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_vetting_reject" name="Reject" sourceRef="gateway_csis_vetting_decision" targetRef="task_csis_analyst_vetting">
+      <conditionExpression xsi:type="tFormalExpression">${csisVettingAction == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_vetting_save" name="Save" sourceRef="gateway_csis_vetting_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${csisVettingAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_vetting_cancel" name="Cancel" sourceRef="gateway_csis_vetting_decision" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${csisVettingAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_final_decision_point" sourceRef="task_csis_manager_approval" targetRef="gateway_csis_final_decision" />
+    <sequenceFlow id="flow_csis_final_approve" name="Approve" sourceRef="gateway_csis_final_decision" targetRef="task_inv_manager_review">
+      <conditionExpression xsi:type="tFormalExpression">${csisFinalAction == 'APPROVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_final_reject" name="Reject" sourceRef="gateway_csis_final_decision" targetRef="task_csis_analyst_vetting">
+      <conditionExpression xsi:type="tFormalExpression">${csisFinalAction == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_final_save" name="Save" sourceRef="gateway_csis_final_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${csisFinalAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_final_cancel" name="Cancel" sourceRef="gateway_csis_final_decision" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${csisFinalAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_dept_decision_point" sourceRef="task_csis_dept_initial_triage" targetRef="gateway_csis_dept_decision" />
+    <sequenceFlow id="flow_csis_dept_assign" name="Assign to Analyst" sourceRef="gateway_csis_dept_decision" targetRef="task_csis_dept_detailed_analysis">
+      <conditionExpression xsi:type="tFormalExpression">${csisDeptAction == 'ASSIGN'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_dept_send_back" name="Send Back to EO" sourceRef="gateway_csis_dept_decision" targetRef="task_eo_officer_triage">
+      <conditionExpression xsi:type="tFormalExpression">${csisDeptAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_dept_triage_escalate" name="Triage + Escalate" sourceRef="gateway_csis_dept_decision" targetRef="task_csis_manager_final_review">
+      <conditionExpression xsi:type="tFormalExpression">${csisDeptAction == 'TRIAGE_ESCALATE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_analysis_decision_point" sourceRef="task_csis_dept_detailed_analysis" targetRef="gateway_csis_analysis_decision" />
+    <sequenceFlow id="flow_csis_analysis_escalate" name="Escalate" sourceRef="gateway_csis_analysis_decision" targetRef="task_csis_manager_final_review">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalysisAction == 'ESCALATE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_analysis_retain" name="Retain for Intel" sourceRef="gateway_csis_analysis_decision" targetRef="task_csis_retain_intel">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalysisAction == 'RETAIN_INTEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_retain_end" sourceRef="task_csis_retain_intel" targetRef="end_case_retained_intel" />
+    <sequenceFlow id="flow_csis_mgr_final_decision_point" sourceRef="task_csis_manager_final_review" targetRef="gateway_csis_manager_final" />
+    <sequenceFlow id="flow_csis_mgr_final_approve" name="Approve" sourceRef="gateway_csis_manager_final" targetRef="gateway_parallel_join">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrFinalAction == 'APPROVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_csis_mgr_final_reject" name="Reject" sourceRef="gateway_csis_manager_final" targetRef="task_csis_dept_detailed_analysis">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrFinalAction == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_er_create_enter_info" sourceRef="task_er_create_new_case" targetRef="task_er_enter_information" />
+    <sequenceFlow id="flow_er_case_action_point" sourceRef="task_er_enter_information" targetRef="gateway_er_case_action" />
+    <sequenceFlow id="flow_er_create" name="Create" sourceRef="gateway_er_case_action" targetRef="task_er_intake_review">
+      <conditionExpression xsi:type="tFormalExpression">${erUserAction == 'CREATE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_er_save" name="Save" sourceRef="gateway_er_case_action" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${erUserAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_er_cancel" name="Cancel" sourceRef="gateway_er_case_action" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${erUserAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_er_intake_decision_point" sourceRef="task_er_intake_review" targetRef="gateway_er_intake_decision" />
+    <sequenceFlow id="flow_er_send_back_eo" name="Send Back to EO" sourceRef="gateway_er_intake_decision" targetRef="task_eo_officer_triage">
+      <conditionExpression xsi:type="tFormalExpression">${erIntakeAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_er_assign_inv_mgr" name="Assign to Investigation Manager" sourceRef="gateway_er_intake_decision" targetRef="gateway_parallel_join">
+      <conditionExpression xsi:type="tFormalExpression">${erIntakeAction == 'ASSIGN_MANAGER'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_er_assign_hr" name="Assign to HR" sourceRef="gateway_er_intake_decision" targetRef="end_case_sent_hr">
+      <conditionExpression xsi:type="tFormalExpression">${erIntakeAction == 'ASSIGN_HR'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_legal_create_enter_info" sourceRef="task_legal_create_new_case" targetRef="task_legal_enter_information" />
+    <sequenceFlow id="flow_legal_case_action_point" sourceRef="task_legal_enter_information" targetRef="gateway_legal_case_action" />
+    <sequenceFlow id="flow_legal_create" name="Create" sourceRef="gateway_legal_case_action" targetRef="task_legal_intake_review">
+      <conditionExpression xsi:type="tFormalExpression">${legalUserAction == 'CREATE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_legal_save" name="Save" sourceRef="gateway_legal_case_action" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${legalUserAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_legal_cancel" name="Cancel" sourceRef="gateway_legal_case_action" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${legalUserAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_legal_intake_decision_point" sourceRef="task_legal_intake_review" targetRef="gateway_legal_intake_decision" />
+    <sequenceFlow id="flow_legal_send_back_eo" name="Send Back to EO" sourceRef="gateway_legal_intake_decision" targetRef="task_eo_officer_triage">
+      <conditionExpression xsi:type="tFormalExpression">${legalIntakeAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_legal_assign_inv_mgr" name="Assign to Investigation Manager" sourceRef="gateway_legal_intake_decision" targetRef="gateway_parallel_join">
+      <conditionExpression xsi:type="tFormalExpression">${legalIntakeAction == 'ASSIGN_MANAGER'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_parallel_join_to_inv" sourceRef="gateway_parallel_join" targetRef="task_inv_manager_review" />
+    <sequenceFlow id="flow_inv_mgr_decision_point" sourceRef="task_inv_manager_review" targetRef="gateway_inv_manager_decision" />
+    <sequenceFlow id="flow_inv_mgr_send_back" name="Send Back" sourceRef="gateway_inv_manager_decision" targetRef="task_inv_manager_review">
+      <conditionExpression xsi:type="tFormalExpression">${invMgrAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_inv_mgr_assign" name="Assign to Investigator" sourceRef="gateway_inv_manager_decision" targetRef="task_investigator_assignment_review">
+      <conditionExpression xsi:type="tFormalExpression">${invMgrAction == 'ASSIGN'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_investigator_decision_point" sourceRef="task_investigator_assignment_review" targetRef="gateway_investigator_decision" />
+    <sequenceFlow id="flow_investigator_accept" name="Accept Assignment" sourceRef="gateway_investigator_decision" targetRef="task_investigator_create_plan">
+      <conditionExpression xsi:type="tFormalExpression">${investigatorAction == 'ACCEPT'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_investigator_reject_conflict" name="Reject - Conflict/Unassign" sourceRef="gateway_investigator_decision" targetRef="task_inv_manager_review">
+      <conditionExpression xsi:type="tFormalExpression">${investigatorAction == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_to_investigation" sourceRef="task_investigator_create_plan" targetRef="task_conduct_investigation" />
+    <sequenceFlow id="flow_timer_escalate" sourceRef="timer_escalation" targetRef="task_escalation_review" />
+    <sequenceFlow id="flow_escalation_back" sourceRef="task_escalation_review" targetRef="task_conduct_investigation" />
+    <sequenceFlow id="flow_invest_check" sourceRef="task_conduct_investigation" targetRef="gateway_investigation_complete" />
+    <sequenceFlow id="flow_continue_invest" name="Continue" sourceRef="gateway_investigation_complete" targetRef="task_conduct_investigation">
+      <conditionExpression xsi:type="tFormalExpression">${investigationAction == 'CONTINUE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_finalize_invest" name="Finalize" sourceRef="gateway_investigation_complete" targetRef="task_finalize_investigation">
+      <conditionExpression xsi:type="tFormalExpression">${investigationAction == 'FINALIZE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_investigation_complete" sourceRef="task_finalize_investigation" targetRef="end_case_completed" />
+    
+    
+    
+    
+    <sequenceFlow id="flow_parallel_to_er_create" name="To ER Create" sourceRef="gateway_parallel_departments" targetRef="task_er_create_new_case" />
+    <sequenceFlow id="flow_parallel_to_legal_create" name="To Legal Create" sourceRef="gateway_parallel_departments" targetRef="task_legal_create_new_case" />
+    
+    
+    <sequenceFlow id="flow_csis_mgr_final_save" name="Save" sourceRef="gateway_csis_manager_final" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrFinalAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_csis_mgr_final_cancel" name="Cancel" sourceRef="gateway_csis_manager_final" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${csisMgrFinalAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    
+    
+    <sequenceFlow id="flow_er_from_parallel_to_review" sourceRef="task_er_create_new_case" targetRef="task_er_enter_information" />
+    <sequenceFlow id="flow_legal_from_parallel_to_review" sourceRef="task_legal_create_new_case" targetRef="task_legal_enter_information" />
+    
+    
+    <sequenceFlow id="flow_csis_dept_to_investigation" name="To Investigation" sourceRef="gateway_csis_dept_decision" targetRef="gateway_parallel_join">
+      <conditionExpression xsi:type="tFormalExpression">${csisDeptAction == 'TO_INVESTIGATION'}</conditionExpression>
+    </sequenceFlow>
+    
+    
+    <sequenceFlow id="flow_csis_dept_save" name="Save" sourceRef="gateway_csis_dept_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${csisDeptAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_csis_dept_cancel" name="Cancel" sourceRef="gateway_csis_dept_decision" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${csisDeptAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_csis_analysis_save" name="Save" sourceRef="gateway_csis_analysis_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalysisAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_csis_analysis_cancel" name="Cancel" sourceRef="gateway_csis_analysis_decision" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${csisAnalysisAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_er_intake_save" name="Save" sourceRef="gateway_er_intake_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${erIntakeAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_legal_intake_save" name="Save" sourceRef="gateway_legal_intake_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${legalIntakeAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_inv_mgr_save" name="Save" sourceRef="gateway_inv_manager_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${invMgrAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+    
+    <sequenceFlow id="flow_investigator_save" name="Save" sourceRef="gateway_investigator_decision" targetRef="end_case_parked">
+      <conditionExpression xsi:type="tFormalExpression">${investigatorAction == 'SAVE'}</conditionExpression>
+    </sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_oneCmsEnhancedWorkflow">
+    <bpmndi:BPMNPlane id="BPMNPlane_oneCmsEnhancedWorkflow" bpmnElement="oneCmsEnhancedWorkflow">
+      <bpmndi:BPMNShape id="BPMNShape_lane_end_events" bpmnElement="lane_end_events" isHorizontal="true">
+        <omgdc:Bounds x="160" y="1650" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_investigator" bpmnElement="lane_investigator" isHorizontal="true">
+        <omgdc:Bounds x="160" y="1470" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_investigation_manager" bpmnElement="lane_investigation_manager" isHorizontal="true">
+        <omgdc:Bounds x="160" y="1290" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_legal_intake_analyst" bpmnElement="lane_legal_intake_analyst" isHorizontal="true">
+        <omgdc:Bounds x="160" y="1110" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_er_intake_analyst" bpmnElement="lane_er_intake_analyst" isHorizontal="true">
+        <omgdc:Bounds x="160" y="930" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_csis_intake_analyst" bpmnElement="lane_csis_intake_analyst" isHorizontal="true">
+        <omgdc:Bounds x="160" y="750" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_csis_intake_manager" bpmnElement="lane_csis_intake_manager" isHorizontal="true">
+        <omgdc:Bounds x="160" y="570" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_eo_officer" bpmnElement="lane_eo_officer" isHorizontal="true">
+        <omgdc:Bounds x="160" y="390" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_eo_head" bpmnElement="lane_eo_head" isHorizontal="true">
+        <omgdc:Bounds x="160" y="210" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_lane_eo_intake_analyst" bpmnElement="lane_eo_intake_analyst" isHorizontal="true">
+        <omgdc:Bounds x="160" y="30" width="4500" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_start_eo_case_received" bpmnElement="start_eo_case_received">
+        <omgdc:Bounds x="240" y="110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="205" y="138" width="46" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_eo_intake_initial" bpmnElement="task_eo_intake_initial">
+        <omgdc:Bounds x="330" y="90" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_intake_decision" bpmnElement="gateway_eo_intake_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="480" y="105" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="407" y="140" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_eo_create_new_case" bpmnElement="task_eo_create_new_case">
+        <omgdc:Bounds x="580" y="90" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_eo_enter_information" bpmnElement="task_eo_enter_information">
+        <omgdc:Bounds x="730" y="90" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_case_action" bpmnElement="gateway_eo_case_action" isMarkerVisible="true">
+        <omgdc:Bounds x="880" y="105" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="785" y="52.5" width="59" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_eo_assign_head" bpmnElement="task_eo_assign_head">
+        <omgdc:Bounds x="580" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_eo_head_review" bpmnElement="task_eo_head_review">
+        <omgdc:Bounds x="730" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_head_decision" bpmnElement="gateway_eo_head_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="880" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="792" y="260" width="46" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_eo_officer_triage" bpmnElement="task_eo_officer_triage">
+        <omgdc:Bounds x="1000" y="440" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_officer_action" bpmnElement="gateway_eo_officer_action" isMarkerVisible="true">
+        <omgdc:Bounds x="1150" y="455" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1003" y="380" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_parallel_departments" bpmnElement="gateway_parallel_departments" isMarkerVisible="true">
+        <omgdc:Bounds x="1250" y="455" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1094" y="380" width="83" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_parallel_join" bpmnElement="gateway_parallel_join" isMarkerVisible="true">
+        <omgdc:Bounds x="1700" y="455" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1495" y="380" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_start_csis_case" bpmnElement="start_csis_case">
+        <omgdc:Bounds x="240" y="638" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="201" y="495" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_initiator" bpmnElement="gateway_csis_initiator" isMarkerVisible="true">
+        <omgdc:Bounds x="330" y="631" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="273" y="495" width="65" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_manager_create" bpmnElement="task_csis_manager_create">
+        <omgdc:Bounds x="430" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_manager_enter_info" bpmnElement="task_csis_manager_enter_info">
+        <omgdc:Bounds x="580" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_manager_action" bpmnElement="gateway_csis_manager_action" isMarkerVisible="true">
+        <omgdc:Bounds x="730" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="639" y="495" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_analyst_create" bpmnElement="task_csis_analyst_create">
+        <omgdc:Bounds x="430" y="800" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_analyst_enter_info" bpmnElement="task_csis_analyst_enter_info">
+        <omgdc:Bounds x="580" y="800" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_analyst_action" bpmnElement="gateway_csis_analyst_action" isMarkerVisible="true">
+        <omgdc:Bounds x="730" y="815" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="643" y="615" width="65" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_analyst_vetting" bpmnElement="task_csis_analyst_vetting">
+        <omgdc:Bounds x="830" y="800" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_vetting_decision" bpmnElement="gateway_csis_vetting_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="980" y="815" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="874" y="615" width="63" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_manager_approval" bpmnElement="task_csis_manager_approval">
+        <omgdc:Bounds x="830" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_final_decision" bpmnElement="gateway_csis_final_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="980" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="879" y="495" width="53" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_dept_initial_triage" bpmnElement="task_csis_dept_initial_triage">
+        <omgdc:Bounds x="1350" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_dept_decision" bpmnElement="gateway_csis_dept_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1500" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1332" y="495" width="87" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_dept_detailed_analysis" bpmnElement="task_csis_dept_detailed_analysis">
+        <omgdc:Bounds x="1600" y="800" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_analysis_decision" bpmnElement="gateway_csis_analysis_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1750" y="815" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1580" y="615" width="70" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_retain_intel" bpmnElement="task_csis_retain_intel">
+        <omgdc:Bounds x="1850" y="800" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_csis_manager_final_review" bpmnElement="task_csis_manager_final_review">
+        <omgdc:Bounds x="1600" y="620" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_manager_final" bpmnElement="gateway_csis_manager_final" isMarkerVisible="true">
+        <omgdc:Bounds x="1750" y="635" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1579" y="495" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_er_create_new_case" bpmnElement="task_er_create_new_case">
+        <omgdc:Bounds x="1350" y="980" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_er_enter_information" bpmnElement="task_er_enter_information">
+        <omgdc:Bounds x="1500" y="980" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_er_case_action" bpmnElement="gateway_er_case_action" isMarkerVisible="true">
+        <omgdc:Bounds x="1650" y="995" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1476" y="740" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_er_intake_review" bpmnElement="task_er_intake_review">
+        <omgdc:Bounds x="1750" y="980" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_er_intake_decision" bpmnElement="gateway_er_intake_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1900" y="995" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1351" y="740" width="49" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_legal_create_new_case" bpmnElement="task_legal_create_new_case">
+        <omgdc:Bounds x="1350" y="1160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_legal_enter_information" bpmnElement="task_legal_enter_information">
+        <omgdc:Bounds x="1500" y="1160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_legal_case_action" bpmnElement="gateway_legal_case_action" isMarkerVisible="true">
+        <omgdc:Bounds x="1650" y="1175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1471" y="860" width="89" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_legal_intake_review" bpmnElement="task_legal_intake_review">
+        <omgdc:Bounds x="1750" y="1160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_legal_intake_decision" bpmnElement="gateway_legal_intake_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1900" y="1175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1345" y="860" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_inv_manager_review" bpmnElement="task_inv_manager_review">
+        <omgdc:Bounds x="1900" y="1340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_inv_manager_decision" bpmnElement="gateway_inv_manager_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="2050" y="1355" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1901" y="980" width="89" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_investigator_assignment_review" bpmnElement="task_investigator_assignment_review">
+        <omgdc:Bounds x="2200" y="1520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_investigator_decision" bpmnElement="gateway_investigator_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="2350" y="1535" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="2176" y="1100" width="58" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_investigator_create_plan" bpmnElement="task_investigator_create_plan">
+        <omgdc:Bounds x="2450" y="1520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_conduct_investigation" bpmnElement="task_conduct_investigation">
+        <omgdc:Bounds x="2600" y="1520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_escalation_review" bpmnElement="task_escalation_review">
+        <omgdc:Bounds x="2600" y="1340" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_investigation_complete" bpmnElement="gateway_investigation_complete" isMarkerVisible="true">
+        <omgdc:Bounds x="2750" y="1535" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="2574" y="1100" width="62" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_finalize_investigation" bpmnElement="task_finalize_investigation">
+        <omgdc:Bounds x="2850" y="1520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_case_completed" bpmnElement="end_case_completed">
+        <omgdc:Bounds x="3000" y="1720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="2689" y="1215" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_case_retained_intel" bpmnElement="end_case_retained_intel">
+        <omgdc:Bounds x="2000" y="1720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1710" y="1215" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_case_sent_hr" bpmnElement="end_case_sent_hr">
+        <omgdc:Bounds x="2200" y="1720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1348" y="1215" width="54" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_case_not_valid" bpmnElement="end_case_not_valid">
+        <omgdc:Bounds x="520" y="1720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="404" y="1215" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_case_cancelled" bpmnElement="end_case_cancelled">
+        <omgdc:Bounds x="900" y="1720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="721" y="1215" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_case_parked" bpmnElement="end_case_parked">
+        <omgdc:Bounds x="1100" y="1720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="899" y="1223" width="64" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_timer_escalation" bpmnElement="timer_escalation">
+        <omgdc:Bounds x="2682" y="1542" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_start" bpmnElement="flow_eo_start">
+        <omgdi:waypoint x="258" y="128" /><omgdi:waypoint x="380" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_intake_decision_point" bpmnElement="flow_eo_intake_decision_point">
+        <omgdi:waypoint x="380" y="130" /><omgdi:waypoint x="505" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_create_case" bpmnElement="flow_eo_create_case">
+        <omgdi:waypoint x="505" y="130" /><omgdi:waypoint x="630" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_not_valid" bpmnElement="flow_eo_not_valid">
+        <omgdi:waypoint x="505" y="155" /><omgdi:waypoint x="505" y="1738" /><omgdi:waypoint x="538" y="1738" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_enter_info" bpmnElement="flow_eo_enter_info">
+        <omgdi:waypoint x="630" y="130" /><omgdi:waypoint x="780" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_case_action_point" bpmnElement="flow_eo_case_action_point">
+        <omgdi:waypoint x="780" y="130" /><omgdi:waypoint x="905" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_create" bpmnElement="flow_eo_create">
+        <omgdi:waypoint x="905" y="155" /><omgdi:waypoint x="905" y="300" /><omgdi:waypoint x="680" y="300" /><omgdi:waypoint x="630" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_save" bpmnElement="flow_eo_save">
+        <omgdi:waypoint x="930" y="130" /><omgdi:waypoint x="2950" y="130" /><omgdi:waypoint x="2950" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_cancel" bpmnElement="flow_eo_cancel">
+        <omgdi:waypoint x="880" y="130" /><omgdi:waypoint x="350" y="130" /><omgdi:waypoint x="350" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_head_assign" bpmnElement="flow_eo_head_assign">
+        <omgdi:waypoint x="630" y="300" /><omgdi:waypoint x="780" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_head_decision_point" bpmnElement="flow_eo_head_decision_point">
+        <omgdi:waypoint x="780" y="300" /><omgdi:waypoint x="905" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_head_approve" bpmnElement="flow_eo_head_approve">
+        <omgdi:waypoint x="905" y="325" /><omgdi:waypoint x="905" y="480" /><omgdi:waypoint x="1000" y="480" /><omgdi:waypoint x="1050" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_officer_action_point" bpmnElement="flow_eo_officer_action_point">
+        <omgdi:waypoint x="1050" y="480" /><omgdi:waypoint x="1175" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_send_iu" bpmnElement="flow_eo_send_iu">
+        <omgdi:waypoint x="1200" y="480" /><omgdi:waypoint x="1275" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_to_csis_dept" bpmnElement="flow_to_csis_dept">
+        <omgdi:waypoint x="1300" y="480" /><omgdi:waypoint x="1350" y="480" /><omgdi:waypoint x="1350" y="660" /><omgdi:waypoint x="1400" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_to_er_dept" bpmnElement="flow_to_er_dept">
+        <omgdi:waypoint x="1300" y="480" /><omgdi:waypoint x="1850" y="480" /><omgdi:waypoint x="1850" y="1020" /><omgdi:waypoint x="1800" y="1020" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_to_legal_dept" bpmnElement="flow_to_legal_dept">
+        <omgdi:waypoint x="1300" y="480" /><omgdi:waypoint x="1900" y="480" /><omgdi:waypoint x="1900" y="1200" /><omgdi:waypoint x="1800" y="1200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_parallel_join_to_inv" bpmnElement="flow_parallel_join_to_inv">
+        <omgdi:waypoint x="1725" y="480" /><omgdi:waypoint x="1837" y="480" /><omgdi:waypoint x="1837" y="1380" /><omgdi:waypoint x="1950" y="1380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_inv_mgr_decision_point" bpmnElement="flow_inv_mgr_decision_point">
+        <omgdi:waypoint x="1950" y="1380" /><omgdi:waypoint x="2075" y="1380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_inv_mgr_assign" bpmnElement="flow_inv_mgr_assign">
+        <omgdi:waypoint x="2100" y="1380" /><omgdi:waypoint x="2200" y="1380" /><omgdi:waypoint x="2200" y="1560" /><omgdi:waypoint x="2250" y="1560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigator_decision_point" bpmnElement="flow_investigator_decision_point">
+        <omgdi:waypoint x="2250" y="1560" /><omgdi:waypoint x="2375" y="1560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigator_accept" bpmnElement="flow_investigator_accept">
+        <omgdi:waypoint x="2400" y="1560" /><omgdi:waypoint x="2500" y="1560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_to_investigation" bpmnElement="flow_to_investigation">
+        <omgdi:waypoint x="2500" y="1560" /><omgdi:waypoint x="2650" y="1560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_invest_check" bpmnElement="flow_invest_check">
+        <omgdi:waypoint x="2650" y="1560" /><omgdi:waypoint x="2775" y="1560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_finalize_invest" bpmnElement="flow_finalize_invest">
+        <omgdi:waypoint x="2800" y="1560" /><omgdi:waypoint x="2900" y="1560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_complete" bpmnElement="flow_investigation_complete">
+        <omgdi:waypoint x="2900" y="1560" /><omgdi:waypoint x="2900" y="1649" /><omgdi:waypoint x="3018" y="1649" /><omgdi:waypoint x="3018" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_start" bpmnElement="flow_csis_start">
+        <omgdi:waypoint x="258" y="656" /><omgdi:waypoint x="355" y="656" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_manager_init" bpmnElement="flow_csis_manager_init">
+        <omgdi:waypoint x="355" y="631" /><omgdi:waypoint x="355" y="660" /><omgdi:waypoint x="480" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analyst_init" bpmnElement="flow_csis_analyst_init">
+        <omgdi:waypoint x="355" y="681" /><omgdi:waypoint x="355" y="840" /><omgdi:waypoint x="480" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_enter_info" bpmnElement="flow_csis_mgr_enter_info">
+        <omgdi:waypoint x="480" y="660" /><omgdi:waypoint x="630" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_action_point" bpmnElement="flow_csis_mgr_action_point">
+        <omgdi:waypoint x="630" y="660" /><omgdi:waypoint x="755" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analyst_enter_info" bpmnElement="flow_csis_analyst_enter_info">
+        <omgdi:waypoint x="480" y="840" /><omgdi:waypoint x="630" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analyst_action_point" bpmnElement="flow_csis_analyst_action_point">
+        <omgdi:waypoint x="630" y="840" /><omgdi:waypoint x="755" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_assign_analyst" bpmnElement="flow_csis_mgr_assign_analyst">
+        <omgdi:waypoint x="780" y="660" /><omgdi:waypoint x="880" y="660" /><omgdi:waypoint x="880" y="800" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_fast_track" bpmnElement="flow_csis_mgr_fast_track">
+        <omgdi:waypoint x="755" y="635" /><omgdi:waypoint x="755" y="600" /><omgdi:waypoint x="2000" y="600" /><omgdi:waypoint x="2000" y="1380" /><omgdi:waypoint x="1950" y="1380" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_retain" bpmnElement="flow_csis_mgr_retain">
+        <omgdi:waypoint x="755" y="685" /><omgdi:waypoint x="755" y="1738" /><omgdi:waypoint x="2018" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_save" bpmnElement="flow_csis_mgr_save">
+        <omgdi:waypoint x="730" y="660" /><omgdi:waypoint x="200" y="660" /><omgdi:waypoint x="200" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_cancel" bpmnElement="flow_csis_mgr_cancel">
+        <omgdi:waypoint x="780" y="660" /><omgdi:waypoint x="850" y="660" /><omgdi:waypoint x="850" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analyst_assign_mgr" bpmnElement="flow_csis_analyst_assign_mgr">
+        <omgdi:waypoint x="780" y="840" /><omgdi:waypoint x="880" y="840" /><omgdi:waypoint x="880" y="700" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analyst_retain" bpmnElement="flow_csis_analyst_retain">
+        <omgdi:waypoint x="755" y="865" /><omgdi:waypoint x="755" y="1738" /><omgdi:waypoint x="2018" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analyst_save" bpmnElement="flow_csis_analyst_save">
+        <omgdi:waypoint x="730" y="840" /><omgdi:waypoint x="150" y="840" /><omgdi:waypoint x="150" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analyst_cancel" bpmnElement="flow_csis_analyst_cancel">
+        <omgdi:waypoint x="780" y="840" /><omgdi:waypoint x="800" y="840" /><omgdi:waypoint x="800" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_vetting_decision_point" bpmnElement="flow_csis_vetting_decision_point">
+        <omgdi:waypoint x="880" y="840" /><omgdi:waypoint x="1005" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_recommend" bpmnElement="flow_csis_recommend">
+        <omgdi:waypoint x="1005" y="815" /><omgdi:waypoint x="1005" y="660" /><omgdi:waypoint x="930" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_vetting_reject" bpmnElement="flow_csis_vetting_reject">
+        <omgdi:waypoint x="980" y="840" /><omgdi:waypoint x="880" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_vetting_save" bpmnElement="flow_csis_vetting_save">
+        <omgdi:waypoint x="1005" y="865" /><omgdi:waypoint x="1005" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_vetting_cancel" bpmnElement="flow_csis_vetting_cancel">
+        <omgdi:waypoint x="1030" y="840" /><omgdi:waypoint x="1050" y="840" /><omgdi:waypoint x="1050" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_final_decision_point" bpmnElement="flow_csis_final_decision_point">
+        <omgdi:waypoint x="880" y="660" /><omgdi:waypoint x="1005" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_final_approve" bpmnElement="flow_csis_final_approve">
+        <omgdi:waypoint x="1030" y="660" /><omgdi:waypoint x="2000" y="660" /><omgdi:waypoint x="2000" y="1380" /><omgdi:waypoint x="1950" y="1380" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_final_reject" bpmnElement="flow_csis_final_reject">
+        <omgdi:waypoint x="980" y="660" /><omgdi:waypoint x="880" y="660" /><omgdi:waypoint x="880" y="800" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_final_save" bpmnElement="flow_csis_final_save">
+        <omgdi:waypoint x="1005" y="685" /><omgdi:waypoint x="1005" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_final_cancel" bpmnElement="flow_csis_final_cancel">
+        <omgdi:waypoint x="1005" y="635" /><omgdi:waypoint x="1005" y="550" /><omgdi:waypoint x="900" y="550" /><omgdi:waypoint x="900" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_dept_decision_point" bpmnElement="flow_csis_dept_decision_point">
+        <omgdi:waypoint x="1400" y="660" /><omgdi:waypoint x="1525" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_dept_assign" bpmnElement="flow_csis_dept_assign">
+        <omgdi:waypoint x="1550" y="660" /><omgdi:waypoint x="1600" y="660" /><omgdi:waypoint x="1600" y="840" /><omgdi:waypoint x="1650" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_dept_send_back" bpmnElement="flow_csis_dept_send_back">
+        <omgdi:waypoint x="1525" y="635" /><omgdi:waypoint x="1525" y="480" /><omgdi:waypoint x="1100" y="480" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_dept_triage_escalate" bpmnElement="flow_csis_dept_triage_escalate">
+        <omgdi:waypoint x="1525" y="635" /><omgdi:waypoint x="1525" y="620" /><omgdi:waypoint x="1650" y="620" /><omgdi:waypoint x="1650" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analysis_decision_point" bpmnElement="flow_csis_analysis_decision_point">
+        <omgdi:waypoint x="1650" y="840" /><omgdi:waypoint x="1775" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analysis_escalate" bpmnElement="flow_csis_analysis_escalate">
+        <omgdi:waypoint x="1775" y="815" /><omgdi:waypoint x="1775" y="700" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analysis_retain" bpmnElement="flow_csis_analysis_retain">
+        <omgdi:waypoint x="1800" y="840" /><omgdi:waypoint x="1900" y="840" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_retain_end" bpmnElement="flow_csis_retain_end">
+        <omgdi:waypoint x="1900" y="840" /><omgdi:waypoint x="1959" y="840" /><omgdi:waypoint x="1959" y="1738" /><omgdi:waypoint x="2018" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_final_decision_point" bpmnElement="flow_csis_mgr_final_decision_point">
+        <omgdi:waypoint x="1650" y="660" /><omgdi:waypoint x="1775" y="660" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_final_approve" bpmnElement="flow_csis_mgr_final_approve">
+        <omgdi:waypoint x="1800" y="660" /><omgdi:waypoint x="1850" y="660" /><omgdi:waypoint x="1850" y="480" /><omgdi:waypoint x="1725" y="480" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_final_reject" bpmnElement="flow_csis_mgr_final_reject">
+        <omgdi:waypoint x="1750" y="660" /><omgdi:waypoint x="1650" y="660" /><omgdi:waypoint x="1650" y="800" />
+      </bpmndi:BPMNEdge>
+      
+      
+      
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_other_correspondence" bpmnElement="flow_eo_other_correspondence">
+        <omgdi:waypoint x="480" y="130" /><omgdi:waypoint x="400" y="130" /><omgdi:waypoint x="400" y="1738" /><omgdi:waypoint x="538" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_head_reject" bpmnElement="flow_eo_head_reject">
+        <omgdi:waypoint x="880" y="300" /><omgdi:waypoint x="630" y="300" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_head_cancel" bpmnElement="flow_eo_head_cancel">
+        <omgdi:waypoint x="905" y="275" /><omgdi:waypoint x="905" y="200" /><omgdi:waypoint x="300" y="200" /><omgdi:waypoint x="300" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_send_back" bpmnElement="flow_eo_send_back">
+        <omgdi:waypoint x="1175" y="455" /><omgdi:waypoint x="1175" y="50" /><omgdi:waypoint x="380" y="50" /><omgdi:waypoint x="380" y="90" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_save_close" bpmnElement="flow_eo_save_close">
+        <omgdi:waypoint x="1200" y="480" /><omgdi:waypoint x="3000" y="480" /><omgdi:waypoint x="3000" y="1738" /><omgdi:waypoint x="1136" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_eo_officer_cancel" bpmnElement="flow_eo_officer_cancel">
+        <omgdi:waypoint x="1150" y="480" /><omgdi:waypoint x="250" y="480" /><omgdi:waypoint x="250" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_create_enter_info" bpmnElement="flow_er_create_enter_info">
+        <omgdi:waypoint x="1400" y="1020" /><omgdi:waypoint x="1550" y="1020" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_case_action_point" bpmnElement="flow_er_case_action_point">
+        <omgdi:waypoint x="1550" y="1020" /><omgdi:waypoint x="1675" y="1020" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_create" bpmnElement="flow_er_create">
+        <omgdi:waypoint x="1700" y="1020" /><omgdi:waypoint x="1800" y="1020" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_save" bpmnElement="flow_er_save">
+        <omgdi:waypoint x="1675" y="1045" /><omgdi:waypoint x="1675" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_cancel" bpmnElement="flow_er_cancel">
+        <omgdi:waypoint x="1650" y="1020" /><omgdi:waypoint x="1620" y="1020" /><omgdi:waypoint x="1620" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_intake_decision_point" bpmnElement="flow_er_intake_decision_point">
+        <omgdi:waypoint x="1800" y="1020" /><omgdi:waypoint x="1925" y="1020" /></bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_send_back_eo" bpmnElement="flow_er_send_back_eo">
+        <omgdi:waypoint x="1925" y="995" /><omgdi:waypoint x="1925" y="480" /><omgdi:waypoint x="1100" y="480" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_assign_inv_mgr" bpmnElement="flow_er_assign_inv_mgr">
+        <omgdi:waypoint x="1925" y="1045" /><omgdi:waypoint x="1925" y="1380" /><omgdi:waypoint x="1725" y="1380" /><omgdi:waypoint x="1725" y="505" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_assign_hr" bpmnElement="flow_er_assign_hr">
+        <omgdi:waypoint x="1950" y="1020" /><omgdi:waypoint x="2200" y="1020" /><omgdi:waypoint x="2200" y="1738" /><omgdi:waypoint x="2218" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_create_enter_info" bpmnElement="flow_legal_create_enter_info">
+        <omgdi:waypoint x="1400" y="1200" /><omgdi:waypoint x="1550" y="1200" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_case_action_point" bpmnElement="flow_legal_case_action_point">
+        <omgdi:waypoint x="1550" y="1200" /><omgdi:waypoint x="1675" y="1200" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_create" bpmnElement="flow_legal_create">
+        <omgdi:waypoint x="1700" y="1200" /><omgdi:waypoint x="1800" y="1200" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_save" bpmnElement="flow_legal_save">
+        <omgdi:waypoint x="1675" y="1225" /><omgdi:waypoint x="1675" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_cancel" bpmnElement="flow_legal_cancel">
+        <omgdi:waypoint x="1650" y="1200" /><omgdi:waypoint x="1600" y="1200" /><omgdi:waypoint x="1600" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_intake_decision_point" bpmnElement="flow_legal_intake_decision_point">
+        <omgdi:waypoint x="1800" y="1200" /><omgdi:waypoint x="1925" y="1200" /></bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_send_back_eo" bpmnElement="flow_legal_send_back_eo">
+        <omgdi:waypoint x="1925" y="1175" /><omgdi:waypoint x="1925" y="480" /><omgdi:waypoint x="1100" y="480" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_assign_inv_mgr" bpmnElement="flow_legal_assign_inv_mgr">
+        <omgdi:waypoint x="1925" y="1225" /><omgdi:waypoint x="1925" y="1380" /><omgdi:waypoint x="1725" y="1380" /><omgdi:waypoint x="1725" y="505" />
+      </bpmndi:BPMNEdge>
+      
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_inv_mgr_send_back" bpmnElement="flow_inv_mgr_send_back">
+        <omgdi:waypoint x="2050" y="1380" /><omgdi:waypoint x="1950" y="1380" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigator_reject_conflict" bpmnElement="flow_investigator_reject_conflict">
+        <omgdi:waypoint x="2375" y="1535" /><omgdi:waypoint x="2375" y="1380" /><omgdi:waypoint x="2000" y="1380" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_timer_escalate" bpmnElement="flow_timer_escalate">
+        <omgdi:waypoint x="2700" y="1542" /><omgdi:waypoint x="2700" y="1380" /><omgdi:waypoint x="2650" y="1380" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_escalation_back" bpmnElement="flow_escalation_back">
+        <omgdi:waypoint x="2650" y="1420" /><omgdi:waypoint x="2650" y="1520" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_continue_invest" bpmnElement="flow_continue_invest">
+        <omgdi:waypoint x="2775" y="1585" /><omgdi:waypoint x="2775" y="1620" /><omgdi:waypoint x="2650" y="1620" /><omgdi:waypoint x="2650" y="1600" />
+      </bpmndi:BPMNEdge>
+      
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_parallel_to_er_create" bpmnElement="flow_parallel_to_er_create">
+        <omgdi:waypoint x="1275" y="505" /><omgdi:waypoint x="1275" y="1020" /><omgdi:waypoint x="1400" y="1020" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_parallel_to_legal_create" bpmnElement="flow_parallel_to_legal_create">
+        <omgdi:waypoint x="1275" y="505" /><omgdi:waypoint x="1275" y="1200" /><omgdi:waypoint x="1400" y="1200" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_final_save" bpmnElement="flow_csis_mgr_final_save">
+        <omgdi:waypoint x="1775" y="685" /><omgdi:waypoint x="1775" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_mgr_final_cancel" bpmnElement="flow_csis_mgr_final_cancel">
+        <omgdi:waypoint x="1775" y="635" /><omgdi:waypoint x="1775" y="550" /><omgdi:waypoint x="900" y="550" /><omgdi:waypoint x="900" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_from_parallel_to_review" bpmnElement="flow_er_from_parallel_to_review">
+        <omgdi:waypoint x="1450" y="1020" /><omgdi:waypoint x="1550" y="1020" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_from_parallel_to_review" bpmnElement="flow_legal_from_parallel_to_review">
+        <omgdi:waypoint x="1450" y="1200" /><omgdi:waypoint x="1550" y="1200" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_dept_to_investigation" bpmnElement="flow_csis_dept_to_investigation">
+        <omgdi:waypoint x="1525" y="685" /><omgdi:waypoint x="1525" y="1380" /><omgdi:waypoint x="1725" y="1380" /><omgdi:waypoint x="1725" y="505" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_dept_save" bpmnElement="flow_csis_dept_save">
+        <omgdi:waypoint x="1500" y="660" /><omgdi:waypoint x="100" y="660" /><omgdi:waypoint x="100" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_dept_cancel" bpmnElement="flow_csis_dept_cancel">
+        <omgdi:waypoint x="1575" y="660" /><omgdi:waypoint x="1580" y="660" /><omgdi:waypoint x="1580" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analysis_save" bpmnElement="flow_csis_analysis_save">
+        <omgdi:waypoint x="1775" y="865" /><omgdi:waypoint x="1775" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_csis_analysis_cancel" bpmnElement="flow_csis_analysis_cancel">
+        <omgdi:waypoint x="1750" y="840" /><omgdi:waypoint x="1700" y="840" /><omgdi:waypoint x="1700" y="1738" /><omgdi:waypoint x="918" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_er_intake_save" bpmnElement="flow_er_intake_save">
+        <omgdi:waypoint x="1925" y="1045" /><omgdi:waypoint x="1925" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_legal_intake_save" bpmnElement="flow_legal_intake_save">
+        <omgdi:waypoint x="1925" y="1225" /><omgdi:waypoint x="1925" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_inv_mgr_save" bpmnElement="flow_inv_mgr_save">
+        <omgdi:waypoint x="2075" y="1405" /><omgdi:waypoint x="2075" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigator_save" bpmnElement="flow_investigator_save">
+        <omgdi:waypoint x="2375" y="1585" /><omgdi:waypoint x="2375" y="1738" /><omgdi:waypoint x="1118" y="1738" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
