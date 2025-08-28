@@ -1,0 +1,966 @@
+openapi: 3.0.3
+info:
+  title: Flowable Wrapper V2 API
+  description: |
+    NextGen Workflow Flowable Wrapper V2 - Core workflow orchestration service using Flowable BPMN engine.
+    
+    This service provides:
+    - BPMN 2.0 process execution and management
+    - Task and process instance lifecycle management
+    - Queue-based task distribution and assignment
+    - Workflow metadata management with queue mappings
+    - Authorization delegation to entitlement-service
+    - Circuit breaker patterns for resilience
+    
+    **Authentication**: All endpoints require session-based authentication via API Gateway with `X-User-Id` header.
+    
+    **Authorization**: Fine-grained access control delegated to entitlement-service via Cerbos policy engine.
+    
+    **Business App Context**: Most endpoints are scoped by business application name for multi-tenancy support.
+    
+    **Queue Management**: Tasks are automatically routed to queues based on workflow metadata configurations.
+  version: 2.0.0
+  contact:
+    name: NextGen Workflow Team
+servers:
+  - url: http://localhost:8082
+    description: Development server
+
+tags:
+  - name: Workflow Metadata
+    description: Workflow metadata management and BPMN deployment
+  - name: Process Instances
+    description: Process instance lifecycle management
+  - name: Tasks
+    description: Task management, queuing, and execution
+  - name: System
+    description: System endpoints for simplified access
+
+paths:
+  # Workflow Metadata endpoints
+  /api/{businessAppName}/workflow-metadata/register:
+    post:
+      tags:
+        - Workflow Metadata
+      summary: Register workflow metadata
+      description: Register a new workflow with its task-to-queue mappings
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterWorkflowMetadataRequest'
+      responses:
+        '201':
+          description: Workflow metadata registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          description: Invalid request or workflow already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/{businessAppName}/workflow-metadata/deploy:
+    post:
+      tags:
+        - Workflow Metadata
+      summary: Deploy BPMN workflow
+      description: Deploy a BPMN workflow to the Flowable engine
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeployWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow deployed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          description: Invalid request or deployment failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Workflow metadata not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/{businessAppName}/workflow-metadata/deploy-from-file:
+    post:
+      tags:
+        - Workflow Metadata
+      summary: Deploy BPMN workflow from file
+      description: Deploy a BPMN workflow from a file in the mounted definitions directory
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: processDefinitionKey
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Process definition key
+          example: "OneCMS_Workflow"
+        - name: filename
+          in: query
+          required: true
+          schema:
+            type: string
+          description: BPMN filename in definitions directory
+          example: "OneCMS_Nextgen_WF.bpmn20.xml"
+      responses:
+        '200':
+          description: Workflow deployed successfully from file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '400':
+          description: Invalid request or deployment failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Workflow metadata or file not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/{businessAppName}/workflow-metadata/{processDefinitionKey}:
+    get:
+      tags:
+        - Workflow Metadata
+      summary: Get workflow metadata
+      description: Retrieve workflow metadata by process definition key
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: processDefinitionKey
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Process definition key
+          example: "OneCMS_Workflow"
+      responses:
+        '200':
+          description: Workflow metadata found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowMetadataResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Workflow metadata not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Process Instance endpoints
+  /api/{businessAppName}/process-instances/start:
+    post:
+      tags:
+        - Process Instances
+      summary: Start a new process instance
+      description: Start a new instance of a deployed workflow
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartProcessRequest'
+      responses:
+        '201':
+          description: Process instance started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessInstanceResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Workflow not found or not deployed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/{businessAppName}/process-instances/{processInstanceId}:
+    get:
+      tags:
+        - Process Instances
+      summary: Get process instance details
+      description: Retrieve details of a specific process instance
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: processInstanceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Process instance ID
+          example: "5d7e9c3a-1234-5678-9abc-def012345678"
+      responses:
+        '200':
+          description: Process instance found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessInstanceResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Process instance not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Task endpoints - Business App Specific
+  /api/{businessAppName}/tasks/queue/{queueName}:
+    get:
+      tags:
+        - Tasks
+      summary: Get tasks by queue
+      description: Retrieve all open tasks from a specific queue
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: queueName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Queue name
+          example: "intake-analyst-queue"
+        - name: unassignedOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Include only unassigned tasks
+      responses:
+        '200':
+          description: Tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QueueTaskResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Queue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/{businessAppName}/tasks/queue/{queueName}/next:
+    get:
+      tags:
+        - Tasks
+      summary: Get next available task from queue
+      description: Retrieve the next unassigned task from a specific queue (highest priority, oldest first)
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: queueName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Queue name
+          example: "intake-analyst-queue"
+      responses:
+        '200':
+          description: Next task retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueTaskResponse'
+        '204':
+          description: No available tasks in queue
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Queue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/{businessAppName}/tasks/my-tasks:
+    get:
+      tags:
+        - Tasks
+      summary: Get my tasks
+      description: Retrieve all tasks assigned to the current user
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+      responses:
+        '200':
+          description: Tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QueueTaskResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /api/{businessAppName}/tasks/{taskId}:
+    get:
+      tags:
+        - Tasks
+      summary: Get task details
+      description: Retrieve detailed task information including form data
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Task ID
+          example: "task_789"
+      responses:
+        '200':
+          description: Task details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/{businessAppName}/tasks/{taskId}/claim:
+    post:
+      tags:
+        - Tasks
+      summary: Claim a task
+      description: Claim an unassigned task
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Task ID
+          example: "task_789"
+      responses:
+        '200':
+          description: Task claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueTaskResponse'
+        '400':
+          description: Task already assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/{businessAppName}/tasks/{taskId}/unclaim:
+    post:
+      tags:
+        - Tasks
+      summary: Unclaim a task
+      description: Release a claimed task back to the queue
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Task ID
+          example: "task_789"
+      responses:
+        '200':
+          description: Task unclaimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueTaskResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/{businessAppName}/tasks/{taskId}/complete:
+    post:
+      tags:
+        - Tasks
+      summary: Complete a task
+      description: Complete a task with optional variables
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - $ref: '#/components/parameters/BusinessAppName'
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Task ID
+          example: "task_789"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTaskRequest'
+      responses:
+        '200':
+          description: Task completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCompletionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Simplified System endpoints (for frontend convenience)
+  /api/workflow/my-tasks:
+    get:
+      tags:
+        - System
+      summary: Get my tasks (simplified)
+      description: Retrieve all tasks assigned to the current user - defaults to onecms business app
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+      responses:
+        '200':
+          description: Tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QueueTaskResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+components:
+  parameters:
+    X-User-Id:
+      name: X-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: User ID provided by API Gateway after session validation
+
+    BusinessAppName:
+      name: businessAppName
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Business application name
+      example: "onecms"
+
+  responses:
+    ForbiddenError:
+      description: Forbidden - User lacks required permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    RegisterWorkflowMetadataRequest:
+      type: object
+      required:
+        - processDefinitionKey
+        - workflowName
+        - taskQueueMappings
+      properties:
+        processDefinitionKey:
+          type: string
+          description: Unique process definition key
+          example: "OneCMS_Workflow"
+        workflowName:
+          type: string
+          description: Human-readable workflow name
+          example: "OneCMS Case Management Workflow"
+        version:
+          type: string
+          description: Workflow version
+          example: "1.0"
+        description:
+          type: string
+          description: Workflow description
+          example: "Standard case management workflow for employee investigations"
+        businessAppName:
+          type: string
+          description: Business application name
+          example: "onecms"
+        taskQueueMappings:
+          type: array
+          description: Task to queue mappings
+          items:
+            $ref: '#/components/schemas/TaskQueueMapping'
+
+    TaskQueueMapping:
+      type: object
+      required:
+        - taskDefinitionKey
+        - queueName
+      properties:
+        taskDefinitionKey:
+          type: string
+          description: Task definition key from BPMN
+          example: "IntakeReview"
+        queueName:
+          type: string
+          description: Target queue name
+          example: "intake-analyst-queue"
+        candidateGroup:
+          type: string
+          description: Candidate group for task assignment
+          example: "GROUP_INTAKE_ANALYST"
+        priority:
+          type: integer
+          description: Default task priority
+          example: 50
+
+    DeployWorkflowRequest:
+      type: object
+      required:
+        - processDefinitionKey
+        - bpmnContent
+      properties:
+        processDefinitionKey:
+          type: string
+          description: Process definition key
+          example: "OneCMS_Workflow"
+        bpmnContent:
+          type: string
+          description: BPMN 2.0 XML content
+          example: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>..."
+
+    WorkflowMetadataResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Metadata record ID
+          example: 1
+        processDefinitionKey:
+          type: string
+          description: Process definition key
+          example: "OneCMS_Workflow"
+        workflowName:
+          type: string
+          description: Workflow name
+          example: "OneCMS Case Management Workflow"
+        version:
+          type: string
+          description: Workflow version
+          example: "1.0"
+        description:
+          type: string
+          description: Workflow description
+        businessAppName:
+          type: string
+          description: Business application name
+          example: "onecms"
+        deploymentId:
+          type: string
+          description: Flowable deployment ID
+          example: "deployment_123"
+        processDefinitionId:
+          type: string
+          description: Flowable process definition ID
+          example: "OneCMS_Workflow:1:abc123"
+        deployed:
+          type: boolean
+          description: Whether workflow is deployed to Flowable engine
+          example: true
+        active:
+          type: boolean
+          description: Whether workflow is active
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2025-01-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-01-15T10:30:00Z"
+        taskQueueMappings:
+          type: array
+          description: Task to queue mappings
+          items:
+            $ref: '#/components/schemas/TaskQueueMapping'
+
+    StartProcessRequest:
+      type: object
+      required:
+        - processDefinitionKey
+      properties:
+        processDefinitionKey:
+          type: string
+          description: The process definition key
+          example: "OneCMS_Workflow"
+        businessKey:
+          type: string
+          description: Business key for the process instance
+          example: "CMS-2025-000001"
+        variables:
+          type: object
+          additionalProperties: true
+          description: Process variables
+          example:
+            caseNumber: "CMS-2025-000001"
+            priority: "HIGH"
+            assignedDepartment: "HR"
+
+    ProcessInstanceResponse:
+      type: object
+      properties:
+        processInstanceId:
+          type: string
+          description: Process instance ID
+          example: "5d7e9c3a-1234-5678-9abc-def012345678"
+        processDefinitionId:
+          type: string
+          description: Process definition ID
+          example: "OneCMS_Workflow:1:abc123"
+        processDefinitionKey:
+          type: string
+          description: Process definition key
+          example: "OneCMS_Workflow"
+        processDefinitionName:
+          type: string
+          description: Process definition name
+          example: "OneCMS Case Management Workflow"
+        businessKey:
+          type: string
+          description: Business key
+          example: "CMS-2025-000001"
+        startTime:
+          type: string
+          format: date-time
+          description: Start time of the process instance
+          example: "2025-01-15T10:30:00Z"
+        startedBy:
+          type: string
+          description: Started by user
+          example: "alice.intake"
+        suspended:
+          type: boolean
+          description: Is the process instance suspended
+          example: false
+        variables:
+          type: object
+          additionalProperties: true
+          description: Process variables
+        active:
+          type: boolean
+          description: Is the process instance active (not completed)
+          example: true
+        endTime:
+          type: string
+          format: date-time
+          description: End time of the process instance (for completed processes)
+          example: "2025-01-15T12:00:00Z"
+        durationInMillis:
+          type: integer
+          format: int64
+          description: Duration in milliseconds (for completed processes)
+          example: 120000
+
+    QueueTaskResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+          description: Task ID
+          example: "task_789"
+        processInstanceId:
+          type: string
+          description: Process instance ID
+          example: "5d7e9c3a-1234-5678-9abc-def012345678"
+        processDefinitionKey:
+          type: string
+          description: Process definition key
+          example: "OneCMS_Workflow"
+        taskDefinitionKey:
+          type: string
+          description: Task definition key
+          example: "IntakeReview"
+        taskName:
+          type: string
+          description: Task name
+          example: "Intake Review"
+        queueName:
+          type: string
+          description: Queue name
+          example: "intake-analyst-queue"
+        assignee:
+          type: string
+          description: Assignee user ID
+          example: "alice.intake"
+        status:
+          type: string
+          enum: [OPEN, CLAIMED, COMPLETED]
+          description: Task status
+          example: "OPEN"
+        priority:
+          type: integer
+          description: Task priority
+          example: 50
+        createdAt:
+          type: string
+          format: date-time
+          description: Task creation time
+          example: "2025-01-15T10:30:00Z"
+        claimedAt:
+          type: string
+          format: date-time
+          description: Task claim time
+          example: "2025-01-15T10:35:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          description: Task completion time
+          example: "2025-01-15T11:00:00Z"
+        taskData:
+          type: object
+          additionalProperties: true
+          description: Additional task data
+        businessKey:
+          type: string
+          description: Business key of the process
+          example: "CMS-2025-000001"
+
+    TaskDetailResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+          description: Task ID
+          example: "task_789"
+        processInstanceId:
+          type: string
+          description: Process instance ID
+          example: "5d7e9c3a-1234-5678-9abc-def012345678"
+        processDefinitionKey:
+          type: string
+          description: Process definition key
+          example: "OneCMS_Workflow"
+        taskDefinitionKey:
+          type: string
+          description: Task definition key
+          example: "IntakeReview"
+        taskName:
+          type: string
+          description: Task name
+          example: "Intake Review"
+        description:
+          type: string
+          description: Task description
+        assignee:
+          type: string
+          description: Assignee user ID
+          example: "alice.intake"
+        candidateUsers:
+          type: array
+          items:
+            type: string
+          description: Candidate user IDs
+        candidateGroups:
+          type: array
+          items:
+            type: string
+          description: Candidate group IDs
+          example: ["GROUP_INTAKE_ANALYST"]
+        priority:
+          type: integer
+          description: Task priority
+          example: 50
+        createdAt:
+          type: string
+          format: date-time
+          description: Task creation time
+          example: "2025-01-15T10:30:00Z"
+        dueDate:
+          type: string
+          format: date-time
+          description: Task due date
+        variables:
+          type: object
+          additionalProperties: true
+          description: Task variables
+        formData:
+          type: object
+          additionalProperties: true
+          description: Form data and properties
+        businessKey:
+          type: string
+          description: Business key of the process
+          example: "CMS-2025-000001"
+
+    CompleteTaskRequest:
+      type: object
+      properties:
+        variables:
+          type: object
+          additionalProperties: true
+          description: Task variables to set upon completion
+          example:
+            decision: "APPROVED"
+            comments: "Case meets all criteria for approval"
+            nextAssignee: "hr.manager"
+
+    TaskCompletionResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+          description: Completed task ID
+          example: "task_789"
+        completedAt:
+          type: string
+          format: date-time
+          description: Task completion timestamp
+          example: "2025-01-15T11:00:00Z"
+        completedBy:
+          type: string
+          description: User who completed the task
+          example: "alice.intake"
+        processInstanceId:
+          type: string
+          description: Process instance ID
+          example: "5d7e9c3a-1234-5678-9abc-def012345678"
+        nextTasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueTaskResponse'
+          description: Next tasks created by process progression
+        processCompleted:
+          type: boolean
+          description: Whether the process instance completed
+          example: false
+        variables:
+          type: object
+          additionalProperties: true
+          description: Updated process variables
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Workflow not found"
+        message:
+          type: string
+          description: Detailed error description
+          example: "Process definition key 'InvalidWorkflow' not found"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2025-01-15T10:30:00Z"
+        path:
+          type: string
+          description: Request path where error occurred
+          example: "/api/onecms/process-instances/start"

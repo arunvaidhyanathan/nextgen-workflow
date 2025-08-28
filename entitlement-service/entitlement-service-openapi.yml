@@ -1,0 +1,1644 @@
+openapi: 3.0.3
+info:
+  title: Entitlement Service API
+  description: |
+    NextGen Workflow Entitlement Service - Central authority for authentication, authorization, and user management.
+    
+    This service provides:
+    - Session-based authentication
+    - Cerbos policy-based authorization
+    - User and role management
+    - Business application management
+    
+    **Authentication**: All endpoints except `/api/auth/login` require session-based authentication via `X-Session-Id` header.
+    
+    **Authorization**: Fine-grained access control is provided through Cerbos policy engine integration.
+  version: 1.0.0
+  contact:
+    name: NextGen Workflow Team
+servers:
+  - url: http://localhost:8081
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Authorization
+    description: Policy-based authorization checks
+  - name: Users
+    description: User management operations
+  - name: Business Applications
+    description: Business application management
+  - name: Business App Roles
+    description: Business application role management
+  - name: User Business App Roles
+    description: User role assignment management
+  - name: Policies
+    description: Policy management and validation
+
+paths:
+  # Authentication endpoints
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and create session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: alice.intake
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  sessionId:
+                    type: string
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+                  message:
+                    type: string
+                    example: "Login successful"
+        '400':
+          description: Bad request - missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials or inactive user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Invalidate user session
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+                  description: Alternative way to provide session ID
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Logout successful"
+
+  /api/auth/validate-session:
+    get:
+      tags:
+        - Authentication
+      summary: Validate session
+      description: Check if user session is valid and active
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Session is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+                  message:
+                    type: string
+                    example: "Session is valid"
+        '401':
+          description: Invalid or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/user:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Get current authenticated user information
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: User information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+        '401':
+          description: Invalid or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/validate:
+    get:
+      tags:
+        - Authentication
+      summary: Validate user (Gateway compatibility)
+      description: Validate user by user ID for API Gateway compatibility
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: false
+          schema:
+            type: string
+          description: User ID for validation
+      responses:
+        '200':
+          description: User is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/UserInfo'
+                  message:
+                    type: string
+                    example: "User is valid"
+        '401':
+          description: User not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Authorization endpoints
+  /api/entitlements/check:
+    post:
+      tags:
+        - Authorization
+      summary: Check authorization
+      description: Perform authorization check using Cerbos policies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizationCheckRequest'
+      responses:
+        '200':
+          description: Authorization check completed (check 'allowed' field for result)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationCheckResponse'
+
+  /api/entitlements/health:
+    get:
+      tags:
+        - Authorization
+      summary: Health check
+      description: Simple health check endpoint
+      responses:
+        '200':
+          description: Service is running
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Entitlement Service is running"
+
+  # User management endpoints
+  /api/entitlements/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Retrieve all users in the system
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid user data
+
+  /api/entitlements/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Retrieve a specific user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update an existing user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Delete a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        '204':
+          description: User deleted successfully
+        '404':
+          description: User not found
+
+  /api/entitlements/users/username/{username}:
+    get:
+      tags:
+        - Users
+      summary: Get user by username
+      description: Retrieve a user by username
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Username
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /api/entitlements/users/email/{email}:
+    get:
+      tags:
+        - Users
+      summary: Get user by email
+      description: Retrieve a user by email address
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Email address
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /api/entitlements/users/active:
+    get:
+      tags:
+        - Users
+      summary: Get active users
+      description: Retrieve all active users
+      responses:
+        '200':
+          description: Active users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /api/entitlements/users/{id}/activate:
+    patch:
+      tags:
+        - Users
+      summary: Activate user
+      description: Activate a user account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        '200':
+          description: User activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /api/entitlements/users/{id}/deactivate:
+    patch:
+      tags:
+        - Users
+      summary: Deactivate user
+      description: Deactivate a user account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        '200':
+          description: User deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  # Business Application endpoints
+  /api/entitlements/business-applications:
+    get:
+      tags:
+        - Business Applications
+      summary: Get all business applications
+      description: Retrieve all business applications
+      responses:
+        '200':
+          description: Business applications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessApplication'
+
+    post:
+      tags:
+        - Business Applications
+      summary: Create business application
+      description: Create a new business application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessApplication'
+      responses:
+        '201':
+          description: Business application created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessApplication'
+        '400':
+          description: Invalid business application data
+
+  /api/entitlements/business-applications/{id}:
+    get:
+      tags:
+        - Business Applications
+      summary: Get business application by ID
+      description: Retrieve a specific business application by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+      responses:
+        '200':
+          description: Business application found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessApplication'
+        '404':
+          description: Business application not found
+
+    put:
+      tags:
+        - Business Applications
+      summary: Update business application
+      description: Update an existing business application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessApplication'
+      responses:
+        '200':
+          description: Business application updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessApplication'
+        '404':
+          description: Business application not found
+
+    delete:
+      tags:
+        - Business Applications
+      summary: Delete business application
+      description: Delete a business application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+      responses:
+        '204':
+          description: Business application deleted successfully
+        '404':
+          description: Business application not found
+
+  /api/entitlements/business-applications/name/{businessAppName}:
+    get:
+      tags:
+        - Business Applications
+      summary: Get business application by name
+      description: Retrieve a business application by name
+      parameters:
+        - name: businessAppName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Business application name
+      responses:
+        '200':
+          description: Business application found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessApplication'
+        '404':
+          description: Business application not found
+
+  /api/entitlements/business-applications/active:
+    get:
+      tags:
+        - Business Applications
+      summary: Get active business applications
+      description: Retrieve all active business applications
+      responses:
+        '200':
+          description: Active business applications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessApplication'
+
+  /api/entitlements/business-applications/{id}/activate:
+    patch:
+      tags:
+        - Business Applications
+      summary: Activate business application
+      description: Activate a business application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+      responses:
+        '200':
+          description: Business application activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessApplication'
+        '404':
+          description: Business application not found
+
+  /api/entitlements/business-applications/{id}/deactivate:
+    patch:
+      tags:
+        - Business Applications
+      summary: Deactivate business application
+      description: Deactivate a business application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+      responses:
+        '200':
+          description: Business application deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessApplication'
+        '404':
+          description: Business application not found
+
+  # Business App Roles endpoints
+  /api/entitlements/business-app-roles:
+    get:
+      tags:
+        - Business App Roles
+      summary: Get all business app roles
+      description: Retrieve all business application roles
+      responses:
+        '200':
+          description: Business app roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessAppRole'
+
+    post:
+      tags:
+        - Business App Roles
+      summary: Create business app role
+      description: Create a new business application role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessAppRole'
+      responses:
+        '201':
+          description: Business app role created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessAppRole'
+        '400':
+          description: Invalid business app role data
+
+  /api/entitlements/business-app-roles/{id}:
+    get:
+      tags:
+        - Business App Roles
+      summary: Get business app role by ID
+      description: Retrieve a specific business app role by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business app role ID
+      responses:
+        '200':
+          description: Business app role found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessAppRole'
+        '404':
+          description: Business app role not found
+
+    put:
+      tags:
+        - Business App Roles
+      summary: Update business app role
+      description: Update an existing business app role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business app role ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessAppRole'
+      responses:
+        '200':
+          description: Business app role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessAppRole'
+        '404':
+          description: Business app role not found
+
+    delete:
+      tags:
+        - Business App Roles
+      summary: Delete business app role
+      description: Delete a business app role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business app role ID
+      responses:
+        '204':
+          description: Business app role deleted successfully
+        '404':
+          description: Business app role not found
+
+  /api/entitlements/business-app-roles/business-application/{businessAppId}:
+    get:
+      tags:
+        - Business App Roles
+      summary: Get roles by business application
+      description: Retrieve all roles for a specific business application
+      parameters:
+        - name: businessAppId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+      responses:
+        '200':
+          description: Roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessAppRole'
+
+  /api/entitlements/business-app-roles/business-application/{businessAppId}/active:
+    get:
+      tags:
+        - Business App Roles
+      summary: Get active roles by business application
+      description: Retrieve all active roles for a specific business application
+      parameters:
+        - name: businessAppId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+      responses:
+        '200':
+          description: Active roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessAppRole'
+
+  /api/entitlements/business-app-roles/business-application/{businessAppId}/role/{roleName}:
+    get:
+      tags:
+        - Business App Roles
+      summary: Get role by business application and name
+      description: Retrieve a specific role by business application and role name
+      parameters:
+        - name: businessAppId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business application ID
+        - name: roleName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Role name
+      responses:
+        '200':
+          description: Role found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessAppRole'
+        '404':
+          description: Role not found
+
+  /api/entitlements/business-app-roles/active:
+    get:
+      tags:
+        - Business App Roles
+      summary: Get all active business app roles
+      description: Retrieve all active business application roles
+      responses:
+        '200':
+          description: Active business app roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessAppRole'
+
+  /api/entitlements/business-app-roles/{id}/activate:
+    patch:
+      tags:
+        - Business App Roles
+      summary: Activate business app role
+      description: Activate a business app role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business app role ID
+      responses:
+        '200':
+          description: Business app role activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessAppRole'
+        '404':
+          description: Business app role not found
+
+  /api/entitlements/business-app-roles/{id}/deactivate:
+    patch:
+      tags:
+        - Business App Roles
+      summary: Deactivate business app role
+      description: Deactivate a business app role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Business app role ID
+      responses:
+        '200':
+          description: Business app role deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessAppRole'
+        '404':
+          description: Business app role not found
+
+  # User Business App Roles endpoints
+  /api/entitlements/user-business-app-roles:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get all user role assignments
+      description: Retrieve all user business app role assignments
+      responses:
+        '200':
+          description: User role assignments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserBusinessAppRole'
+
+    post:
+      tags:
+        - User Business App Roles
+      summary: Create user role assignment
+      description: Create a new user business app role assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserBusinessAppRole'
+      responses:
+        '201':
+          description: User role assignment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '400':
+          description: Invalid user role assignment data
+
+  /api/entitlements/user-business-app-roles/{id}:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get user role assignment by ID
+      description: Retrieve a specific user role assignment by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User role assignment ID
+      responses:
+        '200':
+          description: User role assignment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '404':
+          description: User role assignment not found
+
+    put:
+      tags:
+        - User Business App Roles
+      summary: Update user role assignment
+      description: Update an existing user role assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User role assignment ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserBusinessAppRole'
+      responses:
+        '200':
+          description: User role assignment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '404':
+          description: User role assignment not found
+
+    delete:
+      tags:
+        - User Business App Roles
+      summary: Delete user role assignment
+      description: Delete a user role assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User role assignment ID
+      responses:
+        '204':
+          description: User role assignment deleted successfully
+        '404':
+          description: User role assignment not found
+
+  /api/entitlements/user-business-app-roles/user/{userId}:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get user roles by user ID
+      description: Retrieve all role assignments for a specific user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        '200':
+          description: User roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserBusinessAppRole'
+
+  /api/entitlements/user-business-app-roles/user/{userId}/active:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get active user roles by user ID
+      description: Retrieve all active role assignments for a specific user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        '200':
+          description: Active user roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserBusinessAppRole'
+
+  /api/entitlements/user-business-app-roles/role/{roleId}:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get users by role ID
+      description: Retrieve all users assigned to a specific role
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Role ID
+      responses:
+        '200':
+          description: Users with role retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserBusinessAppRole'
+
+  /api/entitlements/user-business-app-roles/role/{roleId}/active:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get active users by role ID
+      description: Retrieve all active users assigned to a specific role
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Role ID
+      responses:
+        '200':
+          description: Active users with role retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserBusinessAppRole'
+
+  /api/entitlements/user-business-app-roles/user/{userId}/role/{roleId}:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get specific user role assignment
+      description: Retrieve a specific user role assignment by user ID and role ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Role ID
+      responses:
+        '200':
+          description: User role assignment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '404':
+          description: User role assignment not found
+
+  /api/entitlements/user-business-app-roles/active:
+    get:
+      tags:
+        - User Business App Roles
+      summary: Get all active user role assignments
+      description: Retrieve all active user business app role assignments
+      responses:
+        '200':
+          description: Active user role assignments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserBusinessAppRole'
+
+  /api/entitlements/user-business-app-roles/{id}/activate:
+    patch:
+      tags:
+        - User Business App Roles
+      summary: Activate user role assignment
+      description: Activate a user role assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User role assignment ID
+      responses:
+        '200':
+          description: User role assignment activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '404':
+          description: User role assignment not found
+
+  /api/entitlements/user-business-app-roles/{id}/deactivate:
+    patch:
+      tags:
+        - User Business App Roles
+      summary: Deactivate user role assignment
+      description: Deactivate a user role assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User role assignment ID
+      responses:
+        '200':
+          description: User role assignment deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '404':
+          description: User role assignment not found
+
+  /api/entitlements/user-business-app-roles/assign:
+    post:
+      tags:
+        - User Business App Roles
+      summary: Assign role to user
+      description: Assign a role to a user or activate existing assignment
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: User ID
+        - name: roleId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Role ID
+      responses:
+        '200':
+          description: Role assignment activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '201':
+          description: New role assignment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBusinessAppRole'
+        '400':
+          description: Invalid assignment data
+
+  /api/entitlements/user-business-app-roles/revoke:
+    post:
+      tags:
+        - User Business App Roles
+      summary: Revoke role from user
+      description: Revoke a role from a user (deactivate assignment)
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: User ID
+        - name: roleId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Role ID
+      responses:
+        '204':
+          description: Role revoked successfully
+        '404':
+          description: Assignment not found
+
+  # Policy endpoints
+  /api/policies/status:
+    get:
+      tags:
+        - Policies
+      summary: Get policy status
+      description: Get policy status and inventory information
+      responses:
+        '200':
+          description: Policy status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cerbosConnected:
+                    type: boolean
+                    example: true
+                  inventoryLogged:
+                    type: boolean
+                    example: true
+                  status:
+                    type: string
+                    example: "OK"
+                  message:
+                    type: string
+                    example: "Policy service is operational"
+        '500':
+          description: Policy service check failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ERROR"
+                  message:
+                    type: string
+                    example: "Policy service check failed: connection error"
+
+  /api/policies/validate:
+    post:
+      tags:
+        - Policies
+      summary: Validate policies
+      description: Validate all policy files
+      responses:
+        '200':
+          description: Policies validated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "VALID"
+                  message:
+                    type: string
+                    example: "All policy files validated successfully"
+        '400':
+          description: Policy validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "INVALID"
+                  message:
+                    type: string
+                    example: "Policy validation failed: syntax error"
+
+  /api/policies/content/{policyType}/{fileName}:
+    get:
+      tags:
+        - Policies
+      summary: Get policy file content
+      description: Retrieve the content of a specific policy file (for debugging)
+      parameters:
+        - name: policyType
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy type (e.g., resources, derived_roles)
+        - name: fileName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy file name
+      responses:
+        '200':
+          description: Policy content retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policyType:
+                    type: string
+                    example: "resources"
+                  fileName:
+                    type: string
+                    example: "case.yaml"
+                  content:
+                    type: string
+                    example: "apiVersion: api.cerbos.dev/v1..."
+                  contentLength:
+                    type: integer
+                    example: 1234
+        '404':
+          description: Policy file not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ERROR"
+                  message:
+                    type: string
+                    example: "Failed to retrieve policy content: file not found"
+
+components:
+  parameters:
+    SessionId:
+      name: X-Session-Id
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Session ID for authentication
+
+  schemas:
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "user123"
+        username:
+          type: string
+          example: "alice.intake"
+        email:
+          type: string
+          example: "alice.intake@company.com"
+        firstName:
+          type: string
+          example: "Alice"
+        lastName:
+          type: string
+          example: "Smith"
+        isActive:
+          type: boolean
+          example: true
+        attributes:
+          type: object
+          additionalProperties: true
+          example:
+            department: "HR"
+            role: "INTAKE_ANALYST"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "user123"
+        username:
+          type: string
+          example: "alice.intake"
+        email:
+          type: string
+          example: "alice.intake@company.com"
+        firstName:
+          type: string
+          example: "Alice"
+        lastName:
+          type: string
+          example: "Smith"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        attributes:
+          type: object
+          additionalProperties: true
+          example:
+            department: "HR"
+            role: "INTAKE_ANALYST"
+
+    BusinessApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        businessAppName:
+          type: string
+          example: "onecms"
+        description:
+          type: string
+          example: "OneCMS Case Management System"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            version: "1.0.0"
+            owner: "Case Management Team"
+
+    BusinessAppRole:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        businessApplication:
+          $ref: '#/components/schemas/BusinessApplication'
+        roleName:
+          type: string
+          example: "INTAKE_ANALYST"
+        roleDisplayName:
+          type: string
+          example: "Intake Analyst"
+        description:
+          type: string
+          example: "Analyst responsible for case intake and initial review"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            permissions: ["READ", "CREATE"]
+            queue: "intake-analyst-queue"
+
+    UserBusinessAppRole:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        userId:
+          type: string
+          example: "user123"
+        businessAppRole:
+          $ref: '#/components/schemas/BusinessAppRole'
+        isActive:
+          type: boolean
+          example: true
+        assignedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+
+    AuthorizationCheckRequest:
+      type: object
+      required:
+        - principal
+        - resource
+        - action
+      properties:
+        principal:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              example: "user123"
+            attributes:
+              type: object
+              additionalProperties: true
+              example:
+                roles: ["INTAKE_ANALYST"]
+                departments: ["HR"]
+                queues: ["intake-analyst-queue"]
+        resource:
+          type: object
+          required:
+            - kind
+            - id
+          properties:
+            kind:
+              type: string
+              example: "case"
+            id:
+              type: string
+              example: "case123"
+            attributes:
+              type: object
+              additionalProperties: true
+              example:
+                status: "OPEN"
+                department: "HR"
+                assignedTo: "user456"
+        action:
+          type: string
+          example: "read"
+          enum: ["read", "create", "update", "delete", "claim", "complete", "approve"]
+
+    AuthorizationCheckResponse:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Access granted"
+        validationResult:
+          type: string
+          example: "Policy evaluation successful"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error message"
