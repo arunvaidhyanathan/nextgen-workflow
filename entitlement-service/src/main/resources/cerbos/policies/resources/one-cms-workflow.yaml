@@ -4,7 +4,7 @@
 apiVersion: "api.cerbos.dev/v1"
 resourcePolicy:
   # Namespaced resource identifier: BusinessApp::ProcessDefinitionKey
-  resource: "OneCMS::Process_CMS_Workflow_Updated"
+  resource: "OneCMS::oneCmsUnifiedWorkflow"
   version: "1.0"
   importDerivedRoles:
     - one_cms_derived_roles
@@ -15,7 +15,8 @@ resourcePolicy:
     - actions: ["start_workflow_instance", "initiate_process"]
       effect: EFFECT_ALLOW
       roles:
-        - "INTAKE_ANALYST" # Only intake analysts can start new workflow instances
+        - "INTAKE_ANALYST"     # Only intake analysts can start new workflow instances
+        - "EO_INTAKE_ANALYST"  # EO intake analysts can start workflow instances
 
     - actions: ["terminate_workflow", "cancel_process"]
       effect: EFFECT_ALLOW

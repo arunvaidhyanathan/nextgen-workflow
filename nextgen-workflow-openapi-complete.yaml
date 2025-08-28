@@ -4,7 +4,7 @@ info:
   description: |
     # NextGen Workflow - Complete API Specification
     
-    Enterprise-grade case management and workflow automation system with comprehensive security, monitoring, and multi-tenancy support.
+    Case management and workflow automation system with comprehensive security, monitoring, and multi-tenancy support.
     
     ## Key Features
     - **Session-based Authentication** with fine-grained authorization via Cerbos
@@ -26,10 +26,10 @@ info:
   version: 2.0.0
   contact:
     name: NextGen Workflow Team
-    email: support@nextgen-workflow.com
+    email: 
   license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
+    name: 
+    url: 
 
 servers:
   - url: http://localhost:8080/api
@@ -104,6 +104,23 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
+  /auth/user:
+    get:
+      tags:
+        - Authentication
+      summary: Get Current User
+      description: Retrieve current user information from session
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
   /auth/logout:
     post:
       tags:
@@ -111,6 +128,16 @@ paths:
       summary: User Logout
       description: Invalidate current session
       operationId: logoutUser
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+                  description: Optional session ID in request body
       responses:
         '200':
           description: Logout successful
@@ -120,6 +147,148 @@ paths:
                 $ref: '#/components/schemas/LogoutResponse'
 
   # ==================== CASE MANAGEMENT ENDPOINTS ====================
+  /cms/v1/cases/dashboard-cases:
+    get:
+      tags:
+        - Case Management
+      summary: Get Dashboard Cases
+      description: Retrieve cases for dashboard display with pagination
+      operationId: getDashboardCases
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Dashboard cases retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CaseResponse'
+
+  /cms/cases:
+    post:
+      tags:
+        - Case Management
+      summary: Create New Case (Legacy)
+      description: Create a new investigation case (INTAKE_ANALYST only) - Legacy endpoint
+      operationId: createCaseLegacy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCaseRequestLegacy'
+      responses:
+        '201':
+          description: Case created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+    get:
+      tags:
+        - Case Management
+      summary: List Cases (Legacy)
+      description: Get paginated list of cases with optional filters - Legacy endpoint
+      operationId: listCasesLegacy
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CaseStatus'
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: assignedTo
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cases retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseListResponse'
+
+  /cms/cases/{caseId}:
+    get:
+      tags:
+        - Case Management
+      summary: Get Case Details (Legacy)
+      description: Retrieve detailed information for a specific case - Legacy endpoint
+      operationId: getCaseLegacy
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "case-1"
+      responses:
+        '200':
+          description: Case details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseDetailsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      tags:
+        - Case Management
+      summary: Update Case (Legacy)
+      description: Update case details (authorized users only) - Legacy endpoint
+      operationId: updateCaseLegacy
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCaseRequest'
+      responses:
+        '200':
+          description: Case updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
   /cms/v1/cases:
     get:
       tags:
@@ -376,6 +545,144 @@ paths:
                 $ref: '#/components/schemas/WorkflowMetadataResponse'
 
   # ==================== TASK MANAGEMENT ENDPOINTS ====================
+  /workflow/my-tasks:
+    get:
+      tags:
+        - Task Management
+      summary: Get My Tasks (Simplified)
+      description: Retrieve all tasks assigned to the current user - defaults to OneCMS business app
+      operationId: getMyTasksSimplified
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, CLAIMED, UNCLAIMED]
+        - name: department
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+
+  /workflow/{businessAppName}/tasks/my-tasks:
+    get:
+      tags:
+        - Task Management
+      summary: Get My Tasks by Business App
+      description: Retrieve tasks assigned to current user for specific business application
+      operationId: getMyTasksByApp
+      parameters:
+        - name: businessAppName
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+      responses:
+        '200':
+          description: Tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+
+  /workflow/{businessAppName}/tasks/{taskId}:
+    get:
+      tags:
+        - Task Management
+      summary: Get Task Details
+      description: Retrieve detailed task information including form data
+      operationId: getTaskDetails
+      parameters:
+        - name: businessAppName
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+
+  /workflow/{businessAppName}/tasks/{taskId}/claim:
+    post:
+      tags:
+        - Task Management
+      summary: Claim Task
+      description: Claim an unassigned task
+      operationId: claimTaskWorkflow
+      parameters:
+        - name: businessAppName
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+
+  /workflow/{businessAppName}/tasks/{taskId}/complete:
+    post:
+      tags:
+        - Task Management
+      summary: Complete Task
+      description: Complete a task with optional variables
+      operationId: completeTaskWorkflow
+      parameters:
+        - name: businessAppName
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "onecms"
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTaskRequest'
+      responses:
+        '200':
+          description: Task completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCompletionResponse'
+
   /onecms/tasks/my-tasks:
     get:
       tags:
@@ -588,6 +895,15 @@ components:
         user:
           $ref: '#/components/schemas/User'
 
+    CurrentUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        user:
+          $ref: '#/components/schemas/User'
+
     LogoutResponse:
       type: object
       properties:
@@ -630,6 +946,45 @@ components:
               type: string
 
     # ==================== CASE MANAGEMENT SCHEMAS ====================
+    CreateCaseRequestLegacy:
+      type: object
+      required:
+        - title
+        - description
+        - departmentId
+        - complainantName
+      properties:
+        title:
+          type: string
+          example: "Financial Fraud Investigation"
+        description:
+          type: string
+          example: "Suspected unauthorized financial transactions"
+        departmentId:
+          type: integer
+          example: 1
+        complainantName:
+          type: string
+          example: "John Doe"
+        complainantEmail:
+          type: string
+          example: "john.doe@example.com"
+        occurrenceDate:
+          type: string
+          format: date
+        dateReportedToCiti:
+          type: string
+          format: date
+        cluster:
+          type: string
+          example: "North America"
+        legalHold:
+          type: boolean
+          default: false
+        outsideCounsel:
+          type: boolean
+          default: false
+
     CreateCaseRequest:
       type: object
       required:
@@ -655,6 +1010,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Allegation'
+
+    UpdateCaseRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          $ref: '#/components/schemas/Priority'
+        status:
+          $ref: '#/components/schemas/CaseStatus'
+        assignedToUserId:
+          type: string
 
     CaseResponse:
       type: object
@@ -985,6 +1354,32 @@ components:
           type: object
           additionalProperties: true
 
+    TaskDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/TaskResponse'
+        - type: object
+          properties:
+            formData:
+              type: object
+              additionalProperties: true
+              description: Task-specific form data
+
+    TaskCompletionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        taskId:
+          type: string
+        processInstanceId:
+          type: string
+        nextTasks:
+          type: array
+          items:
+            type: string
+
     CompleteTaskRequest:
       type: object
       properties:
@@ -1255,11 +1650,19 @@ tags:
     description: User authentication and session management
   - name: Case Management
     description: Core case management operations
+  - name: Allegations
+    description: Managing allegations within cases
+  - name: Narratives
+    description: Managing case investigation narratives
   - name: Workflow Management
     description: BPMN workflow deployment and management
   - name: Task Management
-    description: Workflow task operations
+    description: Workflow task operations and worklists
   - name: Authorization
     description: Permission and authorization checking
+  - name: Users & Entitlements
+    description: User, role, and department management (Admin Only)
+  - name: Reference Data
+    description: Static data and lookup values
   - name: Monitoring
     description: System health and metrics monitoring

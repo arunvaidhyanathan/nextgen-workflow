@@ -5,9 +5,8 @@ apiVersion: "api.cerbos.dev/v1"
 resourcePolicy:
   resource: "case"
   version: "1.0"
-  # Temporarily comment out derived roles to test basic policy
-  # importDerivedRoles:
-  #   - one_cms_derived_roles
+  importDerivedRoles:
+    - one_cms_derived_roles
   rules:
     # ========================================
     # CASE CREATION
@@ -15,8 +14,9 @@ resourcePolicy:
     - actions: ["create"]
       effect: EFFECT_ALLOW
       roles:
-        - "user"           # Allow any authenticated user (for testing)
-        - "INTAKE_ANALYST" # Only intake analysts can create new cases
+        - "user"               # Allow any authenticated user (for testing)
+        - "INTAKE_ANALYST"     # Only intake analysts can create new cases
+        - "EO_INTAKE_ANALYST"  # EO intake analysts can create cases
 
     # ========================================
     # CASE READING/VIEWING
@@ -25,6 +25,7 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       roles:
         - "INTAKE_ANALYST"
+        - "EO_INTAKE_ANALYST"   # EO intake analysts can view cases
         - "INVESTIGATOR" 
         - "INVESTIGATION_MANAGER"
         - "ADJUDICATOR"
@@ -44,7 +45,8 @@ resourcePolicy:
       effect: EFFECT_ALLOW
       roles:
         - "INVESTIGATION_MANAGER" # Managers can always update
-        - "EO_OFFICER" # Ethics office has broad update rights
+        - "EO_OFFICER"           # Ethics office has broad update rights
+        - "EO_INTAKE_ANALYST"    # EO intake analysts can update during intake process
       derivedRoles:
         # Allow current assignee to update their assigned case
         - case_assignee
@@ -128,6 +130,6 @@ resourcePolicy:
         - "EO_OFFICER"
         - "AROG_REVIEWER"
 
-  # Default deny rule - TEMPORARILY COMMENTED OUT FOR TESTING
-  # defaultRule:
-  #   effect: EFFECT_DENY
+  # Default deny rule - all other actions are denied
+  defaultRule:
+    effect: EFFECT_DENY

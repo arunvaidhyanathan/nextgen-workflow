@@ -1,0 +1,67 @@
+# principal/user-base.yaml
+# Base principal policy for all authenticated users in the NextGen Workflow system
+apiVersion: "api.cerbos.dev/v1"
+principalPolicy:
+  principal: "user"
+  version: "1.0"
+  rules:
+    # Base validation rules that apply to all resources
+    - resource: "*"
+      actions:
+        - name: "*"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  # User must be active
+                  - expr: request.principal.attr.isActive == true
+                  # User must have at least one role assigned
+                  - expr: size(request.principal.roles) > 0
+                  # User must belong to at least one department (for most operations)
+                  - expr: size(request.principal.attr.departments) > 0
+
+    # Special rules for system operations that don't require department membership
+    - resource: "test"
+      actions:
+        - name: "*"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: size(request.principal.roles) > 0
+
+    # Workflow queue access requires queue entitlement
+    - resource: "OneCMS::oneCmsUnifiedWorkflow"
+      actions:
+        - name: "view_queue"
+        - name: "list_queue_tasks"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: size(request.principal.attr.queues) > 0
+                  - expr: request.resource.attr.currentQueue in request.principal.attr.queues
+
+    # Case access requires department membership or direct assignment
+    - resource: "case"
+      actions:
+        - name: "read"
+        - name: "view"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: |
+                      request.resource.attr.department_code in request.principal.attr.departments ||
+                      request.resource.attr.assigneeId == request.principal.id
+
+  # Default rule - deny if no specific rule matches
+  defaultRule:
+    effect: EFFECT_DENY

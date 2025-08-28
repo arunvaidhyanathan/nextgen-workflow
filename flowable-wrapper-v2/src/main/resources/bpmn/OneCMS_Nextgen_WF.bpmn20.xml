@@ -13,12 +13,14 @@
     
     <!-- Part 1A: EO-Initiated Case Start -->
     <startEvent id="startCaseReceived" name="Case Received (from EO)" flowable:initiator="initiator"/>
-    <userTask id="task_eo_createCase" name="Create &amp; Fill Case Info" flowable:assignee="${initiator}"/>
+    <userTask id="task_eo_intake_create" name="EO: Initial Case Intake" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST" flowable:formKey="eo-intake-review-form"/>
+    <exclusiveGateway id="gateway_eo_intake_decision" name="Intake Decision"/>
+    <userTask id="task_eo_createCase" name="Create &amp; Fill Case Info" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST" flowable:formKey="eo-create-case-form"/>
     <exclusiveGateway id="gateway_eo_creationDecision" name="Create or Cancel?"/>
-    <userTask id="task_eo_headAssign" name="Assign for EO Head Review" flowable:candidateGroups="GROUP_EO_HEAD"/>
-    <userTask id="task_eo_headReview" name="Review &amp; Add Narrative" flowable:candidateGroups="GROUP_EO_HEAD"/>
+    <userTask id="task_eo_headAssign" name="Assign for EO Head Review" flowable:candidateGroups="GROUP_EO_HEAD" flowable:formKey="eo-head-assign-form"/>
+    <userTask id="task_eo_headReview" name="Review &amp; Add Narrative" flowable:candidateGroups="GROUP_EO_HEAD" flowable:formKey="eo-head-review-form"/>
     <exclusiveGateway id="gateway_eo_headDecision" name="EO Head Decision"/>
-    <userTask id="task_eo_officerReview" name="Triage &amp; Route Case" flowable:candidateGroups="GROUP_EO_OFFICER"/>
+    <userTask id="task_eo_officerReview" name="Triage &amp; Route Case" flowable:candidateGroups="GROUP_EO_OFFICER" flowable:formKey="eo-officer-triage-form"/>
     <exclusiveGateway id="gateway_eo_officerRouting" name="Final EO Triage"/>
     <exclusiveGateway id="gateway_routeToDepartment" name="Route to Department"/>
 
@@ -71,7 +73,7 @@
 
     <!-- L A N E S -->
     <laneSet>
-      <lane id="lane_eo_intake" name="EO Intake"><flowNodeRef>startCaseReceived</flowNodeRef><flowNodeRef>task_eo_createCase</flowNodeRef><flowNodeRef>gateway_eo_creationDecision</flowNodeRef></lane>
+      <lane id="lane_eo_intake" name="EO Intake Analyst"><flowNodeRef>startCaseReceived</flowNodeRef><flowNodeRef>task_eo_intake_create</flowNodeRef><flowNodeRef>gateway_eo_intake_decision</flowNodeRef><flowNodeRef>task_eo_createCase</flowNodeRef><flowNodeRef>gateway_eo_creationDecision</flowNodeRef></lane>
       <lane id="lane_eo_head" name="EO Head"><flowNodeRef>task_eo_headAssign</flowNodeRef><flowNodeRef>task_eo_headReview</flowNodeRef><flowNodeRef>gateway_eo_headDecision</flowNodeRef></lane>
       <lane id="lane_eo_officer" name="EO Officer"><flowNodeRef>task_eo_officerReview</flowNodeRef><flowNodeRef>gateway_eo_officerRouting</flowNodeRef><flowNodeRef>gateway_routeToDepartment</flowNodeRef></lane>
       <lane id="lane_csis_manager" name="CSIS Intake Manager"><flowNodeRef>startCsisCase</flowNodeRef><flowNodeRef>gateway_csis_initiator_role</flowNodeRef><flowNodeRef>task_csis_mgr_create</flowNodeRef><flowNodeRef>gateway_csis_mgr_triage1</flowNodeRef><flowNodeRef>task_csis_mgr_final_approve</flowNodeRef><flowNodeRef>gateway_csis_mgr_final_decision</flowNodeRef><flowNodeRef>task_csis_mgr_review_analyst_case</flowNodeRef><flowNodeRef>gateway_csis_mgr_review_decision</flowNodeRef><flowNodeRef>task_csis_manager_review_1</flowNodeRef><flowNodeRef>gateway_csis_decision_1</flowNodeRef><flowNodeRef>task_csis_manager_review_2</flowNodeRef><flowNodeRef>gateway_csis_decision_3</flowNodeRef><flowNodeRef>task_csis_assign_investigator</flowNodeRef></lane>
@@ -83,7 +85,10 @@
     </laneSet>
 
     <!-- F L O W S -->
-    <sequenceFlow id="flow_eo_1" sourceRef="startCaseReceived" targetRef="task_eo_createCase"/>
+    <sequenceFlow id="flow_eo_1" sourceRef="startCaseReceived" targetRef="task_eo_intake_create"/>
+    <sequenceFlow id="flow_eo_intake_1" sourceRef="task_eo_intake_create" targetRef="gateway_eo_intake_decision"/>
+    <sequenceFlow id="flow_eo_intake_create" name="Create Case" sourceRef="gateway_eo_intake_decision" targetRef="task_eo_createCase"><conditionExpression xsi:type="tFormalExpression">${eoIntakeAction == 'CREATE'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_eo_intake_reject" name="Reject/Close" sourceRef="gateway_eo_intake_decision" targetRef="endCaseClosed"><conditionExpression xsi:type="tFormalExpression">${eoIntakeAction == 'REJECT'}</conditionExpression></sequenceFlow>
     <sequenceFlow id="flow_eo_2" sourceRef="task_eo_createCase" targetRef="gateway_eo_creationDecision"/>
     <sequenceFlow id="flow_eo_create" name="Create" sourceRef="gateway_eo_creationDecision" targetRef="task_eo_headAssign"><conditionExpression xsi:type="tFormalExpression">${creationAction == 'CREATE'}</conditionExpression></sequenceFlow>
     <sequenceFlow id="flow_eo_cancel" name="Cancel" sourceRef="gateway_eo_creationDecision" targetRef="endCaseClosed"><conditionExpression xsi:type="tFormalExpression">${creationAction == 'CANCEL'}</conditionExpression></sequenceFlow>
