@@ -44,7 +44,27 @@ principalPolicy:
     - resource: "case"
       actions:
         - name: "read"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: "INVESTIGATOR" in request.principal.roles
+                  - expr: >
+                      request.resource.attr.assigneeId == request.principal.id ||
+                      request.resource.attr.department_code in request.principal.attr.departments
         - name: "update"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: "INVESTIGATOR" in request.principal.roles
+                  - expr: >
+                      request.resource.attr.assigneeId == request.principal.id ||
+                      request.resource.attr.department_code in request.principal.attr.departments
         - name: "add_narrative"
           effect: EFFECT_ALLOW
           condition:
@@ -53,7 +73,7 @@ principalPolicy:
                 of:
                   - expr: request.principal.attr.isActive == true
                   - expr: "INVESTIGATOR" in request.principal.roles
-                  - expr: |
+                  - expr: >
                       request.resource.attr.assigneeId == request.principal.id ||
                       request.resource.attr.department_code in request.principal.attr.departments
 
@@ -63,6 +83,17 @@ principalPolicy:
     - resource: "case"
       actions:
         - name: "read"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: >
+                      "HR_SPECIALIST" in request.principal.roles ||
+                      "LEGAL_COUNSEL" in request.principal.roles ||
+                      "SECURITY_ANALYST" in request.principal.roles
+                  - expr: request.resource.attr.department_code in request.principal.attr.departments
         - name: "add_narrative"
           effect: EFFECT_ALLOW
           condition:
@@ -70,7 +101,7 @@ principalPolicy:
               all:
                 of:
                   - expr: request.principal.attr.isActive == true
-                  - expr: |
+                  - expr: >
                       "HR_SPECIALIST" in request.principal.roles ||
                       "LEGAL_COUNSEL" in request.principal.roles ||
                       "SECURITY_ANALYST" in request.principal.roles
@@ -82,7 +113,27 @@ principalPolicy:
     - resource: "OneCMS::oneCmsUnifiedWorkflow"
       actions:
         - name: "claim_task"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: size(request.principal.attr.queues) > 0
+                  - expr: >
+                      request.resource.attr.currentTask.queue in request.principal.attr.queues ||
+                      request.resource.attr.currentTask.assignee == request.principal.id
         - name: "complete_task"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: size(request.principal.attr.queues) > 0
+                  - expr: >
+                      request.resource.attr.currentTask.queue in request.principal.attr.queues ||
+                      request.resource.attr.currentTask.assignee == request.principal.id
         - name: "view_task"
           effect: EFFECT_ALLOW
           condition:
@@ -91,7 +142,7 @@ principalPolicy:
                 of:
                   - expr: request.principal.attr.isActive == true
                   - expr: size(request.principal.attr.queues) > 0
-                  - expr: |
+                  - expr: >
                       request.resource.attr.currentTask.queue in request.principal.attr.queues ||
                       request.resource.attr.currentTask.assignee == request.principal.id
 
@@ -101,6 +152,13 @@ principalPolicy:
     - resource: "OneCMS::oneCmsUnifiedWorkflow"
       actions:
         - name: "view_queue"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: request.resource.attr.currentQueue in request.principal.attr.queues
         - name: "list_queue_tasks"
           effect: EFFECT_ALLOW
           condition:
@@ -116,8 +174,35 @@ principalPolicy:
     - resource: "*"
       actions:
         - name: "audit"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: >
+                      "EO_OFFICER" in request.principal.roles ||
+                      "AROG_REVIEWER" in request.principal.roles
         - name: "export"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: >
+                      "EO_OFFICER" in request.principal.roles ||
+                      "AROG_REVIEWER" in request.principal.roles
         - name: "report"
+          effect: EFFECT_ALLOW
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: >
+                      "EO_OFFICER" in request.principal.roles ||
+                      "AROG_REVIEWER" in request.principal.roles
         - name: "delete"
           effect: EFFECT_ALLOW
           condition:
@@ -125,7 +210,7 @@ principalPolicy:
               all:
                 of:
                   - expr: request.principal.attr.isActive == true
-                  - expr: |
+                  - expr: >
                       "EO_OFFICER" in request.principal.roles ||
                       "AROG_REVIEWER" in request.principal.roles
 
