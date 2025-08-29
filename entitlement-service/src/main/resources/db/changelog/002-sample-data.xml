@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ================================================================== -->
+    <!-- Sample Data Population for Hybrid Authorization System            -->
+    <!-- Version: 1.0.0 - Complete Test Data                               -->
+    <!-- ================================================================== -->
+
+    <changeSet id="populate-sample-data" author="claude-code">
+        <comment>Populate sample data for testing both authorization engines</comment>
+        
+        <sql endDelimiter=";" splitStatements="false"><![CDATA[
+            -- ================================================================
+            -- SAMPLE DEPARTMENTS
+            -- ================================================================
+            INSERT INTO entitlements.departments (department_name, department_code, description, is_active) VALUES
+            ('Human Resources', 'HR', 'Human Resources Department', true),
+            ('Legal Department', 'LEGAL', 'Legal Affairs Department', true),
+            ('Security Department', 'SECURITY', 'Corporate Security Department', true),
+            ('Investigation Unit', 'IU', 'Investigation and Compliance Unit', true),
+            ('Ethics Office', 'EO', 'Ethics and Compliance Office', true),
+            ('Corporate Security Information Systems', 'CSIS', 'Corporate Security and Information Systems', true);
+            
+            -- ================================================================
+            -- SAMPLE BUSINESS APPLICATIONS (for Cerbos engine)
+            -- ================================================================
+            INSERT INTO entitlements.business_applications (business_app_name, description, is_active, metadata) VALUES
+            ('onecms', 'OneCMS Case Management System', true, '{"version": "2.0", "environment": "development"}'),
+            ('workflow-engine', 'NextGen Workflow Engine', true, '{"version": "1.0", "bpmn_support": true}'),
+            ('entitlement-service', 'Entitlement and Authorization Service', true, '{"version": "1.0", "engines": ["database", "cerbos"]}');
+            
+            -- ================================================================
+            -- SAMPLE BUSINESS APP ROLES (for Cerbos engine)
+            -- ================================================================
+            -- OneCMS Roles
+            INSERT INTO entitlements.business_app_roles (business_app_id, role_name, role_display_name, description, is_active, metadata) VALUES
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'INTAKE_ANALYST', 'Intake Analyst', 'Reviews and triages incoming cases', true, '{"queue": "intake-analyst-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'INVESTIGATOR', 'Investigator', 'Conducts investigations on assigned cases', true, '{"queue": "investigation-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'INVESTIGATION_MANAGER', 'Investigation Manager', 'Manages investigation processes', true, '{"queue": "investigation-manager-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'HR_ANALYST', 'HR Analyst', 'Handles HR-related cases', true, '{"queue": "hr-discipline-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'LEGAL_COUNSEL', 'Legal Counsel', 'Provides legal guidance on cases', true, '{"queue": "hr-legal-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'EO_OFFICER', 'Ethics Officer', 'Ethics Office case officer', true, '{"queue": "eo-officer-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'EO_HEAD', 'Ethics Office Head', 'Head of Ethics Office', true, '{"queue": "eo-head-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'CSIS_MANAGER', 'CSIS Manager', 'CSIS Department Manager', true, '{"queue": "csis-intake-manager-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'CSIS_ANALYST', 'CSIS Analyst', 'CSIS Security Analyst', true, '{"queue": "csis-intake-analyst-queue"}'),
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'ADMIN', 'System Administrator', 'Full system administration access', true, '{"admin": true}');
+            
+            -- ================================================================
+            -- SAMPLE APPLICATION DOMAIN (for database engine)
+            -- ================================================================
+            INSERT INTO entitlements.entitlement_application_domains (domain_name, description, is_tiered, domain_metadata, is_active) VALUES
+            ('NextGen-Workflow', 'NextGen Workflow Case Management Domain', true, '{"tenant": "primary", "features": ["rbac", "abac", "audit"]}', true),
+            ('OneCMS-Enterprise', 'OneCMS Enterprise Multi-tenant Domain', false, '{"tenant": "enterprise", "features": ["multi-department", "workflow"]}', true);
+            
+            -- ================================================================
+            -- SAMPLE DOMAIN ROLES (for database engine)
+            -- ================================================================
+            INSERT INTO entitlements.entitlement_domain_roles (domain_id, role_name, display_name, description, role_level, maker_checker_type, role_metadata, is_active) VALUES
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'CASE_INVESTIGATOR', 'Case Investigator', 'Investigates assigned cases with full case access', 'Tier2', 'MAKER', '{"permissions": ["case:read", "case:update", "evidence:create"], "queue": "investigation-queue"}', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'CASE_REVIEWER', 'Case Reviewer', 'Reviews investigation findings and makes recommendations', 'Tier3', 'CHECKER', '{"permissions": ["case:read", "case:approve", "finding:create"], "queue": "findings-assessment-queue"}', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'INTAKE_SPECIALIST', 'Intake Specialist', 'Processes and triages incoming cases', 'Tier1', 'MAKER', '{"permissions": ["case:create", "case:read", "case:route"], "queue": "intake-analyst-queue"}', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'DEPARTMENT_HEAD', 'Department Head', 'Departmental oversight and final approvals', 'Manager', 'CHECKER', '{"permissions": ["case:read", "case:approve", "case:close"], "admin": true}', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'OneCMS-Enterprise'), 'ENTERPRISE_ADMIN', 'Enterprise Administrator', 'Full system administration across all tenants', 'Admin', 'BOTH', '{"permissions": ["*"], "admin": true, "global": true}', true);
+            
+            -- ================================================================
+            -- SAMPLE PERMISSIONS (for database engine)
+            -- ================================================================
+            INSERT INTO entitlements.entitlement_permissions (resource_type, action, description) VALUES
+            -- Case permissions
+            ('case', 'create', 'Create new cases'),
+            ('case', 'read', 'View case details'),
+            ('case', 'update', 'Update case information'),
+            ('case', 'delete', 'Delete cases'),
+            ('case', 'assign', 'Assign cases to users'),
+            ('case', 'close', 'Close completed cases'),
+            ('case', 'approve', 'Approve case actions'),
+            ('case', 'route', 'Route cases between departments'),
+            -- Workflow permissions
+            ('workflow', 'start', 'Start workflow processes'),
+            ('workflow', 'complete', 'Complete workflow tasks'),
+            ('workflow', 'claim', 'Claim workflow tasks'),
+            ('workflow', 'delegate', 'Delegate workflow tasks'),
+            -- Evidence permissions
+            ('evidence', 'create', 'Add evidence to cases'),
+            ('evidence', 'read', 'View case evidence'),
+            ('evidence', 'update', 'Update evidence information'),
+            ('evidence', 'delete', 'Remove evidence from cases'),
+            -- Finding permissions
+            ('finding', 'create', 'Create investigation findings'),
+            ('finding', 'read', 'View investigation findings'),
+            ('finding', 'approve', 'Approve investigation findings'),
+            -- Admin permissions
+            ('user', 'manage', 'Manage user accounts'),
+            ('role', 'manage', 'Manage roles and permissions'),
+            ('system', 'admin', 'System administration access');
+            
+            -- ================================================================
+            -- SAMPLE CORE USERS (Primary user identity)
+            -- ================================================================
+            INSERT INTO entitlements.entitlement_core_users (user_id, username, email, first_name, last_name, is_active, global_attributes) VALUES
+            ('550e8400-e29b-41d4-a716-446655440001', 'alice.intake', 'alice.intake@company.com', 'Alice', 'Johnson', true, '{"department": "IU", "clearance": "standard", "hire_date": "2023-01-15"}'),
+            ('550e8400-e29b-41d4-a716-446655440002', 'bob.investigator', 'bob.investigator@company.com', 'Bob', 'Wilson', true, '{"department": "IU", "clearance": "high", "specialization": "fraud"}'),
+            ('550e8400-e29b-41d4-a716-446655440003', 'carol.legal', 'carol.legal@company.com', 'Carol', 'Davis', true, '{"department": "LEGAL", "bar_admission": "NY", "clearance": "high"}'),
+            ('550e8400-e29b-41d4-a716-446655440004', 'david.hr', 'david.hr@company.com', 'David', 'Brown', true, '{"department": "HR", "clearance": "standard", "certifications": ["PHR", "SHRM-CP"]}'),
+            ('550e8400-e29b-41d4-a716-446655440005', 'eve.manager', 'eve.manager@company.com', 'Eve', 'Taylor', true, '{"department": "IU", "clearance": "top_secret", "management_level": "senior"}'),
+            ('550e8400-e29b-41d4-a716-446655440006', 'frank.security', 'frank.security@company.com', 'Frank', 'Anderson', true, '{"department": "SECURITY", "clearance": "secret", "specialization": "cyber"}'),
+            ('550e8400-e29b-41d4-a716-446655440007', 'grace.ethics', 'grace.ethics@company.com', 'Grace', 'Williams', true, '{"department": "EO", "clearance": "high", "role": "officer"}'),
+            ('550e8400-e29b-41d4-a716-446655440008', 'henry.admin', 'henry.admin@company.com', 'Henry', 'Martinez', true, '{"department": "IT", "clearance": "admin", "admin": true}'),
+            ('550e8400-e29b-41d4-a716-446655440009', 'iris.csis', 'iris.csis@company.com', 'Iris', 'Garcia', true, '{"department": "CSIS", "clearance": "secret", "role": "manager"}'),
+            ('550e8400-e29b-41d4-a716-446655440010', 'jack.analyst', 'jack.analyst@company.com', 'Jack', 'Rodriguez', true, '{"department": "CSIS", "clearance": "standard", "role": "analyst"}');
+            
+            -- ================================================================
+            -- SAMPLE USER-DEPARTMENT ASSIGNMENTS (for Cerbos engine)
+            -- ================================================================
+            INSERT INTO entitlements.user_departments (user_id, department_id, is_active) VALUES
+            ('550e8400-e29b-41d4-a716-446655440001', (SELECT id FROM entitlements.departments WHERE department_code = 'IU'), true),
+            ('550e8400-e29b-41d4-a716-446655440002', (SELECT id FROM entitlements.departments WHERE department_code = 'IU'), true),
+            ('550e8400-e29b-41d4-a716-446655440003', (SELECT id FROM entitlements.departments WHERE department_code = 'LEGAL'), true),
+            ('550e8400-e29b-41d4-a716-446655440004', (SELECT id FROM entitlements.departments WHERE department_code = 'HR'), true),
+            ('550e8400-e29b-41d4-a716-446655440005', (SELECT id FROM entitlements.departments WHERE department_code = 'IU'), true),
+            ('550e8400-e29b-41d4-a716-446655440006', (SELECT id FROM entitlements.departments WHERE department_code = 'SECURITY'), true),
+            ('550e8400-e29b-41d4-a716-446655440007', (SELECT id FROM entitlements.departments WHERE department_code = 'EO'), true),
+            ('550e8400-e29b-41d4-a716-446655440008', (SELECT id FROM entitlements.departments WHERE department_code = 'IU'), true),
+            ('550e8400-e29b-41d4-a716-446655440009', (SELECT id FROM entitlements.departments WHERE department_code = 'CSIS'), true),
+            ('550e8400-e29b-41d4-a716-446655440010', (SELECT id FROM entitlements.departments WHERE department_code = 'CSIS'), true);
+            
+            -- ================================================================
+            -- SAMPLE USER-BUSINESS APP ROLE ASSIGNMENTS (for Cerbos engine)
+            -- ================================================================
+            INSERT INTO entitlements.user_business_app_roles (user_id, business_app_role_id, is_active) VALUES
+            -- Alice - Intake Analyst
+            ('550e8400-e29b-41d4-a716-446655440001', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'INTAKE_ANALYST'), true),
+            -- Bob - Investigator
+            ('550e8400-e29b-41d4-a716-446655440002', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'INVESTIGATOR'), true),
+            -- Carol - Legal Counsel
+            ('550e8400-e29b-41d4-a716-446655440003', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'LEGAL_COUNSEL'), true),
+            -- David - HR Analyst
+            ('550e8400-e29b-41d4-a716-446655440004', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'HR_ANALYST'), true),
+            -- Eve - Investigation Manager
+            ('550e8400-e29b-41d4-a716-446655440005', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'INVESTIGATION_MANAGER'), true),
+            -- Frank - Additional Investigator
+            ('550e8400-e29b-41d4-a716-446655440006', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'INVESTIGATOR'), true),
+            -- Grace - Ethics Officer
+            ('550e8400-e29b-41d4-a716-446655440007', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'EO_OFFICER'), true),
+            -- Henry - System Admin
+            ('550e8400-e29b-41d4-a716-446655440008', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'ADMIN'), true),
+            -- Iris - CSIS Manager
+            ('550e8400-e29b-41d4-a716-446655440009', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'CSIS_MANAGER'), true),
+            -- Jack - CSIS Analyst
+            ('550e8400-e29b-41d4-a716-446655440010', (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'CSIS_ANALYST'), true);
+            
+            -- ================================================================
+            -- SAMPLE ROLE-PERMISSION MAPPINGS (for database engine)
+            -- ================================================================
+            -- Case Investigator permissions
+            INSERT INTO entitlements.entitlement_role_permissions (role_id, permission_id, is_active) VALUES
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_INVESTIGATOR'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'read'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_INVESTIGATOR'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'update'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_INVESTIGATOR'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'evidence' AND action = 'create'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_INVESTIGATOR'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'evidence' AND action = 'read'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_INVESTIGATOR'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'workflow' AND action = 'complete'), true),
+            
+            -- Case Reviewer permissions
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_REVIEWER'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'read'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_REVIEWER'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'approve'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_REVIEWER'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'finding' AND action = 'create'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_REVIEWER'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'finding' AND action = 'approve'), true),
+            
+            -- Intake Specialist permissions
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'INTAKE_SPECIALIST'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'create'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'INTAKE_SPECIALIST'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'read'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'INTAKE_SPECIALIST'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'route'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'INTAKE_SPECIALIST'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'workflow' AND action = 'start'), true),
+            
+            -- Department Head permissions (full access)
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'DEPARTMENT_HEAD'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'read'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'DEPARTMENT_HEAD'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'approve'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'DEPARTMENT_HEAD'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'case' AND action = 'close'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'DEPARTMENT_HEAD'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'user' AND action = 'manage'), true),
+            
+            -- Enterprise Admin permissions (all permissions)
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'ENTERPRISE_ADMIN'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'system' AND action = 'admin'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'ENTERPRISE_ADMIN'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'role' AND action = 'manage'), true),
+            ((SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'ENTERPRISE_ADMIN'), 
+             (SELECT permission_id FROM entitlements.entitlement_permissions WHERE resource_type = 'user' AND action = 'manage'), true);
+            
+            -- ================================================================
+            -- SAMPLE USER-DOMAIN ROLE ASSIGNMENTS (for database engine)
+            -- ================================================================
+            INSERT INTO entitlements.entitlement_user_domain_roles (user_id, role_id, assigned_at, is_active, assigned_by, assignment_metadata) VALUES
+            -- Alice assigned as Intake Specialist
+            ('550e8400-e29b-41d4-a716-446655440001', 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'INTAKE_SPECIALIST'), 
+             CURRENT_TIMESTAMP, true, '550e8400-e29b-41d4-a716-446655440008', '{"assigned_reason": "Primary intake role"}'),
+            
+            -- Bob assigned as Case Investigator
+            ('550e8400-e29b-41d4-a716-446655440002', 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_INVESTIGATOR'), 
+             CURRENT_TIMESTAMP, true, '550e8400-e29b-41d4-a716-446655440008', '{"assigned_reason": "Senior investigator role"}'),
+            
+            -- Carol assigned as Case Reviewer
+            ('550e8400-e29b-41d4-a716-446655440003', 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CASE_REVIEWER'), 
+             CURRENT_TIMESTAMP, true, '550e8400-e29b-41d4-a716-446655440008', '{"assigned_reason": "Legal review expertise"}'),
+            
+            -- Eve assigned as Department Head
+            ('550e8400-e29b-41d4-a716-446655440005', 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'DEPARTMENT_HEAD'), 
+             CURRENT_TIMESTAMP, true, '550e8400-e29b-41d4-a716-446655440008', '{"assigned_reason": "Investigation Unit manager"}'),
+            
+            -- Henry assigned as Enterprise Admin
+            ('550e8400-e29b-41d4-a716-446655440008', 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'ENTERPRISE_ADMIN'), 
+             CURRENT_TIMESTAMP, true, '550e8400-e29b-41d4-a716-446655440008', '{"assigned_reason": "System administrator"}');
+            
+            -- ================================================================
+            -- SAMPLE RESOURCE PERMISSIONS (for database engine ABAC)
+            -- ================================================================
+            INSERT INTO entitlements.resource_permissions (user_id, resource_type, resource_id, allowed_actions, conditions, is_active, granted_by) VALUES
+            -- Alice has direct access to case CMS-2025-000001
+            ('550e8400-e29b-41d4-a716-446655440001', 'case', 'CMS-2025-000001', ARRAY['read', 'update'], 
+             '{"condition": "assigned_to", "valid_until": "2025-12-31"}', true, '550e8400-e29b-41d4-a716-446655440008'),
+            
+            -- Bob has investigation access to multiple cases
+            ('550e8400-e29b-41d4-a716-446655440002', 'case', 'CMS-2025-000002', ARRAY['read', 'update', 'evidence:create'], 
+             '{"condition": "investigator", "department": "IU"}', true, '550e8400-e29b-41d4-a716-446655440005'),
+            
+            -- Carol has legal review access to sensitive cases
+            ('550e8400-e29b-41d4-a716-446655440003', 'case', 'CMS-2025-000003', ARRAY['read', 'approve'], 
+             '{"condition": "legal_review", "sensitivity": "high"}', true, '550e8400-e29b-41d4-a716-446655440005');
+            
+            -- ================================================================
+            -- SAMPLE AUDIT LOGS (for testing audit functionality)
+            -- ================================================================
+            INSERT INTO entitlements.entitlement_audit_logs (event_type, user_id, resource_type, resource_id, action, decision, decision_reason, engine_type, request_metadata, session_id) VALUES
+            ('AUTHORIZATION_CHECK', '550e8400-e29b-41d4-a716-446655440001', 'case', 'CMS-2025-000001', 'read', 'ALLOW', 'User has direct resource permission', 'DATABASE', '{"ip": "10.0.0.1", "timestamp": "2025-08-28T10:00:00Z"}', 'sess_001'),
+            ('AUTHORIZATION_CHECK', '550e8400-e29b-41d4-a716-446655440002', 'case', 'CMS-2025-000002', 'update', 'ALLOW', 'User has CASE_INVESTIGATOR role', 'DATABASE', '{"ip": "10.0.0.2", "timestamp": "2025-08-28T10:15:00Z"}', 'sess_002'),
+            ('AUTHORIZATION_CHECK', '550e8400-e29b-41d4-a716-446655440004', 'case', 'CMS-2025-000001', 'delete', 'DENY', 'Insufficient permissions', 'CERBOS', '{"ip": "10.0.0.3", "timestamp": "2025-08-28T10:30:00Z"}', 'sess_003');
+            
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>

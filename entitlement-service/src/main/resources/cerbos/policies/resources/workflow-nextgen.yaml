@@ -1,0 +1,50 @@
+# workflow-nextgen.yaml
+# Resource policies for NextGen Workflow task and queue management
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "OneCMS::oneCmsUnifiedWorkflow"
+  version: "1.0"
+  importDerivedRoles:
+    - "one-cms"
+  rules:
+    # ========================================
+    # WORKFLOW TASK MANAGEMENT
+    # ========================================
+    - actions: ["claim_task", "complete_task", "view_task"]
+      effect: EFFECT_ALLOW
+      roles: ["*"]  # All roles, but with conditions
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: size(request.principal.attr.queues) > 0
+              - expr: |
+                  request.resource.attr.currentTask.queue in request.principal.attr.queues ||
+                  request.resource.attr.currentTask.assignee == request.principal.id
+
+    # ========================================
+    # QUEUE ACCESS CONTROL
+    # ========================================
+    - actions: ["view_queue", "list_queue_tasks"]
+      effect: EFFECT_ALLOW
+      roles: ["*"]  # All roles, but with conditions
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.resource.attr.currentQueue in request.principal.attr.queues
+
+    # ========================================
+    # ADMINISTRATIVE WORKFLOW ACTIONS
+    # ========================================
+    - actions: ["audit", "export", "report", "delete"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_OFFICER"
+        - "AROG_REVIEWER"
+        - "INVESTIGATION_MANAGER"
+      condition:
+        match:
+          expr: request.principal.attr.isActive == true

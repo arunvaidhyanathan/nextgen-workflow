@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -29,8 +30,8 @@ public class AuthorizationCheckRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Principal {
-        @NotBlank
-        private String id;
+        @NotNull
+        private UUID id;
         
         private Map<String, Object> attributes;
     }

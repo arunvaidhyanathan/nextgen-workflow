@@ -48,7 +48,7 @@ spring:
   # Liquibase Configuration
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
-    liquibase-schema: entitlements
+    liquibase-schema: public
     default-schema: entitlements
     enabled: true
 
@@ -62,7 +62,34 @@ eureka:
     lease-renewal-interval-in-seconds: 30
     lease-expiration-duration-in-seconds: 90
 
-# Cerbos Configuration
+# Hybrid Authorization Configuration
+authorization:
+  engine:
+    # Set to false to use database-based authorization, true for Cerbos
+    use-cerbos: ${AUTHORIZATION_USE_CERBOS:false}
+    # Allow runtime switching between engines (for testing purposes)
+    allow-runtime-switching: ${AUTHORIZATION_ALLOW_RUNTIME_SWITCHING:false}
+  cache:
+    # Caffeine cache configuration for high-performance authorization
+    user-context-cache:
+      maximum-size: 10000
+      expire-after-write: 15m
+      record-stats: true
+    permissions-cache:
+      maximum-size: 10000
+      expire-after-write: 10m
+      record-stats: true
+    decisions-cache:
+      maximum-size: 50000
+      expire-after-write: 5m
+      record-stats: true
+  performance:
+    # Performance monitoring settings
+    enable-metrics: true
+    slow-query-threshold: 1000ms
+    enable-query-logging: false
+
+# Cerbos Configuration (when use-cerbos: true)
 cerbos:
   host: ${CERBOS_HOST:localhost}
   port: ${CERBOS_PORT:3592}

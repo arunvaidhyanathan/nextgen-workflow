@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "user_business_app_roles",
        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "business_app_role_id"}))
@@ -19,8 +21,8 @@ public class UserBusinessAppRole {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "user_id", length = 50, nullable = false)
-    private String userId;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_app_role_id", nullable = false)

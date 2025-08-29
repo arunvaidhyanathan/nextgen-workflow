@@ -5,7 +5,10 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
-    <!-- Create core entitlement tables -->
-    <include file="db/changelog/001-create-entitlement-tables.xml"/>
+    <!-- Clean Hybrid Authorization Schema -->
+    <include file="db/changelog/001-hybrid-schema.xml"/>
+    
+    <!-- Sample Data Population -->
+    <include file="db/changelog/002-sample-data.xml"/>
 
 </databaseChangeLog>

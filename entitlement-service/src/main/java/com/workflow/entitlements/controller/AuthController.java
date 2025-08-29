@@ -1,8 +1,8 @@
 package com.workflow.entitlements.controller;
 
 import com.workflow.entitlements.entity.User;
-import com.workflow.entitlements.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.workflow.entitlements.service.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserService userService;
     
     
     // Track active sessions (in production, use Redis or database)
@@ -27,12 +27,12 @@ public class AuthController {
     
     // Session info class
     public static class SessionInfo {
-        private String userId;
+        private UUID userId;
         private String username;
         private Instant createdAt;
         private Instant lastAccessedAt;
         
-        public SessionInfo(String userId, String username) {
+        public SessionInfo(UUID userId, String username) {
             this.userId = userId;
             this.username = username;
             this.createdAt = Instant.now();
@@ -48,7 +48,7 @@ public class AuthController {
         }
         
         // Getters
-        public String getUserId() { return userId; }
+        public UUID getUserId() { return userId; }
         public String getUsername() { return username; }
         public Instant getCreatedAt() { return createdAt; }
         public Instant getLastAccessedAt() { return lastAccessedAt; }
@@ -65,7 +65,7 @@ public class AuthController {
         }
         
         // Find user by username
-        Optional<User> optionalUser = userRepository.findByUsername(username);
+        Optional<User> optionalUser = userService.findByUsername(username);
         
         if (optionalUser.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -87,17 +87,17 @@ public class AuthController {
         String sessionId = UUID.randomUUID().toString();
         
         // Store session (in production, use Redis or database)
-        activeSessions.put(sessionId, new SessionInfo(user.getId(), user.getUsername()));
+        activeSessions.put(sessionId, new SessionInfo(user.getUserId(), user.getUsername()));
         
         // Create user info for response
         Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("id", user.getId());
+        userInfo.put("id", user.getUserId().toString()); // Convert UUID to string for JSON
         userInfo.put("username", user.getUsername());
         userInfo.put("email", user.getEmail());
         userInfo.put("firstName", user.getFirstName());
         userInfo.put("lastName", user.getLastName());
         userInfo.put("isActive", user.getIsActive());
-        userInfo.put("attributes", user.getAttributes());
+        userInfo.put("attributes", user.getGlobalAttributes());
         
         // Create response
         Map<String, Object> response = new HashMap<>();
@@ -153,7 +153,7 @@ public class AuthController {
         sessionInfo.updateLastAccessed();
         
         // Verify user still exists and is active
-        Optional<User> optionalUser = userRepository.findById(sessionInfo.getUserId());
+        Optional<User> optionalUser = userService.findById(sessionInfo.getUserId());
         if (optionalUser.isEmpty() || !optionalUser.get().getIsActive()) {
             activeSessions.remove(sessionId);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -164,13 +164,13 @@ public class AuthController {
         
         // Create user info for response
         Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("id", user.getId());
+        userInfo.put("id", user.getUserId().toString()); // Convert UUID to string for JSON
         userInfo.put("username", user.getUsername());
         userInfo.put("email", user.getEmail());
         userInfo.put("firstName", user.getFirstName());
         userInfo.put("lastName", user.getLastName());
         userInfo.put("isActive", user.getIsActive());
-        userInfo.put("attributes", user.getAttributes());
+        userInfo.put("attributes", user.getGlobalAttributes());
         
         return ResponseEntity.ok(Map.of("success", true, "user", userInfo, "message", "Session is valid"));
     }
@@ -194,7 +194,7 @@ public class AuthController {
         sessionInfo.updateLastAccessed();
         
         // Get user details
-        Optional<User> optionalUser = userRepository.findById(sessionInfo.getUserId());
+        Optional<User> optionalUser = userService.findById(sessionInfo.getUserId());
         if (optionalUser.isEmpty() || !optionalUser.get().getIsActive()) {
             activeSessions.remove(sessionId);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -205,13 +205,13 @@ public class AuthController {
         
         // Create user info for response
         Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("id", user.getId());
+        userInfo.put("id", user.getUserId().toString()); // Convert UUID to string for JSON
         userInfo.put("username", user.getUsername());
         userInfo.put("email", user.getEmail());
         userInfo.put("firstName", user.getFirstName());
         userInfo.put("lastName", user.getLastName());
         userInfo.put("isActive", user.getIsActive());
-        userInfo.put("attributes", user.getAttributes());
+        userInfo.put("attributes", user.getGlobalAttributes());
         
         return ResponseEntity.ok(Map.of("success", true, "user", userInfo));
     }
@@ -224,8 +224,16 @@ public class AuthController {
                 .body(Map.of("success", false, "message", "No user ID provided"));
         }
         
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("success", false, "message", "Invalid user ID format"));
+        }
+        
         // Verify user exists and is active
-        Optional<User> optionalUser = userRepository.findById(userId);
+        Optional<User> optionalUser = userService.findById(userUuid);
         if (optionalUser.isEmpty() || !optionalUser.get().getIsActive()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("success", false, "message", "User not found or inactive"));
@@ -235,13 +243,13 @@ public class AuthController {
         
         // Create user info for response
         Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("id", user.getId());
+        userInfo.put("id", user.getUserId().toString()); // Convert UUID to string for JSON
         userInfo.put("username", user.getUsername());
         userInfo.put("email", user.getEmail());
         userInfo.put("firstName", user.getFirstName());
         userInfo.put("lastName", user.getLastName());
         userInfo.put("isActive", user.getIsActive());
-        userInfo.put("attributes", user.getAttributes());
+        userInfo.put("attributes", user.getGlobalAttributes());
         
         return ResponseEntity.ok(Map.of("success", true, "user", userInfo, "message", "User is valid"));
     }

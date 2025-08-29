@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface UserBusinessAppRoleRepository extends JpaRepository<UserBusinessAppRole, Long> {
@@ -16,14 +17,14 @@ public interface UserBusinessAppRoleRepository extends JpaRepository<UserBusines
            "JOIN FETCH uar.businessAppRole bar " +
            "JOIN FETCH bar.businessApplication ba " +
            "WHERE uar.userId = :userId AND ba.businessAppName = :businessAppName AND uar.isActive = true")
-    List<UserBusinessAppRole> findActiveUserRoles(@Param("userId") String userId, 
+    List<UserBusinessAppRole> findActiveUserRoles(@Param("userId") UUID userId, 
                                                   @Param("businessAppName") String businessAppName);
     
     @Query("SELECT uar FROM UserBusinessAppRole uar " +
            "JOIN FETCH uar.businessAppRole bar " +
            "JOIN FETCH bar.businessApplication ba " +
            "WHERE uar.userId = :userId AND uar.isActive = true")
-    List<UserBusinessAppRole> findAllActiveUserRoles(@Param("userId") String userId);
+    List<UserBusinessAppRole> findAllActiveUserRoles(@Param("userId") UUID userId);
     
     @Query("SELECT uar FROM UserBusinessAppRole uar " +
            "JOIN FETCH uar.businessAppRole bar " +
@@ -34,14 +35,14 @@ public interface UserBusinessAppRoleRepository extends JpaRepository<UserBusines
     
     @Query("SELECT uar FROM UserBusinessAppRole uar " +
            "WHERE uar.userId = :userId AND uar.businessAppRole.id = :businessAppRoleId")
-    Optional<UserBusinessAppRole> findByUserIdAndBusinessAppRoleId(@Param("userId") String userId,
+    Optional<UserBusinessAppRole> findByUserIdAndBusinessAppRoleId(@Param("userId") UUID userId,
                                                                    @Param("businessAppRoleId") Long businessAppRoleId);
     
-    boolean existsByUserIdAndBusinessAppRoleIdAndIsActiveTrue(String userId, Long businessAppRoleId);
+    boolean existsByUserIdAndBusinessAppRoleIdAndIsActiveTrue(UUID userId, Long businessAppRoleId);
     
-    List<UserBusinessAppRole> findByUserId(String userId);
+    List<UserBusinessAppRole> findByUserId(UUID userId);
     
-    List<UserBusinessAppRole> findByUserIdAndIsActiveTrue(String userId);
+    List<UserBusinessAppRole> findByUserIdAndIsActiveTrue(UUID userId);
     
     List<UserBusinessAppRole> findByBusinessAppRoleId(Long businessAppRoleId);
     

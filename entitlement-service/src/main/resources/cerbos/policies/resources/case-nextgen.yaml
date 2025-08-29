@@ -1,0 +1,77 @@
+# case-nextgen.yaml
+# Role-based resource policies for NextGen Workflow case management
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "case"
+  version: "1.0"
+  importDerivedRoles:
+    - "one-cms"
+  rules:
+    # ========================================
+    # INTAKE ANALYST RULES
+    # ========================================
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INTAKE_ANALYST"
+        - "EO_INTAKE_ANALYST"
+      condition:
+        match:
+          expr: request.principal.attr.isActive == true
+
+    # ========================================
+    # MANAGEMENT ROLES (Higher Privileges)
+    # ========================================
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "EO_HEAD"
+      condition:
+        match:
+          expr: request.principal.attr.isActive == true
+
+    # ========================================
+    # INVESTIGATOR ROLES
+    # ========================================
+    - actions: ["read", "update", "add_narrative"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATOR"
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: |
+                  request.resource.attr.assigneeId == request.principal.id ||
+                  request.resource.attr.department_code in request.principal.attr.departments
+
+    # ========================================
+    # DEPARTMENT-SPECIFIC ROLES
+    # ========================================
+    - actions: ["read", "add_narrative"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "HR_SPECIALIST"
+        - "LEGAL_COUNSEL"
+        - "SECURITY_ANALYST"
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.resource.attr.department_code in request.principal.attr.departments
+
+    # ========================================
+    # ADMIN AND AUDIT ROLES (for case resource)
+    # ========================================
+    - actions: ["audit", "export", "report", "delete"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_OFFICER"
+        - "AROG_REVIEWER"
+      condition:
+        match:
+          expr: request.principal.attr.isActive == true

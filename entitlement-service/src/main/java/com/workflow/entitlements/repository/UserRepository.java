@@ -8,9 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
+/**
+ * Repository for accessing entitlement_core_users table.
+ * This is the primary user repository for the hybrid authorization system.
+ */
 @Repository
-public interface UserRepository extends JpaRepository<User, String> {
+public interface UserRepository extends JpaRepository<User, UUID> {
     
     Optional<User> findByUsername(String username);
     

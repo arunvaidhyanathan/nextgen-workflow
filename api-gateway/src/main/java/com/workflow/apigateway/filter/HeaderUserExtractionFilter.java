@@ -78,8 +78,10 @@ public class HeaderUserExtractionFilter extends AbstractGatewayFilterFactory<Hea
                 .map(response -> {
                     Boolean success = (Boolean) response.get("success");
                     if (Boolean.TRUE.equals(success)) {
-                        Map<String, Object> user = (Map<String, Object>) response.get("user");
-                        if (user != null) {
+                        Object userObj = response.get("user");
+                        if (userObj instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> user = (Map<String, Object>) userObj;
                             return (String) user.get("id");
                         }
                     }

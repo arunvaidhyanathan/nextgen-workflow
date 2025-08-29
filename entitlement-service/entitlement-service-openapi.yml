@@ -35,6 +35,12 @@ tags:
     description: User role assignment management
   - name: Policies
     description: Policy management and validation
+  - name: Departments
+    description: Department management operations
+  - name: User Department Assignments
+    description: User department assignment management
+  - name: System Testing
+    description: System testing and validation endpoints
 
 paths:
   # Authentication endpoints
@@ -306,7 +312,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
       responses:
         '200':
           description: User found
@@ -328,7 +335,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
       requestBody:
         required: true
         content:
@@ -356,7 +364,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
       responses:
         '204':
           description: User deleted successfully
@@ -437,7 +446,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
       responses:
         '200':
           description: User activated successfully
@@ -460,7 +470,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
       responses:
         '200':
           description: User deactivated successfully
@@ -1042,7 +1053,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
       responses:
         '200':
           description: User roles retrieved successfully
@@ -1065,7 +1077,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
       responses:
         '200':
           description: Active user roles retrieved successfully
@@ -1136,7 +1149,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
         - name: roleId
           in: path
           required: true
@@ -1230,7 +1244,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
         - name: roleId
           in: query
           required: true
@@ -1266,7 +1281,8 @@ paths:
           required: true
           schema:
             type: string
-          description: User ID
+            format: uuid
+          description: User ID (UUID format)
         - name: roleId
           in: query
           required: true
@@ -1408,6 +1424,741 @@ paths:
                     type: string
                     example: "Failed to retrieve policy content: file not found"
 
+  # Department management endpoints
+  /api/entitlements/departments:
+    get:
+      tags:
+        - Departments
+      summary: Get all departments
+      description: Retrieve all departments in the system
+      responses:
+        '200':
+          description: Departments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+
+    post:
+      tags:
+        - Departments
+      summary: Create department
+      description: Create a new department
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Department'
+      responses:
+        '201':
+          description: Department created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '400':
+          description: Invalid department data
+
+  /api/entitlements/departments/{id}:
+    get:
+      tags:
+        - Departments
+      summary: Get department by ID
+      description: Retrieve a specific department by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '200':
+          description: Department found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          description: Department not found
+
+    put:
+      tags:
+        - Departments
+      summary: Update department
+      description: Update an existing department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Department'
+      responses:
+        '200':
+          description: Department updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          description: Department not found
+
+    delete:
+      tags:
+        - Departments
+      summary: Delete department
+      description: Delete a department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '204':
+          description: Department deleted successfully
+        '404':
+          description: Department not found
+
+  /api/entitlements/departments/name/{departmentName}:
+    get:
+      tags:
+        - Departments
+      summary: Get department by name
+      description: Retrieve a department by name
+      parameters:
+        - name: departmentName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Department name
+      responses:
+        '200':
+          description: Department found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          description: Department not found
+
+  /api/entitlements/departments/code/{departmentCode}:
+    get:
+      tags:
+        - Departments
+      summary: Get department by code
+      description: Retrieve a department by department code
+      parameters:
+        - name: departmentCode
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Department code
+      responses:
+        '200':
+          description: Department found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          description: Department not found
+
+  /api/entitlements/departments/active:
+    get:
+      tags:
+        - Departments
+      summary: Get active departments
+      description: Retrieve all active departments
+      responses:
+        '200':
+          description: Active departments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+
+  /api/entitlements/departments/{id}/activate:
+    patch:
+      tags:
+        - Departments
+      summary: Activate department
+      description: Activate a department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '200':
+          description: Department activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          description: Department not found
+
+  /api/entitlements/departments/{id}/deactivate:
+    patch:
+      tags:
+        - Departments
+      summary: Deactivate department
+      description: Deactivate a department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '200':
+          description: Department deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          description: Department not found
+
+  # User Department Assignment endpoints
+  /api/entitlements/user-departments:
+    get:
+      tags:
+        - User Department Assignments
+      summary: Get all user department assignments
+      description: Retrieve all user department assignments
+      responses:
+        '200':
+          description: User department assignments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDepartment'
+
+    post:
+      tags:
+        - User Department Assignments
+      summary: Create user department assignment
+      description: Create a new user department assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserDepartment'
+      responses:
+        '201':
+          description: User department assignment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDepartment'
+        '400':
+          description: Invalid user department assignment data
+
+  /api/entitlements/user-departments/{id}:
+    get:
+      tags:
+        - User Department Assignments
+      summary: Get user department assignment by ID
+      description: Retrieve a specific user department assignment by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User department assignment ID
+      responses:
+        '200':
+          description: User department assignment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDepartment'
+        '404':
+          description: User department assignment not found
+
+    put:
+      tags:
+        - User Department Assignments
+      summary: Update user department assignment
+      description: Update an existing user department assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User department assignment ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserDepartment'
+      responses:
+        '200':
+          description: User department assignment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDepartment'
+        '404':
+          description: User department assignment not found
+
+    delete:
+      tags:
+        - User Department Assignments
+      summary: Delete user department assignment
+      description: Delete a user department assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User department assignment ID
+      responses:
+        '204':
+          description: User department assignment deleted successfully
+        '404':
+          description: User department assignment not found
+
+  /api/entitlements/user-departments/user/{userId}:
+    get:
+      tags:
+        - User Department Assignments
+      summary: Get user departments by user ID
+      description: Retrieve all department assignments for a specific user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID (UUID format)
+      responses:
+        '200':
+          description: User departments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDepartment'
+
+  /api/entitlements/user-departments/user/{userId}/active:
+    get:
+      tags:
+        - User Department Assignments
+      summary: Get active user departments by user ID
+      description: Retrieve all active department assignments for a specific user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID (UUID format)
+      responses:
+        '200':
+          description: Active user departments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDepartment'
+
+  /api/entitlements/user-departments/department/{departmentId}:
+    get:
+      tags:
+        - User Department Assignments
+      summary: Get users by department ID
+      description: Retrieve all users assigned to a specific department
+      parameters:
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '200':
+          description: Users in department retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDepartment'
+
+  /api/entitlements/user-departments/department/{departmentId}/active:
+    get:
+      tags:
+        - User Department Assignments
+      summary: Get active users by department ID
+      description: Retrieve all active users assigned to a specific department
+      parameters:
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '200':
+          description: Active users in department retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDepartment'
+
+  /api/entitlements/user-departments/active:
+    get:
+      tags:
+        - User Department Assignments
+      summary: Get all active user department assignments
+      description: Retrieve all active user department assignments
+      responses:
+        '200':
+          description: Active user department assignments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDepartment'
+
+  /api/entitlements/user-departments/{id}/activate:
+    patch:
+      tags:
+        - User Department Assignments
+      summary: Activate user department assignment
+      description: Activate a user department assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User department assignment ID
+      responses:
+        '200':
+          description: User department assignment activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDepartment'
+        '404':
+          description: User department assignment not found
+
+  /api/entitlements/user-departments/{id}/deactivate:
+    patch:
+      tags:
+        - User Department Assignments
+      summary: Deactivate user department assignment
+      description: Deactivate a user department assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User department assignment ID
+      responses:
+        '200':
+          description: User department assignment deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDepartment'
+        '404':
+          description: User department assignment not found
+
+  /api/entitlements/user-departments/assign:
+    post:
+      tags:
+        - User Department Assignments
+      summary: Assign user to department
+      description: Assign a user to a department or activate existing assignment
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID (UUID format)
+        - name: departmentId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '200':
+          description: Department assignment activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDepartment'
+        '201':
+          description: New department assignment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDepartment'
+        '400':
+          description: Invalid assignment data
+
+  /api/entitlements/user-departments/revoke:
+    post:
+      tags:
+        - User Department Assignments
+      summary: Remove user from department
+      description: Remove a user from a department (deactivate assignment)
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID (UUID format)
+        - name: departmentId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Department ID
+      responses:
+        '204':
+          description: Department assignment removed successfully
+        '404':
+          description: Assignment not found
+
+  # System Testing endpoints  
+  /api/system-test/users/uuid-test:
+    get:
+      tags:
+        - System Testing
+      summary: Test UUID user operations
+      description: Tests hybrid schema with UUID-based user operations and lookups
+      responses:
+        '200':
+          description: UUID user test results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalActiveUsers:
+                    type: integer
+                    example: 10
+                  aliceFound:
+                    type: boolean
+                    example: true
+                  bobFound:
+                    type: boolean
+                    example: true
+                  aliceUserId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440001"
+                  bobUserId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440002"
+                  sampleUser:
+                    $ref: '#/components/schemas/User'
+        '500':
+          description: Internal server error
+
+  /api/system-test/user-roles/uuid-test:
+    get:
+      tags:
+        - System Testing
+      summary: Test UUID user-role assignments
+      description: Tests user-role assignment operations with UUID-based lookups
+      responses:
+        '200':
+          description: UUID user-role test results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  aliceUserId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440001"
+                  totalRoles:
+                    type: integer
+                    example: 2
+                  activeRoles:
+                    type: integer
+                    example: 2
+                  roleDetails:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        roleName:
+                          type: string
+                          example: "INTAKE_ANALYST"
+                        applicationName:
+                          type: string
+                          example: "onecms"
+                        isActive:
+                          type: boolean
+                          example: true
+        '500':
+          description: Internal server error
+
+  /api/system-test/authorization/engine-test:
+    post:
+      tags:
+        - System Testing
+      summary: Test authorization engine functionality
+      description: Tests the hybrid authorization system with configurable parameters
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: "alice.intake"
+                  default: "alice.intake"
+                resource:
+                  type: string
+                  example: "case"
+                  default: "case"
+                action:
+                  type: string
+                  example: "create"
+                  default: "create"
+      responses:
+        '200':
+          description: Authorization engine test results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    example: "alice.intake"
+                  userId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440001"
+                  resource:
+                    type: string
+                    example: "case"
+                  action:
+                    type: string
+                    example: "create"
+                  authorizationResult:
+                    type: object
+                    properties:
+                      allowed:
+                        type: boolean
+                        example: true
+                      message:
+                        type: string
+                        example: "Access granted"
+                      validationResult:
+                        type: string
+                        example: "none"
+        '500':
+          description: Internal server error
+
+  /api/system-test/status:
+    get:
+      tags:
+        - System Testing
+      summary: Get system status and configuration
+      description: Returns overall system health and entity counts for hybrid architecture validation
+      responses:
+        '200':
+          description: System status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hybridSchema:
+                    type: string
+                    example: "active"
+                  entityCounts:
+                    type: object
+                    properties:
+                      totalUsers:
+                        type: integer
+                        example: 10
+                      activeUsers:
+                        type: integer
+                        example: 10
+                      totalRoleAssignments:
+                        type: integer
+                        example: 20
+                      activeRoleAssignments:
+                        type: integer
+                        example: 18
+                  systemReady:
+                    type: boolean
+                    example: true
+                  timestamp:
+                    type: integer
+                    format: int64
+                    example: 1640995200000
+        '500':
+          description: Internal server error
+
 components:
   parameters:
     SessionId:
@@ -1424,7 +2175,8 @@ components:
       properties:
         id:
           type: string
-          example: "user123"
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
         username:
           type: string
           example: "alice.intake"
@@ -1452,7 +2204,8 @@ components:
       properties:
         id:
           type: string
-          example: "user123"
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
         username:
           type: string
           example: "alice.intake"
@@ -1559,20 +2312,13 @@ components:
           example: 1
         userId:
           type: string
-          example: "user123"
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
         businessAppRole:
           $ref: '#/components/schemas/BusinessAppRole'
         isActive:
           type: boolean
           example: true
-        assignedAt:
-          type: string
-          format: date-time
-          example: "2025-01-01T00:00:00Z"
-        updatedAt:
-          type: string
-          format: date-time
-          example: "2025-01-01T00:00:00Z"
 
     AuthorizationCheckRequest:
       type: object
@@ -1588,7 +2334,8 @@ components:
           properties:
             id:
               type: string
-              example: "user123"
+              format: uuid
+              example: "550e8400-e29b-41d4-a716-446655440001"
             attributes:
               type: object
               additionalProperties: true
@@ -1642,3 +2389,52 @@ components:
         message:
           type: string
           example: "Error message"
+
+    Department:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        departmentName:
+          type: string
+          example: "Human Resources"
+        departmentCode:
+          type: string
+          example: "HR"
+        description:
+          type: string
+          example: "Human Resources Department"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+
+    UserDepartment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        department:
+          $ref: '#/components/schemas/Department'
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"

@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ================================================================== -->
+    <!-- Hybrid Authorization Schema - Complete Table Creation             -->
+    <!-- Version: 1.0.0 - Single Migration for All Tables                  -->
+    <!-- ================================================================== -->
+
+    <changeSet id="create-hybrid-authorization-schema" author="claude-code">
+        <comment>Create complete hybrid authorization schema with adapter pattern support</comment>
+        
+        <sql endDelimiter=";" splitStatements="false"><![CDATA[
+            -- ================================================================
+            -- Update Function for Timestamps
+            -- ================================================================
+            CREATE OR REPLACE FUNCTION entitlements.update_updated_at_column()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            $$ language 'plpgsql';
+            
+            -- ================================================================
+            -- PRIMARY USER IDENTITY TABLE (Core for both engines)
+            -- ================================================================
+            CREATE TABLE entitlements.entitlement_core_users (
+                user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                username VARCHAR(255) NOT NULL UNIQUE,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                first_name VARCHAR(255) NOT NULL,
+                last_name VARCHAR(255) NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT true,
+                global_attributes JSONB NOT NULL DEFAULT '{}',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            CREATE INDEX idx_core_users_username ON entitlements.entitlement_core_users(username);
+            CREATE INDEX idx_core_users_email ON entitlements.entitlement_core_users(email);
+            CREATE INDEX idx_core_users_active ON entitlements.entitlement_core_users(is_active);
+            CREATE INDEX idx_core_users_attributes_gin ON entitlements.entitlement_core_users USING gin(global_attributes);
+            
+            CREATE TRIGGER tr_core_users_updated_at 
+                BEFORE UPDATE ON entitlements.entitlement_core_users 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- DEPARTMENTS TABLE (For both engines)
+            -- ================================================================
+            CREATE TABLE entitlements.departments (
+                id BIGSERIAL PRIMARY KEY,
+                department_name VARCHAR(100) NOT NULL UNIQUE,
+                department_code VARCHAR(50) NOT NULL UNIQUE,
+                description TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT true,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                
+                CONSTRAINT chk_departments_name_length CHECK (char_length(department_name) >= 2),
+                CONSTRAINT chk_departments_code_length CHECK (char_length(department_code) >= 2),
+                CONSTRAINT chk_departments_code_format CHECK (department_code ~ '^[A-Z0-9_-]+$')
+            );
+            
+            CREATE INDEX idx_departments_name ON entitlements.departments(department_name);
+            CREATE INDEX idx_departments_code ON entitlements.departments(department_code);
+            CREATE INDEX idx_departments_active ON entitlements.departments(is_active);
+            
+            CREATE TRIGGER tr_departments_updated_at 
+                BEFORE UPDATE ON entitlements.departments 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- BUSINESS APPLICATIONS TABLE (For Cerbos engine)
+            -- ================================================================
+            CREATE TABLE entitlements.business_applications (
+                id BIGSERIAL PRIMARY KEY,
+                business_app_name VARCHAR(100) NOT NULL UNIQUE,
+                description TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT true,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                metadata JSONB DEFAULT '{}',
+                
+                CONSTRAINT chk_business_apps_name_length CHECK (char_length(business_app_name) >= 2),
+                CONSTRAINT chk_business_apps_name_format CHECK (business_app_name ~ '^[a-z0-9_-]+$')
+            );
+            
+            CREATE INDEX idx_business_apps_name ON entitlements.business_applications(business_app_name);
+            CREATE INDEX idx_business_apps_active ON entitlements.business_applications(is_active);
+            CREATE INDEX idx_business_apps_metadata_gin ON entitlements.business_applications USING gin(metadata);
+            
+            CREATE TRIGGER tr_business_apps_updated_at 
+                BEFORE UPDATE ON entitlements.business_applications 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- BUSINESS APP ROLES TABLE (For Cerbos engine)
+            -- ================================================================
+            CREATE TABLE entitlements.business_app_roles (
+                id BIGSERIAL PRIMARY KEY,
+                business_app_id BIGINT NOT NULL,
+                role_name VARCHAR(100) NOT NULL,
+                role_display_name VARCHAR(255) NOT NULL,
+                description TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT true,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                metadata JSONB DEFAULT '{}',
+                
+                CONSTRAINT fk_business_app_roles_app FOREIGN KEY (business_app_id) 
+                    REFERENCES entitlements.business_applications(id) ON DELETE CASCADE,
+                CONSTRAINT uk_business_app_role UNIQUE(business_app_id, role_name),
+                CONSTRAINT chk_business_app_roles_name_length CHECK (char_length(role_name) >= 2),
+                CONSTRAINT chk_business_app_roles_name_format CHECK (role_name ~ '^[A-Z0-9_]+$')
+            );
+            
+            CREATE INDEX idx_business_app_roles_app ON entitlements.business_app_roles(business_app_id);
+            CREATE INDEX idx_business_app_roles_name ON entitlements.business_app_roles(role_name);
+            CREATE INDEX idx_business_app_roles_active ON entitlements.business_app_roles(is_active);
+            CREATE INDEX idx_business_app_roles_metadata_gin ON entitlements.business_app_roles USING gin(metadata);
+            
+            CREATE TRIGGER tr_business_app_roles_updated_at 
+                BEFORE UPDATE ON entitlements.business_app_roles 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- APPLICATION DOMAINS TABLE (For database engine multi-tenancy)
+            -- ================================================================
+            CREATE TABLE entitlements.entitlement_application_domains (
+                domain_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                domain_name VARCHAR(255) NOT NULL UNIQUE,
+                description TEXT,
+                is_tiered BOOLEAN DEFAULT false,
+                domain_metadata JSONB DEFAULT '{}',
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            CREATE INDEX idx_domains_name ON entitlements.entitlement_application_domains(domain_name);
+            CREATE INDEX idx_domains_active ON entitlements.entitlement_application_domains(is_active);
+            CREATE INDEX idx_domains_metadata_gin ON entitlements.entitlement_application_domains USING gin(domain_metadata);
+            
+            CREATE TRIGGER tr_domains_updated_at 
+                BEFORE UPDATE ON entitlements.entitlement_application_domains 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- DOMAIN ROLES TABLE (For database engine)
+            -- ================================================================
+            CREATE TABLE entitlements.entitlement_domain_roles (
+                role_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                domain_id UUID NOT NULL,
+                role_name VARCHAR(255) NOT NULL,
+                display_name VARCHAR(255),
+                description TEXT,
+                role_level VARCHAR(50),
+                maker_checker_type VARCHAR(50),
+                role_metadata JSONB DEFAULT '{}',
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                
+                CONSTRAINT fk_domain_roles_domain FOREIGN KEY (domain_id) 
+                    REFERENCES entitlements.entitlement_application_domains(domain_id) ON DELETE CASCADE,
+                CONSTRAINT uk_domain_role UNIQUE(domain_id, role_name)
+            );
+            
+            CREATE INDEX idx_domain_roles_domain ON entitlements.entitlement_domain_roles(domain_id);
+            CREATE INDEX idx_domain_roles_name ON entitlements.entitlement_domain_roles(role_name);
+            CREATE INDEX idx_domain_roles_active ON entitlements.entitlement_domain_roles(is_active);
+            CREATE INDEX idx_domain_roles_level ON entitlements.entitlement_domain_roles(role_level);
+            CREATE INDEX idx_domain_roles_metadata_gin ON entitlements.entitlement_domain_roles USING gin(role_metadata);
+            
+            CREATE TRIGGER tr_domain_roles_updated_at 
+                BEFORE UPDATE ON entitlements.entitlement_domain_roles 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- PERMISSIONS TABLE (For database engine)
+            -- ================================================================
+            CREATE TABLE entitlements.entitlement_permissions (
+                permission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                resource_type VARCHAR(255) NOT NULL,
+                action VARCHAR(255) NOT NULL,
+                description TEXT,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                
+                CONSTRAINT uk_permission UNIQUE(resource_type, action)
+            );
+            
+            CREATE INDEX idx_permissions_resource_type ON entitlements.entitlement_permissions(resource_type);
+            CREATE INDEX idx_permissions_action ON entitlements.entitlement_permissions(action);
+            
+            CREATE TRIGGER tr_permissions_updated_at 
+                BEFORE UPDATE ON entitlements.entitlement_permissions 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- ROLE PERMISSIONS TABLE (For database engine RBAC mapping)
+            -- ================================================================
+            CREATE TABLE entitlements.entitlement_role_permissions (
+                role_permission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                role_id UUID NOT NULL,
+                permission_id UUID NOT NULL,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                
+                CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) 
+                    REFERENCES entitlements.entitlement_domain_roles(role_id) ON DELETE CASCADE,
+                CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id) 
+                    REFERENCES entitlements.entitlement_permissions(permission_id) ON DELETE CASCADE,
+                CONSTRAINT uk_role_permission UNIQUE(role_id, permission_id)
+            );
+            
+            CREATE INDEX idx_role_permissions_role ON entitlements.entitlement_role_permissions(role_id);
+            CREATE INDEX idx_role_permissions_permission ON entitlements.entitlement_role_permissions(permission_id);
+            CREATE INDEX idx_role_permissions_active ON entitlements.entitlement_role_permissions(is_active);
+            
+            CREATE TRIGGER tr_role_permissions_updated_at 
+                BEFORE UPDATE ON entitlements.entitlement_role_permissions 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- USER DOMAIN ROLES TABLE (For database engine user assignments)
+            -- ================================================================
+            CREATE TABLE entitlements.entitlement_user_domain_roles (
+                user_role_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL,
+                role_id UUID NOT NULL,
+                assigned_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMPTZ,
+                is_active BOOLEAN DEFAULT true,
+                assigned_by UUID,
+                assignment_metadata JSONB DEFAULT '{}',
+                
+                CONSTRAINT fk_user_domain_roles_user FOREIGN KEY (user_id) 
+                    REFERENCES entitlements.entitlement_core_users(user_id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_domain_roles_role FOREIGN KEY (role_id) 
+                    REFERENCES entitlements.entitlement_domain_roles(role_id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_domain_roles_assigner FOREIGN KEY (assigned_by) 
+                    REFERENCES entitlements.entitlement_core_users(user_id),
+                CONSTRAINT uk_user_domain_role UNIQUE(user_id, role_id)
+            );
+            
+            CREATE INDEX idx_user_domain_roles_user ON entitlements.entitlement_user_domain_roles(user_id);
+            CREATE INDEX idx_user_domain_roles_role ON entitlements.entitlement_user_domain_roles(role_id);
+            CREATE INDEX idx_user_domain_roles_active ON entitlements.entitlement_user_domain_roles(is_active);
+            CREATE INDEX idx_user_domain_roles_expires ON entitlements.entitlement_user_domain_roles(expires_at);
+            
+            -- ================================================================
+            -- RESOURCE PERMISSIONS TABLE (For database engine ABAC)
+            -- ================================================================
+            CREATE TABLE entitlements.resource_permissions (
+                resource_permission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL,
+                resource_type VARCHAR(255) NOT NULL,
+                resource_id VARCHAR(255) NOT NULL,
+                allowed_actions TEXT[] NOT NULL,
+                conditions JSONB DEFAULT '{}',
+                granted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMPTZ,
+                is_active BOOLEAN DEFAULT true,
+                granted_by UUID,
+                
+                CONSTRAINT fk_resource_permissions_user FOREIGN KEY (user_id) 
+                    REFERENCES entitlements.entitlement_core_users(user_id) ON DELETE CASCADE,
+                CONSTRAINT fk_resource_permissions_granter FOREIGN KEY (granted_by) 
+                    REFERENCES entitlements.entitlement_core_users(user_id)
+            );
+            
+            CREATE INDEX idx_resource_permissions_user ON entitlements.resource_permissions(user_id);
+            CREATE INDEX idx_resource_permissions_resource ON entitlements.resource_permissions(resource_type, resource_id);
+            CREATE INDEX idx_resource_permissions_active ON entitlements.resource_permissions(is_active);
+            CREATE INDEX idx_resource_permissions_expires ON entitlements.resource_permissions(expires_at);
+            CREATE INDEX idx_resource_permissions_conditions_gin ON entitlements.resource_permissions USING gin(conditions);
+            
+            -- ================================================================
+            -- USER DEPARTMENTS TABLE (For Cerbos engine user-department assignments)
+            -- ================================================================
+            CREATE TABLE entitlements.user_departments (
+                id BIGSERIAL PRIMARY KEY,
+                user_id UUID NOT NULL,
+                department_id BIGINT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT true,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                
+                CONSTRAINT fk_user_departments_user FOREIGN KEY (user_id) 
+                    REFERENCES entitlements.entitlement_core_users(user_id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_departments_department FOREIGN KEY (department_id) 
+                    REFERENCES entitlements.departments(id) ON DELETE CASCADE,
+                CONSTRAINT uk_user_department UNIQUE(user_id, department_id)
+            );
+            
+            CREATE INDEX idx_user_departments_user ON entitlements.user_departments(user_id);
+            CREATE INDEX idx_user_departments_department ON entitlements.user_departments(department_id);
+            CREATE INDEX idx_user_departments_active ON entitlements.user_departments(is_active);
+            CREATE INDEX idx_user_departments_created ON entitlements.user_departments(created_at);
+            
+            -- ================================================================
+            -- USER BUSINESS APP ROLES TABLE (For Cerbos engine user-role assignments)
+            -- ================================================================
+            CREATE TABLE entitlements.user_business_app_roles (
+                id BIGSERIAL PRIMARY KEY,
+                user_id UUID NOT NULL,
+                business_app_role_id BIGINT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                
+                CONSTRAINT fk_user_business_app_roles_user FOREIGN KEY (user_id) 
+                    REFERENCES entitlements.entitlement_core_users(user_id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_business_app_roles_role FOREIGN KEY (business_app_role_id) 
+                    REFERENCES entitlements.business_app_roles(id) ON DELETE CASCADE,
+                CONSTRAINT uk_user_business_app_role UNIQUE(user_id, business_app_role_id)
+            );
+            
+            CREATE INDEX idx_user_business_app_roles_user ON entitlements.user_business_app_roles(user_id);
+            CREATE INDEX idx_user_business_app_roles_role ON entitlements.user_business_app_roles(business_app_role_id);
+            CREATE INDEX idx_user_business_app_roles_active ON entitlements.user_business_app_roles(is_active);
+            
+            CREATE TRIGGER tr_user_business_app_roles_updated_at 
+                BEFORE UPDATE ON entitlements.user_business_app_roles 
+                FOR EACH ROW EXECUTE FUNCTION entitlements.update_updated_at_column();
+            
+            -- ================================================================
+            -- AUDIT LOGS TABLE (For both engines)
+            -- ================================================================
+            CREATE TABLE entitlements.entitlement_audit_logs (
+                audit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                event_timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                event_type VARCHAR(100) NOT NULL,
+                user_id UUID,
+                resource_type VARCHAR(255),
+                resource_id VARCHAR(255),
+                action VARCHAR(255),
+                decision VARCHAR(20), -- ALLOW, DENY
+                decision_reason TEXT,
+                engine_type VARCHAR(50), -- DATABASE, CERBOS
+                request_metadata JSONB DEFAULT '{}',
+                response_metadata JSONB DEFAULT '{}',
+                session_id VARCHAR(255),
+                ip_address INET,
+                user_agent TEXT,
+                
+                CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) 
+                    REFERENCES entitlements.entitlement_core_users(user_id) ON DELETE SET NULL
+            );
+            
+            CREATE INDEX idx_audit_logs_timestamp ON entitlements.entitlement_audit_logs(event_timestamp);
+            CREATE INDEX idx_audit_logs_user ON entitlements.entitlement_audit_logs(user_id);
+            CREATE INDEX idx_audit_logs_event_type ON entitlements.entitlement_audit_logs(event_type);
+            CREATE INDEX idx_audit_logs_resource ON entitlements.entitlement_audit_logs(resource_type, resource_id);
+            CREATE INDEX idx_audit_logs_decision ON entitlements.entitlement_audit_logs(decision);
+            CREATE INDEX idx_audit_logs_session ON entitlements.entitlement_audit_logs(session_id);
+            CREATE INDEX idx_audit_logs_request_gin ON entitlements.entitlement_audit_logs USING gin(request_metadata);
+            CREATE INDEX idx_audit_logs_engine_type ON entitlements.entitlement_audit_logs(engine_type);
+            
+            -- ================================================================
+            -- GRANT PERMISSIONS
+            -- ================================================================
+            GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA entitlements TO entitlement_user;
+            GRANT USAGE ON ALL SEQUENCES IN SCHEMA entitlements TO entitlement_user;
+            
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>
