@@ -77,6 +77,32 @@ spring:
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
                 methods: GET,POST,PUT,DELETE
 
+        # Route for Policy Management via Entitlement Service  
+        - id: policy-service-route
+          uri: lb://entitlement-service
+          predicates:
+            - Path=/api/policies/**
+          filters:
+            - RewritePath=/api/policies/(?<segment>.*), /api/policies/$\{segment}
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+
+        # Route for System Test endpoints via Entitlement Service
+        - id: system-test-service-route
+          uri: lb://entitlement-service
+          predicates:
+            - Path=/api/system-test/**
+          filters:
+            - RewritePath=/api/system-test/(?<segment>.*), /api/system-test/$\{segment}
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+
         # Route for OneCMS Service
         - id: onecms-service-route
           uri: lb://onecms-service

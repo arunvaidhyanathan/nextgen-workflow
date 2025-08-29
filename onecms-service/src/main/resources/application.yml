@@ -59,7 +59,7 @@ spring:
       repositories:
         query-lookup-strategy: create-if-not-found
 
-  # Liquibase Configuration - Disabled due to migration conflicts
+  # Liquibase Configuration - Disabled (schema already exists)
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
     default-schema: ${DB_SCHEMA:onecms}

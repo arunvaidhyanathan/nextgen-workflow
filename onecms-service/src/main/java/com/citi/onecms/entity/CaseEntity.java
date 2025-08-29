@@ -22,8 +22,8 @@ public class CaseEntity {
     @Column(name = "entity_id", nullable = false, unique = true, length = 50)
     private String entityId;
 
-    @Column(name = "case_id", nullable = false, length = 50)
-    private String caseId;
+    @Column(name = "case_id", nullable = false)
+    private Long caseId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "entity_type", nullable = false, length = 20)

@@ -6,12 +6,12 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
     <!-- ========================================= -->
-    <!-- CONSOLIDATED ONECMS DATABASE MIGRATION   -->
-    <!-- Single comprehensive migration for clean -->
+    <!-- CONSOLIDATED ONECMS DATABASE SCHEMA      -->
+    <!-- Complete schema migration for OneCMS     -->
     <!-- ========================================= -->
 
     <!-- ========================================= -->
-    <!-- 1. REFERENCE DATA TABLES -->
+    <!-- 1. REFERENCE DATA TABLES                 -->
     <!-- ========================================= -->
 
     <changeSet id="001-create-reference-tables" author="onecms-consolidated">
@@ -19,7 +19,7 @@
         
         <!-- Departments Table -->
         <createTable tableName="departments" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="department_name" type="VARCHAR(255)">
@@ -38,7 +38,7 @@
         
         <!-- Case Types Table -->
         <createTable tableName="case_types" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="type_name" type="VARCHAR(255)">
@@ -56,7 +56,7 @@
         
         <!-- Countries and Clusters Table -->
         <createTable tableName="countries_clusters" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="country_code" type="VARCHAR(10)">
@@ -78,7 +78,7 @@
         
         <!-- Data Sources Table -->
         <createTable tableName="data_sources" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="source_code" type="VARCHAR(50)">
@@ -99,7 +99,7 @@
         
         <!-- Escalation Methods Table -->
         <createTable tableName="escalation_methods" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="method_code" type="VARCHAR(50)">
@@ -134,14 +134,14 @@
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 2. MAIN CASES TABLE -->
+    <!-- 2. MAIN CASES TABLE                      -->
     <!-- ========================================= -->
 
     <changeSet id="002-create-cases-table" author="onecms-consolidated">
         <comment>Create main cases table with comprehensive case management fields</comment>
         
         <createTable tableName="cases" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="case_number" type="VARCHAR(50)">
@@ -232,14 +232,14 @@
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 3. ALLEGATIONS TABLE -->
+    <!-- 3. ALLEGATIONS TABLE                     -->
     <!-- ========================================= -->
 
     <changeSet id="003-create-allegations-table" author="onecms-consolidated">
         <comment>Create allegations table for case-related allegations and incidents</comment>
         
         <createTable tableName="allegations" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="allegation_id" type="VARCHAR(50)">
@@ -306,14 +306,14 @@
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 4. CASE ENTITIES TABLE -->
+    <!-- 4. CASE ENTITIES TABLE                   -->
     <!-- ========================================= -->
 
     <changeSet id="004-create-case-entities-table" author="onecms-consolidated">
         <comment>Create case_entities table for people and organizations involved in cases</comment>
         
         <createTable tableName="case_entities" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="entity_id" type="VARCHAR(50)">
@@ -391,14 +391,14 @@
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 5. CASE NARRATIVES TABLE -->
+    <!-- 5. CASE NARRATIVES TABLE                 -->
     <!-- ========================================= -->
 
     <changeSet id="005-create-case-narratives-table" author="onecms-consolidated">
         <comment>Create case_narratives table for case investigation documentation</comment>
         
         <createTable tableName="case_narratives" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="narrative_id" type="VARCHAR(50)">
@@ -457,14 +457,14 @@
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 6. CASE COMMENTS TABLE -->
+    <!-- 6. CASE COMMENTS TABLE                   -->
     <!-- ========================================= -->
 
     <changeSet id="006-create-case-comments-table" author="onecms-consolidated">
         <comment>Create case_comments table for case discussions and communication</comment>
         
         <createTable tableName="case_comments" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="comment_id" type="VARCHAR(50)">
@@ -534,14 +534,14 @@
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 7. CASE TRANSITIONS TABLE -->
+    <!-- 7. CASE TRANSITIONS TABLE                -->
     <!-- ========================================= -->
 
     <changeSet id="007-create-case-transitions-table" author="onecms-consolidated">
         <comment>Create case_transitions table for tracking case workflow state changes</comment>
         
         <createTable tableName="case_transitions" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="transition_id" type="BIGINT">
@@ -580,7 +580,7 @@
         <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_case_id">
             <column name="case_id"/>
         </createIndex>
-        <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_date">
+        <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_transition_date">
             <column name="transition_date"/>
         </createIndex>
         <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_performed_by">
@@ -589,13 +589,60 @@
         <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_workflow">
             <column name="workflow_instance_key"/>
         </createIndex>
+        
+        <!-- Composite index for common queries -->
+        <createIndex tableName="case_transitions" schemaName="onecms" indexName="idx_case_transitions_case_status">
+            <column name="case_id"/>
+            <column name="to_status"/>
+            <column name="transition_date"/>
+        </createIndex>
+    </changeSet>
+    
+    <!-- ========================================= -->
+    <!-- 8. TRANSITION ID SEQUENCE                -->
+    <!-- ========================================= -->
+    
+    <changeSet id="008-create-transition-id-sequence" author="onecms-consolidated">
+        <comment>Create sequence for transition_id to ensure unique identifiers</comment>
+        
+        <createSequence schemaName="onecms" sequenceName="case_transitions_transition_id_seq" 
+                       startValue="1" incrementBy="1" minValue="1" maxValue="9223372036854775807" 
+                       cacheSize="1" cycle="false"/>
+    </changeSet>
+    
+    <!-- ========================================= -->
+    <!-- 9. UPDATED_AT TRIGGER                    -->
+    <!-- ========================================= -->
+    
+    <changeSet id="009-create-updated-at-trigger" author="onecms-consolidated">
+        <comment>Add trigger to automatically update updated_at timestamp on row updates</comment>
+        
+        <sql>
+            CREATE OR REPLACE FUNCTION onecms.update_case_transitions_updated_at()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+            
+            CREATE TRIGGER case_transitions_updated_at_trigger
+                BEFORE UPDATE ON onecms.case_transitions
+                FOR EACH ROW
+                EXECUTE FUNCTION onecms.update_case_transitions_updated_at();
+        </sql>
+        
+        <rollback>
+            DROP TRIGGER IF EXISTS case_transitions_updated_at_trigger ON onecms.case_transitions;
+            DROP FUNCTION IF EXISTS onecms.update_case_transitions_updated_at();
+        </rollback>
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 8. TRANSITION VARIABLES TABLE -->
+    <!-- 10. TRANSITION VARIABLES TABLE           -->
     <!-- ========================================= -->
 
-    <changeSet id="008-create-transition-variables-table" author="onecms-consolidated">
+    <changeSet id="010-create-transition-variables-table" author="onecms-consolidated">
         <comment>Create transition_variables table for storing case transition variables</comment>
         
         <createTable tableName="transition_variables" schemaName="onecms">
@@ -624,14 +671,14 @@
     </changeSet>
 
     <!-- ========================================= -->
-    <!-- 9. WORK ITEMS TABLE -->
+    <!-- 11. WORK ITEMS TABLE                     -->
     <!-- ========================================= -->
 
-    <changeSet id="009-create-work-items-table" author="onecms-consolidated">
+    <changeSet id="011-create-work-items-table" author="onecms-consolidated">
         <comment>Create work_items table for case tasks and work items</comment>
         
         <createTable tableName="work_items" schemaName="onecms">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="work_item_id" type="VARCHAR(20)">
@@ -685,76 +732,6 @@
             <column name="assigned_to_user_id"/>
             <column name="status"/>
         </createIndex>
-    </changeSet>
-
-    <!-- ========================================= -->
-    <!-- 10. INITIAL SEED DATA -->
-    <!-- ========================================= -->
-
-    <changeSet id="010-insert-seed-data" author="onecms-consolidated">
-        <comment>Insert initial reference data for case types, departments, and lookup values</comment>
-        
-        <!-- Insert default departments -->
-        <insert tableName="departments" schemaName="onecms">
-            <column name="department_name" value="Human Resources"/>
-            <column name="description" value="Employee relations and HR investigations"/>
-            <column name="active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="departments" schemaName="onecms">
-            <column name="department_name" value="Legal"/>
-            <column name="description" value="Legal compliance and regulatory matters"/>
-            <column name="active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="departments" schemaName="onecms">
-            <column name="department_name" value="Security"/>
-            <column name="description" value="Security incidents and investigations"/>
-            <column name="active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="departments" schemaName="onecms">
-            <column name="department_name" value="Investigation"/>
-            <column name="description" value="Internal investigations and compliance"/>
-            <column name="active" valueBoolean="true"/>
-        </insert>
-        
-        <!-- Insert default case types -->
-        <insert tableName="case_types" schemaName="onecms">
-            <column name="type_name" value="Employee Relations"/>
-            <column name="description" value="Employee conduct and workplace issues"/>
-            <column name="active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="case_types" schemaName="onecms">
-            <column name="type_name" value="Fraud"/>
-            <column name="description" value="Financial fraud investigations"/>
-            <column name="active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="case_types" schemaName="onecms">
-            <column name="type_name" value="Compliance"/>
-            <column name="description" value="Regulatory compliance matters"/>
-            <column name="active" valueBoolean="true"/>
-        </insert>
-        
-        <!-- Insert default countries/clusters -->
-        <insert tableName="countries_clusters" schemaName="onecms">
-            <column name="country_code" value="US"/>
-            <column name="country_name" value="United States"/>
-            <column name="cluster_name" value="North America"/>
-            <column name="region" value="Americas"/>
-            <column name="is_active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="countries_clusters" schemaName="onecms">
-            <column name="country_code" value="UK"/>
-            <column name="country_name" value="United Kingdom"/>
-            <column name="cluster_name" value="Europe"/>
-            <column name="region" value="EMEA"/>
-            <column name="is_active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="countries_clusters" schemaName="onecms">
-            <column name="country_code" value="SG"/>
-            <column name="country_name" value="Singapore"/>
-            <column name="cluster_name" value="Asia Pacific"/>
-            <column name="region" value="APAC"/>
-            <column name="is_active" valueBoolean="true"/>
-        </insert>
     </changeSet>
 
 </databaseChangeLog>

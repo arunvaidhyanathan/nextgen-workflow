@@ -1,0 +1,72 @@
+{
+  "title": "Complete Database Test Case",
+  "description": "Full case creation test with allegations, entities, and narratives to verify database persistence",
+  "priority": "HIGH",
+  "caseTypeId": 1,
+  "departmentId": 1,
+  "reporterId": "test-user-123",
+  "complainantName": "John Smith",
+  "complainantEmail": "john.smith@example.com",
+  "allegations": [
+    {
+      "allegationType": "HARASSMENT",
+      "severity": "HIGH",
+      "description": "Workplace harassment allegation requiring investigation",
+      "subject": "Subject Person A",
+      "investigationFunction": "HR_INVESTIGATION",
+      "grcTaxonomyLevel1": "Personnel",
+      "grcTaxonomyLevel2": "Harassment",
+      "grcTaxonomyLevel3": "Workplace",
+      "grcTaxonomyLevel4": "Verbal"
+    },
+    {
+      "allegationType": "FRAUD",
+      "severity": "MEDIUM",
+      "description": "Potential fraudulent activity requiring legal review",
+      "subject": "Subject Entity B",
+      "investigationFunction": "LEGAL_INVESTIGATION",
+      "grcTaxonomyLevel1": "Financial",
+      "grcTaxonomyLevel2": "Fraud",
+      "grcTaxonomyLevel3": "Expense",
+      "grcTaxonomyLevel4": "Misrepresentation"
+    }
+  ],
+  "entities": [
+    {
+      "type": "Person",
+      "relationshipType": "COMPLAINANT",
+      "soeid": "TEST001",
+      "geid": "GE123456",
+      "firstName": "John",
+      "lastName": "Smith",
+      "emailAddress": "john.smith@example.com",
+      "phoneNumber": "555-0123",
+      "investigationFunction": "WITNESS"
+    },
+    {
+      "type": "Person",
+      "relationshipType": "SUBJECT",
+      "soeid": "TEST002",
+      "geid": "GE789012",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "emailAddress": "jane.doe@example.com",
+      "phoneNumber": "555-0456",
+      "investigationFunction": "SUBJECT"
+    }
+  ],
+  "narratives": [
+    {
+      "type": "INITIAL_COMPLAINT",
+      "title": "Initial Complaint Description",
+      "narrative": "This is the initial complaint narrative describing the incident in detail for investigation purposes.",
+      "investigationFunction": "CASE_DOCUMENTATION"
+    },
+    {
+      "type": "SUPPORTING_EVIDENCE",
+      "title": "Supporting Documentation",
+      "narrative": "Additional supporting evidence and documentation related to the case for comprehensive review.",
+      "investigationFunction": "EVIDENCE_COLLECTION"
+    }
+  ]
+}

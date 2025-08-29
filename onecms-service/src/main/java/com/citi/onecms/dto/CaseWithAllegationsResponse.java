@@ -51,9 +51,27 @@ public class CaseWithAllegationsResponse {
 
   @Schema(description = "User assigned to the case")
   private String assignedTo;
+  
+  @Schema(description = "Process instance ID from workflow")
+  private String processInstanceId;
+  
+  @Schema(description = "Initial task ID when case was created")
+  private String initialTaskId;
+  
+  @Schema(description = "Current task ID")
+  private String currentTaskId;
 
   @Schema(description = "List of allegations")
   private List<AllegationResponse> allegations;
+  
+  @Schema(description = "List of case entities (people/organizations)")
+  private List<EntityResponse> entities;
+  
+  @Schema(description = "List of case narratives")
+  private List<NarrativeResponse> narratives;
+  
+  @Schema(description = "Workflow metadata")
+  private WorkflowMetadata workflowMetadata;
 
   /**
    * Represents the details of an allegation.
@@ -281,5 +299,241 @@ public class CaseWithAllegationsResponse {
 
   public void setAllegations(List<AllegationResponse> allegations) {
     this.allegations = allegations;
+  }
+  
+  public String getProcessInstanceId() {
+    return processInstanceId;
+  }
+  
+  public void setProcessInstanceId(String processInstanceId) {
+    this.processInstanceId = processInstanceId;
+  }
+  
+  public String getInitialTaskId() {
+    return initialTaskId;
+  }
+  
+  public void setInitialTaskId(String initialTaskId) {
+    this.initialTaskId = initialTaskId;
+  }
+  
+  public String getCurrentTaskId() {
+    return currentTaskId;
+  }
+  
+  public void setCurrentTaskId(String currentTaskId) {
+    this.currentTaskId = currentTaskId;
+  }
+  
+  public List<EntityResponse> getEntities() {
+    return entities;
+  }
+  
+  public void setEntities(List<EntityResponse> entities) {
+    this.entities = entities;
+  }
+  
+  public List<NarrativeResponse> getNarratives() {
+    return narratives;
+  }
+  
+  public void setNarratives(List<NarrativeResponse> narratives) {
+    this.narratives = narratives;
+  }
+  
+  public WorkflowMetadata getWorkflowMetadata() {
+    return workflowMetadata;
+  }
+  
+  public void setWorkflowMetadata(WorkflowMetadata workflowMetadata) {
+    this.workflowMetadata = workflowMetadata;
+  }
+  
+  /**
+   * Represents case entity (person/organization) details in response
+   */
+  @Schema(description = "Case entity (person or organization) details")
+  public static class EntityResponse {
+    
+    @Schema(description = "Entity ID")
+    private String entityId;
+    
+    @Schema(description = "Entity type", example = "PERSON")
+    private String entityType;
+    
+    @Schema(description = "Relationship type", example = "Subject")
+    private String relationshipType;
+    
+    @Schema(description = "Display name for the entity")
+    private String displayName;
+    
+    @Schema(description = "SOEID for person entities")
+    private String soeid;
+    
+    @Schema(description = "Email address")
+    private String emailAddress;
+    
+    @Schema(description = "Organization name for organization entities")
+    private String organizationName;
+    
+    @Schema(description = "Creation timestamp")
+    private LocalDateTime createdAt;
+    
+    // Constructors
+    public EntityResponse() {}
+    
+    // Getters and Setters
+    public String getEntityId() { return entityId; }
+    public void setEntityId(String entityId) { this.entityId = entityId; }
+    
+    public String getEntityType() { return entityType; }
+    public void setEntityType(String entityType) { this.entityType = entityType; }
+    
+    public String getRelationshipType() { return relationshipType; }
+    public void setRelationshipType(String relationshipType) { this.relationshipType = relationshipType; }
+    
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    
+    public String getSoeid() { return soeid; }
+    public void setSoeid(String soeid) { this.soeid = soeid; }
+    
+    public String getEmailAddress() { return emailAddress; }
+    public void setEmailAddress(String emailAddress) { this.emailAddress = emailAddress; }
+    
+    public String getOrganizationName() { return organizationName; }
+    public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
+    
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+  }
+  
+  /**
+   * Represents case narrative details in response
+   */
+  @Schema(description = "Case narrative details")
+  public static class NarrativeResponse {
+    
+    @Schema(description = "Narrative ID")
+    private String narrativeId;
+    
+    @Schema(description = "Narrative type", example = "Original Claim")
+    private String narrativeType;
+    
+    @Schema(description = "Narrative title")
+    private String narrativeTitle;
+    
+    @Schema(description = "Narrative text content")
+    private String narrativeText;
+    
+    @Schema(description = "Investigation function")
+    private String investigationFunction;
+    
+    @Schema(description = "Whether narrative is recalled")
+    private Boolean isRecalled;
+    
+    @Schema(description = "Creation timestamp")
+    private LocalDateTime createdAt;
+    
+    // Constructors
+    public NarrativeResponse() {}
+    
+    // Getters and Setters
+    public String getNarrativeId() { return narrativeId; }
+    public void setNarrativeId(String narrativeId) { this.narrativeId = narrativeId; }
+    
+    public String getNarrativeType() { return narrativeType; }
+    public void setNarrativeType(String narrativeType) { this.narrativeType = narrativeType; }
+    
+    public String getNarrativeTitle() { return narrativeTitle; }
+    public void setNarrativeTitle(String narrativeTitle) { this.narrativeTitle = narrativeTitle; }
+    
+    public String getNarrativeText() { return narrativeText; }
+    public void setNarrativeText(String narrativeText) { this.narrativeText = narrativeText; }
+    
+    public String getInvestigationFunction() { return investigationFunction; }
+    public void setInvestigationFunction(String investigationFunction) { this.investigationFunction = investigationFunction; }
+    
+    public Boolean getIsRecalled() { return isRecalled; }
+    public void setIsRecalled(Boolean isRecalled) { this.isRecalled = isRecalled; }
+    
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+  }
+  
+  /**
+   * Represents workflow metadata in response
+   */
+  @Schema(description = "Workflow metadata for the case")
+  public static class WorkflowMetadata {
+    
+    @Schema(description = "Process definition key")
+    private String processDefinitionKey;
+    
+    @Schema(description = "Process instance ID")
+    private String processInstanceId;
+    
+    @Schema(description = "Initial task information")
+    private TaskInfo initialTask;
+    
+    @Schema(description = "Current task information")
+    private TaskInfo currentTask;
+    
+    @Schema(description = "Workflow status", example = "STARTED")
+    private String status;
+    
+    // Constructors
+    public WorkflowMetadata() {}
+    
+    // Getters and Setters
+    public String getProcessDefinitionKey() { return processDefinitionKey; }
+    public void setProcessDefinitionKey(String processDefinitionKey) { this.processDefinitionKey = processDefinitionKey; }
+    
+    public String getProcessInstanceId() { return processInstanceId; }
+    public void setProcessInstanceId(String processInstanceId) { this.processInstanceId = processInstanceId; }
+    
+    public TaskInfo getInitialTask() { return initialTask; }
+    public void setInitialTask(TaskInfo initialTask) { this.initialTask = initialTask; }
+    
+    public TaskInfo getCurrentTask() { return currentTask; }
+    public void setCurrentTask(TaskInfo currentTask) { this.currentTask = currentTask; }
+    
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    
+    /**
+     * Task information within workflow metadata
+     */
+    @Schema(description = "Task information")
+    public static class TaskInfo {
+      
+      @Schema(description = "Task ID")
+      private String taskId;
+      
+      @Schema(description = "Task name")
+      private String taskName;
+      
+      @Schema(description = "Queue name")
+      private String queueName;
+      
+      @Schema(description = "Task status")
+      private String status;
+      
+      // Constructors
+      public TaskInfo() {}
+      
+      // Getters and Setters
+      public String getTaskId() { return taskId; }
+      public void setTaskId(String taskId) { this.taskId = taskId; }
+      
+      public String getTaskName() { return taskName; }
+      public void setTaskName(String taskName) { this.taskName = taskName; }
+      
+      public String getQueueName() { return queueName; }
+      public void setQueueName(String queueName) { this.queueName = queueName; }
+      
+      public String getStatus() { return status; }
+      public void setStatus(String status) { this.status = status; }
+    }
   }
 }

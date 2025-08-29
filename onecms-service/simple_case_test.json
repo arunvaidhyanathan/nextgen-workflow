@@ -1,0 +1,10 @@
+{
+  "title": "Simple Database Verification Test Case",
+  "description": "Basic case creation test to verify database persistence works",
+  "priority": "HIGH",
+  "caseTypeId": 1,
+  "departmentId": 1,
+  "reporterId": "test-user-123",
+  "complainantName": "John Doe",
+  "complainantEmail": "john.doe@example.com"
+}

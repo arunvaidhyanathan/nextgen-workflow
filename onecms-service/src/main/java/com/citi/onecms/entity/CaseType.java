@@ -12,32 +12,18 @@ public class CaseType {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-    
-    @Column(name = "case_type_id", unique = true, nullable = false)
-    private Long caseTypeId;
-    
-    @NotBlank
-    @Size(max = 50)
-    @Column(name = "type_code", unique = true)
-    private String typeCode;
+    private Long id;
     
     @NotBlank
     @Size(max = 100)
     @Column(name = "type_name")
     private String typeName;
     
-    @Column(name = "type_description", columnDefinition = "TEXT")
-    private String typeDescription;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
     
-    @Column(name = "default_priority")
-    private String defaultPriority;
-    
-    @Column(name = "sla_hours")
-    private Integer slaHours;
-    
-    @Column(name = "is_active")
-    private Boolean isActive = true;
+    @Column(name = "active")
+    private Boolean active = true;
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -48,13 +34,9 @@ public class CaseType {
     // Constructors
     public CaseType() {}
     
-    public CaseType(String typeCode, String typeName, String typeDescription, 
-                   String defaultPriority, Integer slaHours) {
-        this.typeCode = typeCode;
+    public CaseType(String typeName, String description) {
         this.typeName = typeName;
-        this.typeDescription = typeDescription;
-        this.defaultPriority = defaultPriority;
-        this.slaHours = slaHours;
+        this.description = description;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -72,29 +54,17 @@ public class CaseType {
     }
     
     // Getters and Setters
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
-    
-    public Long getCaseTypeId() { return caseTypeId; }
-    public void setCaseTypeId(Long caseTypeId) { this.caseTypeId = caseTypeId; }
-    
-    public String getTypeCode() { return typeCode; }
-    public void setTypeCode(String typeCode) { this.typeCode = typeCode; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     
     public String getTypeName() { return typeName; }
     public void setTypeName(String typeName) { this.typeName = typeName; }
     
-    public String getTypeDescription() { return typeDescription; }
-    public void setTypeDescription(String typeDescription) { this.typeDescription = typeDescription; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     
-    public String getDefaultPriority() { return defaultPriority; }
-    public void setDefaultPriority(String defaultPriority) { this.defaultPriority = defaultPriority; }
-    
-    public Integer getSlaHours() { return slaHours; }
-    public void setSlaHours(Integer slaHours) { this.slaHours = slaHours; }
-    
-    public Boolean getIsActive() { return isActive; }
-    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    public Boolean getActive() { return active; }
+    public void setActive(Boolean active) { this.active = active; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

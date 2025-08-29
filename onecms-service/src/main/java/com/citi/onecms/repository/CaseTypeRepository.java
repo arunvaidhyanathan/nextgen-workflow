@@ -9,8 +9,8 @@ import java.util.Optional;
 
 @Repository
 public interface CaseTypeRepository extends JpaRepository<CaseType, Long> {
-    Optional<CaseType> findByCaseTypeId(Long caseTypeId);
-    Optional<CaseType> findByTypeCode(String typeCode);
-    List<CaseType> findByIsActiveTrue();
-    boolean existsByTypeCode(String typeCode);
+    Optional<CaseType> findById(Long caseTypeId);
+    Optional<CaseType> findByTypeName(String typeName);
+    List<CaseType> findByActiveTrue();
+    boolean existsByTypeName(String typeName);
 }

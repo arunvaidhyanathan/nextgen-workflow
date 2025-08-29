@@ -24,8 +24,10 @@ info:
   contact:
     name: NextGen Workflow Team
 servers:
-  - url: http://localhost:8083
-    description: Development server
+  - url: http://localhost:8083/api
+    description: Development server (direct to OneCMS service)
+  - url: http://localhost:8080/api
+    description: Development server (via API Gateway)
 
 tags:
   - name: Case Management
@@ -35,7 +37,7 @@ tags:
 
 paths:
   # System endpoints
-  /v1/cases/test:
+  /cms/v1/test:
     get:
       tags:
         - System
@@ -50,7 +52,7 @@ paths:
                 type: string
                 example: "Case management controller is working!"
 
-  /v1/cases/auth-test:
+  /cms/v1/auth-test:
     get:
       tags:
         - System
@@ -85,7 +87,7 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
 
   # Case Management endpoints
-  /v1/cases:
+  /cms/v1/createcase:
     post:
       tags:
         - Case Management
@@ -113,6 +115,7 @@ paths:
         '403':
           $ref: '#/components/responses/ForbiddenError'
 
+  /cms/v1/cases:
     get:
       tags:
         - Case Management
@@ -157,7 +160,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/cases/multi-department:
+  /cms/v1/createcase/multi-department:
     post:
       tags:
         - Case Management
@@ -189,7 +192,7 @@ paths:
         '403':
           $ref: '#/components/responses/ForbiddenError'
 
-  /v1/cases/{caseNumber}:
+  /cms/v1/cases/{caseNumber}:
     get:
       tags:
         - Case Management
@@ -218,7 +221,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
 
-  /v1/cases/my-cases:
+  /cms/v1/my-cases:
     get:
       tags:
         - Case Management
@@ -261,7 +264,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/cases/dashboard-cases:
+  /cms/v1/dashboard-cases:
     get:
       tags:
         - Case Management
@@ -304,7 +307,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/cases/dashboard-stats:
+  /cms/v1/dashboard-stats:
     get:
       tags:
         - Case Management
@@ -337,7 +340,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/cases/{caseNumber}/workflow-status:
+  /cms/v1/{caseNumber}/workflow-status:
     get:
       tags:
         - Case Management
@@ -391,7 +394,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/cases/{caseNumber}/journey:
+  /cms/v1/{caseNumber}/journey:
     get:
       tags:
         - Case Management
@@ -435,7 +438,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/cases/{caseNumber}/submit:
+  /cms/v1/{caseNumber}/submit:
     post:
       tags:
         - Case Management
@@ -633,6 +636,16 @@ components:
           description: How the complaint was escalated
           example: "Employee Reported"
 
+        # Case Type and Department Information
+        caseTypeId:
+          type: integer
+          description: Case type ID (references case_types table)
+          example: 1
+        departmentId:
+          type: integer
+          description: Department ID (references entitlements.departments)
+          example: 1
+
         # Reporter and Assignment Information
         reporterId:
           type: string
@@ -814,9 +827,8 @@ components:
       properties:
         allegationType:
           type: string
-          enum: [Tracked, Non-Tracked]
           description: Type of allegation
-          example: "Tracked"
+          example: "HARASSMENT"
         subject:
           type: string
           description: Subject person reference (SOEID or entity reference)
@@ -931,11 +943,35 @@ components:
           type: string
           description: User assigned to the case
           example: "hr.manager"
+        processInstanceId:
+          type: string
+          description: Workflow process instance ID
+          example: "fallback-1756483815281"
+        initialTaskId:
+          type: string
+          description: Initial workflow task ID
+          example: "task_789"
+        currentTaskId:
+          type: string
+          description: Current workflow task ID
+          example: "task_789"
+        workflowMetadata:
+          $ref: '#/components/schemas/WorkflowMetadata'
         allegations:
           type: array
           description: List of allegations
           items:
             $ref: '#/components/schemas/AllegationResponse'
+        entities:
+          type: array
+          description: List of entities (people/organizations) involved
+          items:
+            $ref: '#/components/schemas/EntityResponse'
+        narratives:
+          type: array
+          description: List of narratives
+          items:
+            $ref: '#/components/schemas/NarrativeResponse'
 
     AllegationResponse:
       type: object
@@ -1008,4 +1044,114 @@ components:
           type: string
           format: date-time
           description: Error timestamp
+          example: "2025-01-15T10:30:00Z"
+
+    WorkflowMetadata:
+      type: object
+      properties:
+        processDefinitionKey:
+          type: string
+          description: Workflow process definition key
+          example: "OneCMS_Workflow"
+        processInstanceId:
+          type: string
+          description: Process instance ID
+          example: "fallback-1756483815281"
+        status:
+          type: string
+          description: Workflow status
+          example: "STARTED"
+        initialTask:
+          $ref: '#/components/schemas/TaskInfo'
+        currentTask:
+          $ref: '#/components/schemas/TaskInfo'
+
+    TaskInfo:
+      type: object
+      properties:
+        taskId:
+          type: string
+          description: Task ID
+          example: "task_789"
+        taskName:
+          type: string
+          description: Task name
+          example: "Intake Review"
+        queueName:
+          type: string
+          description: Queue name
+          example: "intake-analyst-queue"
+        status:
+          type: string
+          enum: [OPEN, CLAIMED, COMPLETED]
+          description: Task status
+          example: "OPEN"
+
+    EntityResponse:
+      type: object
+      properties:
+        entityId:
+          type: string
+          description: Entity ID
+          example: "ENT-1756483815246-769"
+        entityType:
+          type: string
+          enum: [PERSON, ORGANIZATION]
+          description: Entity type
+          example: "PERSON"
+        relationshipType:
+          type: string
+          description: Relationship to case
+          example: "Complainant"
+        displayName:
+          type: string
+          description: Display name
+          example: "John Robert Doe"
+        soeid:
+          type: string
+          description: SOEID for person entities
+        emailAddress:
+          type: string
+          format: email
+          description: Email address
+        organizationName:
+          type: string
+          description: Organization name for organization entities
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          example: "2025-01-15T10:30:00Z"
+
+    NarrativeResponse:
+      type: object
+      properties:
+        narrativeId:
+          type: string
+          description: Narrative ID
+          example: "NAR-1756483815246-769"
+        narrativeType:
+          type: string
+          description: Narrative type
+          example: "Original Claim"
+        narrativeTitle:
+          type: string
+          description: Narrative title
+          example: "Initial Report"
+        narrativeText:
+          type: string
+          description: Narrative content
+          example: "Employee reported harassment incident"
+        investigationFunction:
+          type: string
+          description: Investigation function
+          example: "ER"
+        isRecalled:
+          type: boolean
+          description: Recall status
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
           example: "2025-01-15T10:30:00Z"

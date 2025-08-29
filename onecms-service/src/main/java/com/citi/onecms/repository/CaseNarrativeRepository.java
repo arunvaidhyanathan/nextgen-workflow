@@ -14,12 +14,12 @@ public interface CaseNarrativeRepository extends JpaRepository<CaseNarrative, Lo
     
     Optional<CaseNarrative> findByNarrativeId(String narrativeId);
     
-    List<CaseNarrative> findByCaseIdOrderByCreatedAt(String caseId);
+    List<CaseNarrative> findByCaseIdOrderByCreatedAt(Long caseId);
     
-    List<CaseNarrative> findByCaseIdAndIsRecalledFalseOrderByCreatedAt(String caseId);
+    List<CaseNarrative> findByCaseIdAndIsRecalledFalseOrderByCreatedAt(Long caseId);
     
     @Query("SELECT cn FROM CaseNarrative cn WHERE cn.caseId = :caseId AND cn.narrativeType = :type ORDER BY cn.createdAt")
-    List<CaseNarrative> findByCaseIdAndType(@Param("caseId") String caseId, @Param("type") String type);
+    List<CaseNarrative> findByCaseIdAndType(@Param("caseId") Long caseId, @Param("type") String type);
     
     @Query("SELECT cn FROM CaseNarrative cn WHERE cn.investigationFunction = :function ORDER BY cn.createdAt DESC")
     List<CaseNarrative> findByInvestigationFunction(@Param("function") String function);
@@ -28,8 +28,8 @@ public interface CaseNarrativeRepository extends JpaRepository<CaseNarrative, Lo
     List<CaseNarrative> findByCreatedBy(@Param("userId") String userId);
     
     @Query("SELECT COUNT(cn) FROM CaseNarrative cn WHERE cn.caseId = :caseId AND cn.isRecalled = false")
-    long countActiveByCaseId(@Param("caseId") String caseId);
+    long countActiveByCaseId(@Param("caseId") Long caseId);
     
     @Query("SELECT COUNT(cn) FROM CaseNarrative cn WHERE cn.caseId = :caseId AND cn.isRecalled = true")
-    long countRecalledByCaseId(@Param("caseId") String caseId);
+    long countRecalledByCaseId(@Param("caseId") Long caseId);
 }

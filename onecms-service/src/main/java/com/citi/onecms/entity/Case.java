@@ -41,12 +41,11 @@ public class Case {
     private String description;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "case_type_id", referencedColumnName = "case_type_id")
+    @JoinColumn(name = "case_type_id", referencedColumnName = "id")
     private CaseType caseType;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id", referencedColumnName = "department_id")
-    private Department department;
+    @Column(name = "department_id")
+    private Long departmentId;
     
     @Enumerated(EnumType.STRING)
     private Priority priority = Priority.MEDIUM;
@@ -54,7 +53,7 @@ public class Case {
     @Enumerated(EnumType.STRING)
     private CaseStatus status = CaseStatus.OPEN;
     
-    @Column(name = "assigned_to_user_id", length = 100)
+    @Column(name = "assigned_to", length = 255)
     private String assignedToUserId;
     
     @Size(max = 200)
@@ -71,17 +70,23 @@ public class Case {
     @Column(name = "process_instance_id")
     private String processInstanceId;
     
+    // Task IDs are managed by workflow service, not stored in case table
+    // @Column(name = "initial_task_id")
+    // private String initialTaskId;
+    
+    // @Column(name = "current_task_id")
+    // private String currentTaskId;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
-    @Column(name = "created_by_user_id", length = 100)
+    @Column(name = "created_by", length = 255)
     private String createdByUserId;
     
-    // TODO: Temporarily disabled complex relationships to fix startup issues
-    /*
+    // Entity relationships - re-enabled with proper foreign key mappings
     @OneToMany(mappedBy = "caseEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<WorkItem> workItems = new ArrayList<>();
     
@@ -90,7 +95,6 @@ public class Case {
 
     @OneToMany(mappedBy = "caseId", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<Allegation> allegations = new ArrayList<>();
-    */
 
     // Additional case fields from frontend requirements
     @Column(name = "occurrence_date")
@@ -117,23 +121,21 @@ public class Case {
     @Column(name = "outside_counsel")
     private Boolean outsideCounsel = false;
 
-    @Column(name = "intake_analyst_id", length = 100)
+    @Column(name = "intake_analyst_id", length = 50)
     private String intakeAnalystId;
 
-    @Column(name = "investigation_manager_id", length = 100)
+    @Column(name = "investigation_manager_id", length = 50)
     private String investigationManagerId;
 
-    @Column(name = "investigator_id", length = 100)
+    @Column(name = "investigator_id", length = 50)
     private String investigatorId;
 
-    // TODO: Temporarily disabled new entity relationships
-    /*
+    // Entity relationships for case entities and narratives
     @OneToMany(mappedBy = "caseId", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<CaseEntity> entities = new ArrayList<>();
 
     @OneToMany(mappedBy = "caseId", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<CaseNarrative> narratives = new ArrayList<>();
-    */
 
     // Constructors
     public Case() {}
@@ -175,8 +177,8 @@ public class Case {
     public CaseType getCaseType() { return caseType; }
     public void setCaseType(CaseType caseType) { this.caseType = caseType; }
     
-    public Department getDepartment() { return department; }
-    public void setDepartment(Department department) { this.department = department; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
     
     public Priority getPriority() { return priority; }
     public void setPriority(Priority priority) { this.priority = priority; }
@@ -199,6 +201,12 @@ public class Case {
     public String getProcessInstanceId() { return processInstanceId; }
     public void setProcessInstanceId(String processInstanceId) { this.processInstanceId = processInstanceId; }
     
+    // public String getInitialTaskId() { return initialTaskId; }
+    // public void setInitialTaskId(String initialTaskId) { this.initialTaskId = initialTaskId; }
+    
+    // public String getCurrentTaskId() { return currentTaskId; }
+    // public void setCurrentTaskId(String currentTaskId) { this.currentTaskId = currentTaskId; }
+    
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
@@ -208,29 +216,23 @@ public class Case {
     public String getCreatedByUserId() { return createdByUserId; }
     public void setCreatedByUserId(String createdByUserId) { this.createdByUserId = createdByUserId; }
     
-    // TODO: Temporarily disabled - uncomment when relationships are fixed
-    /*
+    // Entity relationship getters and setters
     public List<WorkItem> getWorkItems() { return workItems; }
     public void setWorkItems(List<WorkItem> workItems) { this.workItems = workItems; }
     
     public List<Allegation> getAllegations() { return allegations; }
     public void setAllegations(List<Allegation> allegations) { this.allegations = allegations; }
-    */
 
-    // TODO: Temporarily disabled helper methods
-    /*
-    // Helper method to add transition
+    // Helper methods for managing entity relationships
     public void addTransition(CaseTransition transition) {
         transitions.add(transition);
         transition.setCaseEntity(this);
     }
     
-    // Helper method to add allegation
     public void addAllegation(Allegation allegation) {
         allegations.add(allegation);
         allegation.setCaseId(this.id);
     }
-    */
     
     // Getters and Setters for new fields
     public LocalDate getOccurrenceDate() { return occurrenceDate; }
@@ -266,23 +268,21 @@ public class Case {
     public String getInvestigatorId() { return investigatorId; }
     public void setInvestigatorId(String investigatorId) { this.investigatorId = investigatorId; }
     
-    // TODO: Temporarily disabled entity getters/setters and helper methods
-    /*
+    // Entity and narrative getters/setters and helper methods
     public List<CaseEntity> getEntities() { return entities; }
     public void setEntities(List<CaseEntity> entities) { this.entities = entities; }
     
     public List<CaseNarrative> getNarratives() { return narratives; }
     public void setNarratives(List<CaseNarrative> narratives) { this.narratives = narratives; }
     
-    // Helper methods for new entities
+    // Helper methods for managing entities and narratives
     public void addEntity(CaseEntity entity) {
         entities.add(entity);
-        entity.setCaseId(this.id != null ? this.id.toString() : null);
+        entity.setCaseId(this.id);
     }
     
     public void addNarrative(CaseNarrative narrative) {
         narratives.add(narrative);
-        narrative.setCaseId(this.id != null ? this.id.toString() : null);
+        narrative.setCaseId(this.id);
     }
-    */
 }

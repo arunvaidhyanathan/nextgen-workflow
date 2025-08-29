@@ -1,0 +1,129 @@
+{
+  "title": "Comprehensive Employee Misconduct Investigation - Database Verification Test",
+  "description": "Multi-allegation case involving harassment, fraud, and security violations to test complete database integration and workflow activation",
+  "priority": "HIGH",
+  "caseTypeId": 1,
+  "departmentId": 1,
+  "reporterId": "test-user-123",
+  "complainantName": "Jane Smith",
+  "complainantEmail": "jane.smith@company.com",
+  "allegations": [
+    {
+      "allegationType": "HARASSMENT",
+      "severity": "HIGH",
+      "description": "Workplace harassment creating hostile work environment",
+      "subject": "Harassment of female colleagues",
+      "narrative": "Multiple reports of inappropriate comments and behavior towards female staff members during team meetings and private conversations.",
+      "investigationFunction": "HR",
+      "grcTaxonomyLevel1": "CONDUCT",
+      "grcTaxonomyLevel2": "HARASSMENT",
+      "grcTaxonomyLevel3": "WORKPLACE",
+      "grcTaxonomyLevel4": "VERBAL"
+    },
+    {
+      "allegationType": "FRAUD",
+      "severity": "MEDIUM",
+      "description": "Potential expense report fraud and misuse of company funds",
+      "subject": "Fraudulent expense claims",
+      "narrative": "Suspicious expense reports with duplicate receipts and personal expenses claimed as business expenses over the past 6 months.",
+      "investigationFunction": "LEGAL",
+      "grcTaxonomyLevel1": "FINANCIAL",
+      "grcTaxonomyLevel2": "FRAUD",
+      "grcTaxonomyLevel3": "EXPENSES",
+      "grcTaxonomyLevel4": "RECEIPTS"
+    },
+    {
+      "allegationType": "SECURITY",
+      "severity": "CRITICAL",
+      "description": "Data security violations and unauthorized access",
+      "subject": "Security policy violations",
+      "narrative": "Employee attempted to access confidential client data outside of assigned role and downloaded files to personal devices.",
+      "investigationFunction": "CSIS",
+      "grcTaxonomyLevel1": "SECURITY",
+      "grcTaxonomyLevel2": "DATA_BREACH",
+      "grcTaxonomyLevel3": "UNAUTHORIZED_ACCESS",
+      "grcTaxonomyLevel4": "CLIENT_DATA"
+    }
+  ],
+  "entities": [
+    {
+      "type": "Person",
+      "relationshipType": "SUBJECT",
+      "investigationFunction": "PRIMARY",
+      "soeid": "EMP123456",
+      "geid": "GE789012",
+      "firstName": "John",
+      "middleName": "Michael",
+      "lastName": "Doe",
+      "emailAddress": "john.doe@company.com",
+      "phoneNumber": "+1-555-0123",
+      "address": "123 Business St",
+      "city": "New York",
+      "state": "NY",
+      "zip": "10001",
+      "hireDate": "2020-01-15",
+      "manager": "Sarah Johnson",
+      "goc": "US",
+      "hrResponsible": "Jennifer Wilson",
+      "legalVehicle": "Citibank NA",
+      "managedSegment": "Corporate Banking",
+      "relationshipToCiti": "EMPLOYEE",
+      "preferredContactMethod": "EMAIL",
+      "anonymous": false
+    },
+    {
+      "type": "Person",
+      "relationshipType": "WITNESS",
+      "investigationFunction": "SUPPORTING",
+      "soeid": "EMP654321",
+      "geid": "GE210987",
+      "firstName": "Alice",
+      "lastName": "Johnson",
+      "emailAddress": "alice.johnson@company.com",
+      "phoneNumber": "+1-555-0456",
+      "relationshipToCiti": "EMPLOYEE",
+      "preferredContactMethod": "PHONE",
+      "anonymous": false
+    },
+    {
+      "type": "Organization",
+      "relationshipType": "EXTERNAL_PARTY",
+      "investigationFunction": "AFFECTED_PARTY",
+      "organizationName": "ABC Client Corporation",
+      "emailAddress": "compliance@abcclient.com",
+      "phoneNumber": "+1-555-0789",
+      "address": "456 Client Avenue",
+      "city": "Boston",
+      "state": "MA",
+      "zip": "02101",
+      "preferredContactMethod": "EMAIL",
+      "anonymous": false
+    }
+  ],
+  "narratives": [
+    {
+      "type": "INITIAL_COMPLAINT",
+      "title": "Initial Complaint Report",
+      "narrative": "This case was initiated following multiple reports from staff members regarding inappropriate conduct by John Doe. The complainant, Jane Smith, filed a formal complaint after witnessing discriminatory behavior during a team meeting on August 15, 2025.",
+      "investigationFunction": "INTAKE"
+    },
+    {
+      "type": "FINANCIAL_ANALYSIS",
+      "title": "Expense Report Analysis",
+      "narrative": "Financial review of expense reports submitted by John Doe from February 2025 to August 2025 reveals patterns consistent with fraudulent activity. Notable discrepancies include duplicate receipts totaling $3,247 and personal meal expenses claimed as client entertainment.",
+      "investigationFunction": "LEGAL"
+    },
+    {
+      "type": "SECURITY_ASSESSMENT",
+      "title": "IT Security Incident Report",
+      "narrative": "IT security logs show that John Doe accessed the client database system outside normal business hours on July 22, 2025, and downloaded 47 files containing sensitive client information. These files were transferred to a USB device registered to his personal laptop.",
+      "investigationFunction": "CSIS"
+    },
+    {
+      "type": "WITNESS_STATEMENT",
+      "title": "Witness Statement - Alice Johnson",
+      "narrative": "Alice Johnson confirms observing John Doe making inappropriate comments about female colleagues' appearance during the August 15 team meeting. She also reports seeing him working late hours accessing systems he doesn't normally use in his role.",
+      "investigationFunction": "HR"
+    }
+  ]
+}

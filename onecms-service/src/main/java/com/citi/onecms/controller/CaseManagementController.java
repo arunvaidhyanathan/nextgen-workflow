@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/v1/cases")
+@RequestMapping("/cms/v1")
 @Tag(name = "Case Management", description = "APIs for managing cases and workflow processes")
 @Slf4j
 public class CaseManagementController {
@@ -60,7 +60,7 @@ public class CaseManagementController {
         return ResponseEntity.ok(response);
     }
     
-    @PostMapping
+    @PostMapping("/createcase")
     @Operation(summary = "Create a new case", description = "Create a new case with allegations and start the workflow process")
     public ResponseEntity<CaseWithAllegationsResponse> createCase(
             @Valid @RequestBody CreateCaseWithAllegationsRequest request,
@@ -84,7 +84,7 @@ public class CaseManagementController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
-    @PostMapping("/multi-department")
+    @PostMapping("/createcase/multi-department")
     @Operation(summary = "Create a multi-department case", description = "Create a complex case that requires multiple departments (HR, Legal, CSIS)")
     public ResponseEntity<CaseWithAllegationsResponse> createMultiDepartmentCase(
             @Valid @RequestBody CreateCaseWithAllegationsRequest request,
@@ -113,7 +113,7 @@ public class CaseManagementController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
-    @GetMapping("/{caseNumber}")
+    @GetMapping("/cases/{caseNumber}")
     @Operation(summary = "Get case details", description = "Retrieve detailed information about a specific case")
     public ResponseEntity<CaseWithAllegationsResponse> getCaseDetails(
             @Parameter(description = "Case number (e.g., CMS-2025-010)") @PathVariable String caseNumber,
@@ -137,7 +137,7 @@ public class CaseManagementController {
         }
     }
     
-    @GetMapping
+    @GetMapping("/cases")
     @Operation(summary = "Get all cases", description = "Retrieve a list of all cases in the system")
     public ResponseEntity<List<CaseWithAllegationsResponse>> getAllCases(
             @RequestParam(defaultValue = "0") int page,

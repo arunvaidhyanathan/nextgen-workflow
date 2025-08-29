@@ -14,12 +14,12 @@ public interface CaseEntityRepository extends JpaRepository<CaseEntity, Long> {
     
     Optional<CaseEntity> findByEntityId(String entityId);
     
-    List<CaseEntity> findByCaseIdOrderByCreatedAt(String caseId);
+    List<CaseEntity> findByCaseIdOrderByCreatedAt(Long caseId);
     
-    List<CaseEntity> findByCaseIdAndEntityType(String caseId, CaseEntity.EntityType entityType);
+    List<CaseEntity> findByCaseIdAndEntityType(Long caseId, CaseEntity.EntityType entityType);
     
     @Query("SELECT ce FROM CaseEntity ce WHERE ce.caseId = :caseId AND ce.relationshipType LIKE %:relationshipType%")
-    List<CaseEntity> findByCaseIdAndRelationshipTypeContaining(@Param("caseId") String caseId, 
+    List<CaseEntity> findByCaseIdAndRelationshipTypeContaining(@Param("caseId") Long caseId, 
                                                                @Param("relationshipType") String relationshipType);
     
     @Query("SELECT ce FROM CaseEntity ce WHERE ce.soeid = :soeid")

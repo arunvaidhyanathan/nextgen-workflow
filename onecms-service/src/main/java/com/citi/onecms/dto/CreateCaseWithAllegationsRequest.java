@@ -36,6 +36,13 @@ public class CreateCaseWithAllegationsRequest implements Serializable {
     @Schema(description = "Case category", example = "COMPLIANCE")
     private String category;
     
+    // Case Type and Department (Required)
+    @Schema(description = "Case type ID", example = "1", required = true)
+    private Long caseTypeId;
+    
+    @Schema(description = "Department ID", example = "1", required = true)
+    private Long departmentId;
+    
     // Case Dates
     @Past(message = "Occurrence date must be in the past")
     @Schema(description = "Date when the incident occurred")
@@ -481,4 +488,10 @@ public class CreateCaseWithAllegationsRequest implements Serializable {
     
     public List<NarrativeRequest> getNarratives() { return narratives; }
     public void setNarratives(List<NarrativeRequest> narratives) { this.narratives = narratives; }
+    
+    public Long getCaseTypeId() { return caseTypeId; }
+    public void setCaseTypeId(Long caseTypeId) { this.caseTypeId = caseTypeId; }
+    
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
 }

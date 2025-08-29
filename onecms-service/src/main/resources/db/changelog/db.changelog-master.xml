@@ -11,16 +11,15 @@
     <!-- This file coordinates all database migrations for the OneCMS service -->
     <!-- Consolidated approach with single comprehensive migration -->
     
-    <!-- Single consolidated migration script containing all schema changes -->
-    <!-- This replaces the previous fragmented approach (001-019) with a clean, comprehensive migration -->
-    <include file="classpath:db/changelog/001-consolidated-onecms-schema.xml"/>
+    <!-- Consolidated database schema migration -->
+    <!-- Complete OneCMS database schema with all tables, indexes, constraints, and database objects -->
+    <include file="classpath:db/changelog/001-onecms-schema-consolidated.xml"/>
+    
+    <!-- Sample data migration for master tables -->
+    <!-- Reference data and sample data for departments, case types, and lookup tables -->
+    <include file="classpath:db/changelog/002-onecms-sample-data.xml"/>
     
     <!-- Future migrations should be added here with incremental change sets -->
-    
-    <!-- Add case transitions audit table for comprehensive audit trail tracking -->
-    <include file="classpath:db/changelog/002-add-case-transitions-audit-table.xml"/>
-    
-    <!-- Future migrations -->
-    <!-- <include file="classpath:db/changelog/003-performance-improvements.xml"/> -->
+    <!-- <include file="classpath:db/changelog/003-additional-features.xml"/> -->
     
 </databaseChangeLog>

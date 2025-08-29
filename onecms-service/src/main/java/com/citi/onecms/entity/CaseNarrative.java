@@ -21,8 +21,8 @@ public class CaseNarrative {
     @Column(name = "narrative_id", nullable = false, unique = true, length = 50)
     private String narrativeId;
 
-    @Column(name = "case_id", nullable = false, length = 50)
-    private String caseId;
+    @Column(name = "case_id", nullable = false)
+    private Long caseId;
 
     @Column(name = "investigation_function", length = 50)
     private String investigationFunction;

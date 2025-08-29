@@ -5,10 +5,9 @@ import com.citi.onecms.dto.CreateCaseWithAllegationsRequest;
 import com.citi.onecms.dto.CaseWithAllegationsResponse;
 import com.citi.onecms.dto.workflow.StartProcessResponse;
 import com.citi.onecms.dto.workflow.TaskResponse;
-import com.citi.onecms.entity.Case;
-import com.citi.onecms.entity.CaseStatus;
-import com.citi.onecms.entity.Priority;
-import com.citi.onecms.repository.CaseRepository;
+import com.citi.onecms.dto.workflow.WorkflowStartResult;
+import com.citi.onecms.entity.*;
+import com.citi.onecms.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,8 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Complete Case Service with workflow and authorization integration
@@ -30,88 +31,71 @@ public class CaseService {
     
     private final CaseRepository caseRepository;
     private final WorkflowServiceClient workflowServiceClient;
+    private final AllegationRepository allegationRepository;
+    private final CaseEntityRepository caseEntityRepository;
+    private final CaseNarrativeRepository caseNarrativeRepository;
+    private final CaseTypeRepository caseTypeRepository;
+    private final DepartmentRepository departmentRepository;
     
     @Transactional
     public CaseWithAllegationsResponse createCase(CreateCaseWithAllegationsRequest request, String userId) {
-        log.info("Creating case: {} by user: {}", request.getTitle(), userId);
+        log.info("Creating comprehensive case: {} by user: {}", request.getTitle(), userId);
         
         try {
-            // 1. Create case entity and save to database
+            // 1. Create and save case entity first to get the ID
             Case caseEntity = createCaseEntity(request, userId);
             Case savedCase = caseRepository.save(caseEntity);
+            log.info("Case entity saved with ID: {} and case number: {}", savedCase.getId(), savedCase.getCaseNumber());
             
-            log.info("Case created in database: {} with ID: {}", savedCase.getCaseNumber(), savedCase.getId());
+            // 2. Create and associate allegations with saved case ID
+            if (request.getAllegations() != null && !request.getAllegations().isEmpty()) {
+                log.info("Creating {} allegations for case ID: {}", request.getAllegations().size(), savedCase.getId());
+                List<Allegation> allegations = createAllegations(request.getAllegations(), savedCase);
+                savedCase.setAllegations(allegations);
+            }
             
-            // 2. Start workflow process
-            try {
-                String processDefinitionKey = determineWorkflowProcess(request);
-                Map<String, Object> workflowVariables = buildWorkflowVariables(request, savedCase);
-                
-                StartProcessResponse processResponse = workflowServiceClient.startProcess(
-                    processDefinitionKey,
-                    savedCase.getCaseNumber(),
-                    workflowVariables,
-                    userId
-                );
-                
-                // 3. Update case with process instance ID
-                savedCase.setProcessInstanceId(processResponse.getProcessInstanceId());
+            // 3. Create and associate entities (people/organizations)
+            if (request.getEntities() != null && !request.getEntities().isEmpty()) {
+                log.info("Creating {} entities for case ID: {}", request.getEntities().size(), savedCase.getId());
+                List<CaseEntity> entities = createEntities(request.getEntities(), savedCase);
+                savedCase.setEntities(entities);
+            }
+            
+            // 4. Create and associate narratives
+            if (request.getNarratives() != null && !request.getNarratives().isEmpty()) {
+                log.info("Creating {} narratives for case ID: {}", request.getNarratives().size(), savedCase.getId());
+                List<CaseNarrative> narratives = createNarratives(request.getNarratives(), savedCase);
+                savedCase.setNarratives(narratives);
+            }
+            
+            // 5. Update case with all relationships
+            savedCase = caseRepository.save(savedCase);
+            log.info("Case created in database: {} with ID: {}, {} allegations, {} entities, {} narratives", 
+                     savedCase.getCaseNumber(), savedCase.getId(),
+                     savedCase.getAllegations().size(), 
+                     savedCase.getEntities().size(),
+                     savedCase.getNarratives().size());
+            
+            // 6. Start workflow and capture both processInstanceId and taskId
+            WorkflowStartResult workflowResult = startWorkflowAndCaptureTasks(savedCase, request, userId);
+            
+            // 7. Update case with complete workflow information
+            if (workflowResult.isSuccessful()) {
+                savedCase.setProcessInstanceId(workflowResult.getProcessInstanceId());
+                // Task IDs are managed by workflow service, not stored in case entity
+                // savedCase.setInitialTaskId(workflowResult.getInitialTaskId());
+                // savedCase.setCurrentTaskId(workflowResult.getCurrentTaskId());
                 caseRepository.save(savedCase);
                 
-                log.info("Workflow process started: processInstanceId={} for case={}", 
-                         processResponse.getProcessInstanceId(), savedCase.getCaseNumber());
-                
-                // 4. Build complete response with workflow information
-                CaseWithAllegationsResponse response = convertToResponse(savedCase);
-                
-                // Add workflow metadata
-                Map<String, Object> workflowInfo = new HashMap<>();
-                workflowInfo.put("processInstanceId", processResponse.getProcessInstanceId());
-                workflowInfo.put("processDefinitionKey", processDefinitionKey);
-                workflowInfo.put("workflowStatus", "STARTED");
-                
-                // Get initial tasks if available
-                try {
-                    List<TaskResponse> initialTasks = workflowServiceClient.getUserTasks(userId);
-                    if (!initialTasks.isEmpty()) {
-                        TaskResponse firstTask = initialTasks.stream()
-                            .filter(task -> savedCase.getProcessInstanceId() != null && 
-                                          savedCase.getProcessInstanceId().equals(task.getProcessInstanceId()))
-                            .findFirst()
-                            .orElse(null);
-                        
-                        if (firstTask != null) {
-                            Map<String, Object> taskInfo = new HashMap<>();
-                            taskInfo.put("taskId", firstTask.getTaskId());
-                            taskInfo.put("taskName", firstTask.getTaskName());
-                            taskInfo.put("queueName", firstTask.getQueueName());
-                            taskInfo.put("status", firstTask.getStatus());
-                            workflowInfo.put("currentTask", taskInfo);
-                        }
-                    }
-                } catch (Exception e) {
-                    log.warn("Could not retrieve initial tasks: {}", e.getMessage());
-                }
-                
-                // Note: Workflow metadata would be included in response if workflowMetadata field existed
-                log.info("Workflow started: processInstanceId={}, processDefinitionKey={}", 
-                        processResponse.getProcessInstanceId(), processDefinitionKey);
-                
-                return response;
-                
-            } catch (Exception e) {
-                log.error("Failed to start workflow for case {}: {}", savedCase.getCaseNumber(), e.getMessage());
-                // Return case without workflow info - case is created but workflow failed
-                CaseWithAllegationsResponse response = convertToResponse(savedCase);
-                
-                Map<String, Object> workflowInfo = new HashMap<>();
-                workflowInfo.put("workflowStatus", "FAILED");
-                workflowInfo.put("error", "Workflow service unavailable: " + e.getMessage());
-                // Note: Workflow metadata would be included in response if workflowMetadata field existed
-                log.warn("Workflow failed to start for case: {}, error: {}", savedCase.getCaseNumber(), e.getMessage());
-                
-                return response;
+                log.info("Workflow started successfully: processInstanceId={}, taskId={}", 
+                        workflowResult.getProcessInstanceId(), 
+                        workflowResult.getInitialTaskId());
+            } else {
+                log.warn("Workflow failed to start for case: {}, but case was created successfully", savedCase.getCaseNumber());
             }
+            
+            // 8. Return complete response with all related data
+            return convertToCompleteResponse(savedCase, workflowResult);
             
         } catch (Exception e) {
             log.error("Failed to create case: {}", e.getMessage(), e);
@@ -146,17 +130,17 @@ public class CaseService {
             int end = Math.min(start + size, cases.size());
             
             if (start >= cases.size()) {
-                return List.of();
+                return new ArrayList<>();
             }
             
             return cases.subList(start, end)
                 .stream()
                 .map(this::convertToResponse)
-                .toList();
+                .collect(Collectors.toList());
                 
         } catch (Exception e) {
             log.error("Failed to get cases: {}", e.getMessage());
-            return List.of();
+            return new ArrayList<>();
         }
     }
     
@@ -217,6 +201,18 @@ public class CaseService {
         caseEntity.setCreatedByUserId(userId != null ? userId : "system");
         caseEntity.setCreatedAt(LocalDateTime.now());
         caseEntity.setUpdatedAt(LocalDateTime.now());
+        
+        // Set case type if provided
+        if (request.getCaseTypeId() != null) {
+            CaseType caseType = caseTypeRepository.findById(request.getCaseTypeId())
+                .orElseThrow(() -> new RuntimeException("Case type not found with ID: " + request.getCaseTypeId()));
+            caseEntity.setCaseType(caseType);
+        }
+        
+        // Set department ID directly (department entity is in entitlements schema)
+        if (request.getDepartmentId() != null) {
+            caseEntity.setDepartmentId(request.getDepartmentId());
+        }
         
         return caseEntity;
     }
@@ -291,7 +287,7 @@ public class CaseService {
         if (request.getAllegations() != null) {
             List<String> allegationTypes = request.getAllegations().stream()
                 .map(a -> a.getAllegationType())
-                .toList();
+                .collect(Collectors.toList());
             variables.put("allegationTypes", allegationTypes);
         }
         
@@ -311,5 +307,305 @@ public class CaseService {
             long timestamp = System.currentTimeMillis() % 1000000;
             return String.format("CMS-%d-%06d", Year.now().getValue(), timestamp);
         }
+    }
+    
+    /**
+     * Create allegations from request
+     */
+    private List<Allegation> createAllegations(List<CreateCaseWithAllegationsRequest.AllegationRequest> allegationRequests, Case caseEntity) {
+        return allegationRequests.stream()
+            .map(req -> {
+                Allegation allegation = new Allegation();
+                allegation.setCaseId(caseEntity.getId());
+                allegation.setAllegationId(generateAllegationId()); // Generate unique allegation ID
+                allegation.setAllegationType(req.getAllegationType());
+                allegation.setSeverity(req.getSeverity());
+                allegation.setDescription(req.getDescription());
+                // subject field removed - doesn't exist in database schema (use subjectEntityId instead)
+                // narrative field removed - doesn't exist in database schema
+                allegation.setInvestigationFunction(req.getInvestigationFunction());
+                
+                // GRC Taxonomy mapping
+                allegation.setGrcTaxonomy1(req.getGrcTaxonomyLevel1());
+                allegation.setGrcTaxonomy2(req.getGrcTaxonomyLevel2());
+                allegation.setGrcTaxonomy3(req.getGrcTaxonomyLevel3());
+                allegation.setGrcTaxonomy4(req.getGrcTaxonomyLevel4());
+                
+                allegation.setCreatedAt(LocalDateTime.now());
+                allegation.setUpdatedAt(LocalDateTime.now());
+                
+                return allegation;
+            })
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Create case entities (people/organizations) from request
+     */
+    private List<CaseEntity> createEntities(List<CreateCaseWithAllegationsRequest.EntityRequest> entityRequests, Case caseEntity) {
+        return entityRequests.stream()
+            .map(req -> {
+                CaseEntity entity = new CaseEntity();
+                entity.setCaseId(caseEntity.getId());
+                entity.setEntityId(generateEntityId());
+                entity.setEntityType("Person".equalsIgnoreCase(req.getType()) ? 
+                                   CaseEntity.EntityType.PERSON : CaseEntity.EntityType.ORGANIZATION);
+                entity.setRelationshipType(req.getRelationshipType());
+                entity.setInvestigationFunction(req.getInvestigationFunction());
+                
+                // Person fields
+                if (CaseEntity.EntityType.PERSON.equals(entity.getEntityType())) {
+                    entity.setSoeid(req.getSoeid());
+                    entity.setGeid(req.getGeid());
+                    entity.setFirstName(req.getFirstName());
+                    entity.setMiddleName(req.getMiddleName());
+                    entity.setLastName(req.getLastName());
+                    entity.setHireDate(req.getHireDate());
+                    entity.setManager(req.getManager());
+                    entity.setGoc(req.getGoc());
+                    entity.setHrResponsible(req.getHrResponsible());
+                    entity.setLegalVehicle(req.getLegalVehicle());
+                    entity.setManagedSegment(req.getManagedSegment());
+                    entity.setRelationshipToCiti(req.getRelationshipToCiti());
+                } else {
+                    // Organization fields
+                    entity.setOrganizationName(req.getOrganizationName());
+                }
+                
+                // Contact information (common to both)
+                entity.setEmailAddress(req.getEmailAddress());
+                entity.setPhoneNumber(req.getPhoneNumber());
+                entity.setAddress(req.getAddress());
+                entity.setCity(req.getCity());
+                entity.setState(req.getState());
+                entity.setZipCode(req.getZip());
+                entity.setPreferredContactMethod(req.getPreferredContactMethod());
+                entity.setAnonymous(req.getAnonymous());
+                
+                entity.setCreatedAt(LocalDateTime.now());
+                entity.setUpdatedAt(LocalDateTime.now());
+                
+                return entity;
+            })
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Create case narratives from request
+     */
+    private List<CaseNarrative> createNarratives(List<CreateCaseWithAllegationsRequest.NarrativeRequest> narrativeRequests, Case caseEntity) {
+        return narrativeRequests.stream()
+            .map(req -> {
+                CaseNarrative narrative = new CaseNarrative();
+                narrative.setCaseId(caseEntity.getId());
+                narrative.setNarrativeId(generateNarrativeId());
+                narrative.setNarrativeType(req.getType());
+                narrative.setNarrativeTitle(req.getTitle());
+                narrative.setNarrativeText(req.getNarrative());
+                narrative.setInvestigationFunction(req.getInvestigationFunction());
+                narrative.setIsRecalled(false);
+                
+                narrative.setCreatedAt(LocalDateTime.now());
+                narrative.setUpdatedAt(LocalDateTime.now());
+                
+                return narrative;
+            })
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Start workflow and capture complete task information
+     */
+    private WorkflowStartResult startWorkflowAndCaptureTasks(Case savedCase, CreateCaseWithAllegationsRequest request, String userId) {
+        try {
+            String processDefinitionKey = determineWorkflowProcess(request);
+            Map<String, Object> workflowVariables = buildWorkflowVariables(request, savedCase);
+            
+            // Start the workflow process
+            StartProcessResponse processResponse = workflowServiceClient.startProcess(
+                processDefinitionKey,
+                savedCase.getCaseNumber(),
+                workflowVariables,
+                userId
+            );
+            
+            // Try to get initial tasks for this process instance
+            List<TaskResponse> initialTasks = null;
+            String initialTaskId = null;
+            String currentTaskId = null;
+            
+            try {
+                // Get all tasks for the user to find ones related to this process instance
+                List<TaskResponse> userTasks = workflowServiceClient.getUserTasks(userId);
+                initialTasks = userTasks.stream()
+                    .filter(task -> processResponse.getProcessInstanceId().equals(task.getProcessInstanceId()))
+                    .collect(Collectors.toList());
+                
+                if (!initialTasks.isEmpty()) {
+                    TaskResponse firstTask = initialTasks.get(0);
+                    initialTaskId = firstTask.getTaskId();
+                    currentTaskId = firstTask.getTaskId(); // Initially same as first task
+                }
+                
+            } catch (Exception e) {
+                log.warn("Could not retrieve initial tasks for process instance {}: {}", 
+                         processResponse.getProcessInstanceId(), e.getMessage());
+            }
+            
+            return WorkflowStartResult.builder()
+                .processInstanceId(processResponse.getProcessInstanceId())
+                .processDefinitionKey(processDefinitionKey)
+                .businessKey(savedCase.getCaseNumber())
+                .initialTaskId(initialTaskId)
+                .currentTaskId(currentTaskId)
+                .status("STARTED")
+                .allInitialTasks(initialTasks != null ? initialTasks : new ArrayList<>())
+                .build();
+                
+        } catch (Exception e) {
+            log.error("Failed to start workflow for case {}: {}", savedCase.getCaseNumber(), e.getMessage());
+            
+            return WorkflowStartResult.builder()
+                .processInstanceId(null)
+                .processDefinitionKey("OneCMS_Workflow")
+                .businessKey(savedCase.getCaseNumber())
+                .status("FAILED")
+                .allInitialTasks(new ArrayList<>())
+                .build();
+        }
+    }
+    
+    /**
+     * Convert case to complete response with workflow information
+     */
+    private CaseWithAllegationsResponse convertToCompleteResponse(Case savedCase, WorkflowStartResult workflowResult) {
+        CaseWithAllegationsResponse response = convertToResponse(savedCase);
+        
+        // Add workflow information
+        if (workflowResult != null) {
+            response.setProcessInstanceId(workflowResult.getProcessInstanceId());
+            response.setInitialTaskId(workflowResult.getInitialTaskId());
+            response.setCurrentTaskId(workflowResult.getCurrentTaskId());
+            
+            // Build workflow metadata
+            CaseWithAllegationsResponse.WorkflowMetadata workflowMetadata = 
+                new CaseWithAllegationsResponse.WorkflowMetadata();
+            workflowMetadata.setProcessDefinitionKey(workflowResult.getProcessDefinitionKey());
+            workflowMetadata.setProcessInstanceId(workflowResult.getProcessInstanceId());
+            workflowMetadata.setStatus(workflowResult.getStatus());
+            
+            // Add initial task info if available
+            if (workflowResult.hasInitialTasks()) {
+                TaskResponse firstTask = workflowResult.getFirstTask();
+                CaseWithAllegationsResponse.WorkflowMetadata.TaskInfo initialTaskInfo = 
+                    new CaseWithAllegationsResponse.WorkflowMetadata.TaskInfo();
+                initialTaskInfo.setTaskId(firstTask.getTaskId());
+                initialTaskInfo.setTaskName(firstTask.getTaskName());
+                initialTaskInfo.setQueueName(firstTask.getQueueName());
+                initialTaskInfo.setStatus(firstTask.getStatus());
+                workflowMetadata.setInitialTask(initialTaskInfo);
+                workflowMetadata.setCurrentTask(initialTaskInfo); // Initially same as initial task
+            }
+            
+            response.setWorkflowMetadata(workflowMetadata);
+        }
+        
+        // Add allegations if they exist
+        if (savedCase.getAllegations() != null && !savedCase.getAllegations().isEmpty()) {
+            List<CaseWithAllegationsResponse.AllegationResponse> allegationResponses = 
+                savedCase.getAllegations().stream()
+                    .map(this::convertAllegationToResponse)
+                    .collect(Collectors.toList());
+            response.setAllegations(allegationResponses);
+        }
+        
+        // Add entities if they exist  
+        if (savedCase.getEntities() != null && !savedCase.getEntities().isEmpty()) {
+            List<CaseWithAllegationsResponse.EntityResponse> entityResponses = 
+                savedCase.getEntities().stream()
+                    .map(this::convertEntityToResponse)
+                    .collect(Collectors.toList());
+            response.setEntities(entityResponses);
+        }
+        
+        // Add narratives if they exist
+        if (savedCase.getNarratives() != null && !savedCase.getNarratives().isEmpty()) {
+            List<CaseWithAllegationsResponse.NarrativeResponse> narrativeResponses = 
+                savedCase.getNarratives().stream()
+                    .map(this::convertNarrativeToResponse)
+                    .collect(Collectors.toList());
+            response.setNarratives(narrativeResponses);
+        }
+        
+        return response;
+    }
+    
+    /**
+     * Convert Allegation entity to AllegationResponse
+     */
+    private CaseWithAllegationsResponse.AllegationResponse convertAllegationToResponse(Allegation allegation) {
+        CaseWithAllegationsResponse.AllegationResponse response = new CaseWithAllegationsResponse.AllegationResponse();
+        response.setAllegationId(allegation.getId().toString());
+        response.setAllegationType(allegation.getAllegationType());
+        response.setSeverity(allegation.getSeverity());
+        response.setDescription(allegation.getDescription());
+        response.setDepartmentClassification(allegation.getDepartmentClassification());
+        response.setAssignedGroup(allegation.getAssignedGroup());
+        response.setFlowablePlanItemId(allegation.getFlowablePlanItemId());
+        response.setCreatedAt(allegation.getCreatedAt());
+        response.setUpdatedAt(allegation.getUpdatedAt());
+        return response;
+    }
+    
+    /**
+     * Convert CaseEntity entity to EntityResponse
+     */
+    private CaseWithAllegationsResponse.EntityResponse convertEntityToResponse(CaseEntity entity) {
+        CaseWithAllegationsResponse.EntityResponse response = new CaseWithAllegationsResponse.EntityResponse();
+        response.setEntityId(entity.getEntityId());
+        response.setEntityType(entity.getEntityType().toString());
+        response.setRelationshipType(entity.getRelationshipType());
+        response.setDisplayName(entity.getDisplayName()); // Uses utility method in entity
+        response.setSoeid(entity.getSoeid());
+        response.setEmailAddress(entity.getEmailAddress());
+        response.setOrganizationName(entity.getOrganizationName());
+        response.setCreatedAt(entity.getCreatedAt());
+        return response;
+    }
+    
+    /**
+     * Convert CaseNarrative entity to NarrativeResponse
+     */
+    private CaseWithAllegationsResponse.NarrativeResponse convertNarrativeToResponse(CaseNarrative narrative) {
+        CaseWithAllegationsResponse.NarrativeResponse response = new CaseWithAllegationsResponse.NarrativeResponse();
+        response.setNarrativeId(narrative.getNarrativeId());
+        response.setNarrativeType(narrative.getNarrativeType());
+        response.setNarrativeTitle(narrative.getNarrativeTitle());
+        response.setNarrativeText(narrative.getNarrativeText());
+        response.setInvestigationFunction(narrative.getInvestigationFunction());
+        response.setIsRecalled(narrative.getIsRecalled());
+        response.setCreatedAt(narrative.getCreatedAt());
+        return response;
+    }
+    
+    /**
+     * Generate unique entity ID
+     */
+    private String generateEntityId() {
+        return "ENT-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 1000);
+    }
+    
+    /**
+     * Generate unique narrative ID
+     */
+    private String generateNarrativeId() {
+        return "NAR-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 1000);
+    }
+    
+    /**
+     * Generate unique allegation ID
+     */
+    private String generateAllegationId() {
+        return "ALG-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 1000);
     }
 }
