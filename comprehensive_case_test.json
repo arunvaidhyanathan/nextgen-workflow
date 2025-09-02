@@ -91,7 +91,7 @@
   ],
   "allegations": [
     {
-      "allegationType": "HARASSMENT",
+      "allegationType": "Tracked",
       "subject": "John Doe (JD12345)",
       "grcTaxonomyLevel1": "Employee Conduct",
       "grcTaxonomyLevel2": "Workplace Behavior",
@@ -103,7 +103,7 @@
       "narrative": "The subject has been reported by multiple colleagues for creating an uncomfortable work environment through inappropriate comments, unwelcome physical contact, and making sexually suggestive remarks during team meetings. Three separate incidents have been documented over the past month."
     },
     {
-      "allegationType": "FRAUD", 
+      "allegationType": "Non-Tracked", 
       "subject": "John Doe (JD12345)",
       "grcTaxonomyLevel1": "Financial Crime",
       "grcTaxonomyLevel2": "Internal Fraud",
