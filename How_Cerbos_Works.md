@@ -1,278 +1,771 @@
-# How Cerbos Works
+# How Cerbos Works in NextGen Workflow Architecture
+
+## Overview
+
+The NextGen Workflow system implements a **Hybrid Authorization Architecture** that combines traditional Role-Based Access Control (RBAC) with advanced Policy-Based Access Control (ABAC) using the Cerbos policy engine. This document explains how authorization works across the microservices ecosystem.
 
 ## The Core Principle: Cerbos is Stateless
 
-You are correct, you do not create principals inside Cerbos.
+Cerbos is a pure, stateless decision engine that answers one question:
 
-Cerbos itself stores no data about your users, resources, or their relationships. It is a pure, stateless decision engine. Its only job is to answer one question, over and over again:
+**"Given this principal (user), trying to perform this action, on this resource... is it allowed?"**
 
-"Given this principal (the user), trying to perform this action, on this resource... is it allowed?"
+Cerbos stores **no user data** - it only holds policy rules. The Entitlement Service acts as the "Principal Builder" that constructs rich user context from the database and feeds it to Cerbos for policy evaluation.
 
-The "principal," "action," and "resource" are all provided at the time of the check. Cerbos holds the rules (your YAML policies), but your application holds the data.
+## Architecture Components
 
-## How the Check Works: The Role of the Entitlement Service
+### 1. Entitlement Service (Port 8081)
+- **Purpose**: Central authorization service and principal builder
+- **Technology**: Spring Boot with hybrid authorization engines
+- **Database**: PostgreSQL `entitlements` schema
+- **Key Features**:
+  - Session-based authentication (replaced JWT)
+  - Hybrid authorization engine (Database + Cerbos)
+  - Dynamic principal building from database
+  - Complete audit trail for compliance
 
-The Entitlement Service is the crucial intermediary. It is the "Cerbos Principal Builder." It queries your database (the source of truth) to construct the rich Principal and Resource objects that Cerbos needs to make a decision.
+### 2. Cerbos Policy Engine
+- **Integration**: Cerbos SDK with gRPC communication
+- **Policies Location**: `/policies` directory with derived roles
+- **Key Policy Files**:
+  - `derived_roles/one-cms.yaml` - Dynamic role definitions
+  - `resources/case.yaml` - Case resource permissions
+  - `resources/one-cms-workflow.yaml` - Workflow task permissions
 
-Here is the detailed flow for a typical authorization check, for example, when user bob.hr tries to claim a task.
+### 3. Domain Services Integration
+- **OneCMS Service**: Case management with workflow integration
+- **Workflow Service**: Task and process management
+- **API Gateway**: Session validation and user context injection
 
-## Flow Diagram: Authorization Check for "Claim Task"
+## Complete Authorization Flow: Task Claim Example
+
+### Real-World Integration Flow
 
 ```
-+-----------------------------------+
-| 1. CMS Domain Service             |
-|    - User 'bob.hr' tries to       |
-|      claim Task 'task-123'        |
-|    - Calls its EntitlementGateway |
-+------------------+----------------+
++----------------------------------------+
+| 1. OneCMS Service (Port 8083)          |
+|    - User 'alice.intake' tries to      |
+|      claim Task 'task-intake-001'      |
+|    - AuthorizationService.checkAuth()  |
+|    - EntitlementServiceClient (Circuit |
+|      Breaker Protected)               |
++------------------+--------------------+
                    |
                    | 2. POST /api/entitlements/check
+                   |    Headers: X-User-Id: alice.intake
                    |    Payload:
                    |    {
-                   |      "principalId": "bob.hr",
+                   |      "principalId": "alice.intake",
                    |      "resource": {
-                   |        "kind": "OneCMS::Process_CMS_Workflow_Updated",
-                   |        "id": "proc-inst-456",
-                   |        "attr": { ... task & case data ... }
+                   |        "kind": "one-cms-workflow",
+                   |        "id": "task-intake-001",
+                   |        "attr": {
+                   |          "currentTask": {
+                   |            "queue": "intake-analyst-queue",
+                   |            "processInstanceId": "proc-inst-456"
+                   |          },
+                   |          "case": {
+                   |            "departmentCode": "INTAKE",
+                   |            "assignedTo": null
+                   |          }
+                   |        }
                    |      },
                    |      "action": "claim_task"
                    |    }
                    |
                    v
-+------------------+----------------+
-| 3. Entitlement Service            |
-|    (The Principal Builder)        |
-+-----------------------------------+
++------------------+--------------------+
+| 3. Entitlement Service (Port 8081)    |
+|    HybridAuthorizationService         |
++----------------------------------------+
     |
-    | 3a. SELECT * FROM users WHERE id = 'bob.hr'
-    |     --> Gets `attributes` JSON: {"region": "US", ...}
+    | 3a. Engine Selection:
+    |     if (useCerbos && cerbosAvailable) → CerbosEngine
+    |     else → DatabaseEngine
     |
-    | 3b. SELECT d.department_code FROM departments d
-    |     JOIN user_departments ud ON ... WHERE ud.user_id = 'bob.hr'
-    |     --> Gets `departments`: ["HR"]
+    | 3b. Principal Building Queries:
+    |     SELECT u.*, u.attributes FROM entitlement_core_users u WHERE u.username = 'alice.intake'
+    |     --> Gets user attributes: {"region": "US", "experience_level": "senior"}
     |
-    | 3c. SELECT r.role_name, r.metadata->'queues' FROM business_app_roles r
-    |     JOIN user_business_app_roles ur ON ... WHERE ur.user_id = 'bob.hr' AND app_name = 'OneCMS'
-    |     --> Gets `roles`: ["HR_SPECIALIST"]
-    |     --> Gets `queues`: ["onecms-hr-review-queue", ...]
+    | 3c. SELECT d.department_code FROM departments d 
+    |     JOIN user_departments ud ON d.id = ud.department_id 
+    |     WHERE ud.user_id = 'alice.intake'
+    |     --> Gets departments: ["INTAKE", "INVESTIGATION"]
     |
-    | 3d. **Constructs the full Principal object in memory**
+    | 3d. SELECT r.role_name, r.metadata FROM business_app_roles r
+    |     JOIN user_business_app_roles ur ON r.id = ur.role_id
+    |     WHERE ur.user_id = 'alice.intake' AND r.app_name = 'OneCMS'
+    |     --> Gets roles: ["INTAKE_ANALYST"]
+    |     --> Gets metadata.queues: ["intake-analyst-queue", "eo-officer-queue"]
     |
-    v
-+------------------+----------------+
-| 4. Cerbos SDK Call (gRPC)         |
-|    - entitlementSvc.check(         |
-|        Principal.newInstance(...) |
-|        Resource.newInstance(...)  |
-|        "claim_task"               |
-|      )                            |
-+------------------+----------------+
-                   |
-                   | 5. Cerbos evaluates the Principal
-                   |    and Resource against the YAML policies
-                   |
-                   v
-+------------------+----------------+
-| 6. Cerbos PDP (Policy Engine)     |
-|    - Finds `resource.one-cms-workflow.yaml` |
-|    - Checks the `claim_task` rule: |
-|      "expr: request.resource.attr.currentTask.queue in request.principal.attr.queues" |
-|    - Compares resource queue ('onecms-hr-review-queue') with principal queues (['onecms-hr-review-queue',...]) |
-|    - Rule matches. Decision: ALLOW |
-+------------------+----------------+
-                   |
-                   | 7. Cerbos returns `isAllowed: true`
-                   |    to the Entitlement Service
-                   |
-                   v
-+------------------+----------------+
-| 8. Entitlement Service            |
-|    - Receives the decision        |
-+------------------+----------------+
-                   |
-                   | 9. HTTP 200 OK
-                   |    Response Body:
-                   |    { "allowed": true }
-                   |
-                   v
-+------------------+----------------+
-| 10. CMS Domain Service            |
-|     - Receives "allowed" response |
-|     - Proceeds to call the        |
-|       Flowable Core Service       |
-+-----------------------------------+
-```
-
-## Detailed Step-by-Step Explanation
-
-1. **Action Initiated (CMS Service)**: A user, authenticated as bob.hr, clicks a button in the UI. This results in an API call to the CMS Service to claim a task. The CMS service knows the taskId, which is part of a processInstanceId, and that the action is claim_task.
-
-2. **Call to Entitlement Service**: The CMS Service does not check permissions itself. It delegates. It makes a POST request to the Entitlement Service's /check endpoint. It sends the basic identifiers: the user's ID, the resource details (including all the case and task attributes), and the action.
-
-3. **The Entitlement Service Builds the Context**: This is the most important step. The Entitlement Service receives the request and does the following:
-
-   - **Fetches User Data**: It queries its users table to get Bob's static attributes (like his region).
-   - **Fetches Relational Data**: It performs JOINs across its user_departments and user_business_app_roles tables to gather all of Bob's formal entitlements for the "OneCMS" application.
-   - **Aggregates Data**: It combines all this information. It sees Bob is in the "HR" department. It sees he has the "HR_SPECIALIST" role. It reads the metadata JSON for that role and sees he is entitled to access the onecms-hr-review-queue.
-   - **Constructs the Principal**: It assembles all of this into the rich Principal object I showed in the previous response. This object, which exists only in memory for this one request, represents a complete snapshot of "who Bob is" at this exact moment.
-
-4. **The Cerbos SDK Call**: The Entitlement Service now has everything it needs. It uses the Cerbos SDK to make a gRPC call to the Cerbos PDP. It passes the Principal object, the Resource object (which was sent by the CMS Service), and the action.
-
-5. **Cerbos Evaluates**: Cerbos receives the fully-formed request. It has no idea who "Bob" is in the real world. It only knows the data it was just given.
-
-   - It finds the policy for the resource OneCMS::Process_CMS_Workflow_Updated.
-   - It finds the rule for the claim_task action.
-   - It evaluates the condition: `request.resource.attr.currentTask.queue in request.principal.attr.queues`.
-   - It compares the queue value from the resource ("onecms-hr-review-queue") against the list of queues in the principal's attributes (["onecms-hr-review-queue", ...]).
-   - The condition is true. The rule's effect is EFFECT_ALLOW.
-
-6. **Decision is Made**: Cerbos's final decision is ALLOW.
-
-7. **Response to Entitlement Service**: Cerbos sends the true result back to the Entitlement Service.
-
-8. **Response to CMS Service**: The Entitlement Service wraps this boolean in a simple JSON response `{"allowed": true}` and sends it back to the CMS Service.
-
-9. **Action Proceeds**: The CMS Service receives the "allowed" response and proceeds with the business logic: it calls the Flowable Core Workflow Service to actually claim the task. If it had received false, it would have immediately returned a 403 Forbidden error to the user.
-
-## Summary
-
-- **Principal in Cerbos?** No. Principals are constructed on-the-fly for every check.
-- **Check from Metadata?** Yes, exactly. The Entitlement Service uses the metadata from your database (roles, departments, and the JSON metadata on the roles table) to build the Principal object.
-- **The Flow**: The flow is always Client -> Asks Entitlement Service -> Entitlement Service Builds Context from DB -> Entitlement Service Asks Cerbos -> Cerbos Decides -> Entitlement Service Relays Decision -> Client Enforces
-
-The Core Principle: Derived Roles are Dynamic Aliases
-Think of a derived role not as a role you assign to a user in your database, but as a temporary, in-memory label that Cerbos gives to a principal during a single check.
-
-It answers the question:
-
-"During this specific check, does this user qualify as a case_department_member for this particular resource?"
-The user never "has" the case_department_member role in any persistent way. They either meet the criteria to earn that label for a split second, or they don't.
-
-The Full Authentication & Authorization Flow (with Derived Roles)
-Let's use a clear, real-world scenario from your application:
-
-User: bob.hr (A standard HR specialist).
-Action: bob.hr is trying to read a specific case.
-Resource: case-123, which has been classified and assigned to the HR department.
-Flow Diagram: Authorization for "Read Case" using a Derived Role
-code
-Code
-+-----------------------------------+
-| 1. CMS Domain Service             |
-|    - User 'bob.hr' (session auth) |
-|      requests to read case-123    |
-|    - Calls its EntitlementGateway |
-+------------------+----------------+
-                   |
-                   | 2. POST /api/entitlements/check
-                   |    Payload:
-                   |    {
-                   |      "principalId": "bob.hr",
-                   |      "resource": {
-                   |        "kind": "case",
-                   |        "id": "case-123",
-                   |        "attr": { "department_code": "HR" }
-                   |      },
-                   |      "action": "read"
-                   |    }
-                   |
-                   v
-+------------------+----------------+
-| 3. Entitlement Service            |
-|    (The Principal Builder)        |
-+-----------------------------------+
-    |
-    | 3a. Fetches User, Departments, Roles, Queues for 'bob.hr'
-    |     (This is the same as the previous flow)
-    |
-    | 3b. **Constructs the full Principal object in memory:**
+    | 3e. **Constructs Rich Principal Object:**
     |     {
-    |       "id": "bob.hr",
-    |       "roles": ["HR_SPECIALIST"],
-    |       "attr": { "departments": ["HR"], ... }
+    |       "id": "alice.intake",
+    |       "roles": ["INTAKE_ANALYST"],
+    |       "attr": {
+    |         "departments": ["INTAKE", "INVESTIGATION"],
+    |         "queues": ["intake-analyst-queue", "eo-officer-queue"],
+    |         "region": "US",
+    |         "experience_level": "senior"
+    |       }
     |     }
     |
     v
-+------------------+----------------+
-| 4. Cerbos SDK Call (gRPC)         |
-|    - entitlementSvc.check(...)    |
-+------------------+----------------+
++------------------+--------------------+
+| 4. Cerbos SDK Call (gRPC)             |
+|    CerbosAuthorizationEngine          |
+|    - Principal.newBuilder()           |
+|      .setId("alice.intake")           |
+|      .addRoles("INTAKE_ANALYST")      |
+|      .putAttributes(...)              |
+|    - Resource.newBuilder()            |
+|      .setKind("one-cms-workflow")     |
+|      .setId("task-intake-001")        |
+|      .putAttributes(...)              |
+|    - Action: "claim_task"             |
++------------------+--------------------+
                    |
-                   | 5. Cerbos receives the Principal and Resource
+                   | 5. gRPC call to Cerbos PDP
+                   |    dev.cerbos.sdk.CheckResourcesRequest
                    |
                    v
-+------------------+-------------------------------------------------+
-| 6. Cerbos PDP (Policy Engine) - **THE DERIVED ROLE MAGIC HAPPENS HERE** |
-+-----------------------------------------------------------------+
++------------------+--------------------+
+| 6. Cerbos PDP (Policy Engine)         |
+|    External Cerbos instance/container  |
++----------------------------------------+
     |
-    | 6a. **Load Policy:** Finds `resource.case.yaml`.
+    | 6a. **Load Policies:**
+    |     - Imports `derived_roles/one-cms.yaml`
+    |     - Loads `resources/one-cms-workflow.yaml`
     |
-    | 6b. **Import Derived Roles:** Sees the line `importDerivedRoles: [one_cms_derived_roles]`
-    |     and loads `derived_roles.one-cms.yaml`.
+    | 6b. **Evaluate Derived Roles:**
+    |     queue_member: 
+    |       expr: "request.resource.attr.currentTask.queue in request.principal.attr.queues"
+    |       Evaluates: "intake-analyst-queue" in ["intake-analyst-queue", "eo-officer-queue"]
+    |       Result: TRUE → Alice gets temporary `queue_member` derived role
     |
-    | 6c. **Evaluate Derived Roles:** Before checking the main rules, Cerbos evaluates the derived roles.
-    |     - It looks at the `case_department_member` definition:
-    |       `expr: request.resource.attr.department_code in request.principal.attr.departments`
-    |     - It substitutes the real data:
-    |       `expr: "HR" in ["HR"]`
-    |     - **The expression evaluates to `true`!**
+    | 6c. **Policy Rule Evaluation:**
+    |     Action: claim_task
+    |     Rules:
+    |       - effect: EFFECT_ALLOW
+    |         derivedRoles: ["queue_member"]
+    |       Match: Alice has queue_member → ALLOW
     |
-    | 6d. **Temporarily Augment Principal:** For this check only, Cerbos adds the `case_department_member`
-    |     label to Bob's principal. In Cerbos's memory, Bob now looks like this:
-    |     `{ "id": "bob.hr", "roles": ["HR_SPECIALIST", "case_department_member"], ... }`
-    |
-    | 6e. **Evaluate Main Rules:** Now Cerbos checks the rules in `resource.case.yaml`. It finds this rule:
-    |     - actions: ["read"]
-    |       effect: EFFECT_ALLOW
-    |       derivedRoles:
-    |         - case_department_member
-    |
-    | 6f. **Match Rule:** Cerbos sees that the action is `read` and that Bob's temporarily augmented
-    |     principal **has the `case_department_member` role**. The rule matches.
-    |
-    | 6g. **Final Decision:** The effect is `EFFECT_ALLOW`. The final decision is **ALLOW**.
+    | 6d. **Decision:** EFFECT_ALLOW
     |
     v
-+------------------+----------------+
-| 7. Cerbos returns `isAllowed: true` |
-+------------------+----------------+
++------------------+--------------------+
+| 7. Cerbos returns CheckResult          |
+|    isAllowed: true                     |
+|    validationErrors: []                |
++------------------+--------------------+
+                   |
+                   | 8. Response to Entitlement Service
                    |
                    v
-+------------------+----------------+
-| 8. Entitlement Service ...        |
-| (Flow continues as before)        |
-+-----------------------------------+
-Detailed Step-by-Step Explanation
-Request Initiation (CMS Service): bob.hr requests to view case-123. The CMS service loads the case from its database and sees it belongs to the HR department.
-Call to Entitlement Service: The CMS Service calls the Entitlement Service's /check endpoint. This time, the resource.attr payload is crucial. It includes {"department_code": "HR"}. This is the data that will be used to evaluate the derived role.
-Entitlement Service Builds the Principal: This step is identical to the previous explanation. The service queries its database and builds the rich Principal object for bob.hr, which includes his static roles (HR_SPECIALIST) and his attributes (including departments: ["HR"]).
-Cerbos SDK Call: The Entitlement Service sends the fully-formed Principal and Resource objects to Cerbos.
-Cerbos Receives the Context: Cerbos now has two pieces of data:
-Principal: Bob, who is in the HR department.
-Resource: The case, which is also in the HR department.
-Cerbos Evaluates the Derived Role (The Magic):
-Before it even looks at the main allow or deny rules, Cerbos processes the importDerivedRoles section.
-It finds the case_department_member definition.
-It takes the condition request.resource.attr.department_code in request.principal.attr.departments and plugs in the actual data from the request.
-The condition becomes "HR" in ["HR"], which is true.
-Because the condition is true, Cerbos says, "For this check, I will temporarily treat bob.hr as if he has the case_department_member role."
-Now, with this temporary, augmented set of roles, Cerbos proceeds to evaluate the main rules in the resource.case.yaml policy.
-It finds a rule that says "ALLOW read if the principal has the case_department_member derived role." Since Bob was just dynamically granted this role, the rule matches, and the final decision is ALLOW.
-The Flow Completes: Cerbos returns true, and the CMS service grants access.
-Why is this so powerful? RBAC + ABAC Combined
-This flow beautifully combines Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC):
++------------------+--------------------+
+| 9. Entitlement Service Response        |
+|    - Logs decision to audit table     |
+|    - Returns: {"allowed": true}       |
++------------------+--------------------+
+                   |
+                   | 10. HTTP 200 OK Response
+                   |
+                   v
++------------------+--------------------+
+| 11. OneCMS Service                     |
+|     - Authorization check passed      |
+|     - Proceeds with WorkflowClient    |
+|       .claimTask(taskId, userId)      |
+|     - Updates case assignment         |
++----------------------------------------+
+```
 
-RBAC: In your database, you assign a static role to Bob: HR_SPECIALIST. This is his primary, long-term identity.
-ABAC: The derived role case_department_member is pure ABAC. It's not about who Bob is, but what the attributes of the situation are. The rule is based on a comparison of attributes: resource.department vs principal.department.
-By using a derivedRole, you've created a clean, readable policy. You could have written the ABAC rule directly:
+## Detailed Technical Implementation
 
-code
-Yaml
-# The "ugly" way without derived roles
-- actions: ["read"]
-  effect: EFFECT_ALLOW
-  roles: ["user"]
+### 1. Service-to-Service Communication Pattern
+
+**OneCMS Service Authorization Integration:**
+```java
+@RestController
+public class CaseManagementController {
+    
+    @Autowired
+    private AuthorizationService authorizationService;
+    
+    @PostMapping("/api/cms/v1/cases/{caseNumber}/tasks/{taskId}/claim")
+    public ResponseEntity<?> claimTask(
+            @PathVariable String taskId,
+            @RequestHeader("X-User-Id") String userId) {
+        
+        // Build authorization check request
+        AuthorizationCheckRequest authRequest = AuthorizationCheckRequest.builder()
+            .principalId(userId)
+            .resource(ResourceBuilder.workflow()
+                .id(taskId)
+                .addAttribute("currentTask", taskAttributes)
+                .addAttribute("case", caseAttributes)
+                .build())
+            .action("claim_task")
+            .build();
+        
+        // Check authorization via EntitlementServiceClient
+        if (!authorizationService.checkAuthorization(authRequest)) {
+            return ResponseEntity.status(403).body("Access denied");
+        }
+        
+        // Proceed with business logic
+        return workflowServiceClient.claimTask(taskId, userId);
+    }
+}
+```
+
+### 2. Principal Building Process (Entitlement Service)
+
+**HybridAuthorizationService Core Logic:**
+```java
+@Service
+public class HybridAuthorizationService {
+    
+    @Value("${authorization.engine.use-cerbos:true}")
+    private boolean useCerbos;
+    
+    public AuthorizationCheckResponse checkAuthorization(AuthorizationCheckRequest request) {
+        try {
+            if (useCerbos && cerbosAuthorizationEngine.isAvailable()) {
+                return cerbosAuthorizationEngine.checkAuthorization(request);
+            }
+        } catch (Exception e) {
+            log.warn("Cerbos engine failed, falling back to database engine", e);
+        }
+        
+        // Fallback to database engine
+        return databaseAuthorizationEngine.checkAuthorization(request);
+    }
+}
+```
+
+**Principal Building Queries:**
+```sql
+-- 1. Get User Base Attributes
+SELECT u.user_id, u.username, u.email, u.first_name, u.last_name, 
+       u.attributes as user_attributes, u.is_active
+FROM entitlement_core_users u 
+WHERE u.username = 'alice.intake';
+
+-- 2. Get User Departments
+SELECT d.department_code, d.department_name
+FROM departments d
+JOIN user_departments ud ON d.department_id = ud.department_id
+WHERE ud.user_id = (SELECT user_id FROM entitlement_core_users WHERE username = 'alice.intake');
+
+-- 3. Get Business Application Roles and Queues
+SELECT r.role_name, r.metadata, ba.app_name
+FROM business_app_roles r
+JOIN user_business_app_roles ur ON r.role_id = ur.role_id
+JOIN business_applications ba ON r.app_id = ba.app_id
+WHERE ur.user_id = (SELECT user_id FROM entitlement_core_users WHERE username = 'alice.intake')
+  AND ba.app_name = 'OneCMS';
+
+-- Result: role_name='INTAKE_ANALYST', metadata.queues=['intake-analyst-queue','eo-officer-queue']
+```
+
+### 3. Authorization Engine Implementations
+
+**CerbosAuthorizationEngine:**
+```java
+@Component
+public class CerbosAuthorizationEngine implements AuthorizationEngine {
+    
+    private final CerbosBlockingStub cerbosClient;
+    
+    @Override
+    public AuthorizationCheckResponse checkAuthorization(AuthorizationCheckRequest request) {
+        // Build Cerbos Principal
+        Principal.Builder principalBuilder = Principal.newBuilder()
+            .setId(request.getPrincipalId());
+        
+        // Add static roles
+        userRoles.forEach(principalBuilder::addRoles);
+        
+        // Add attributes for derived roles
+        principalBuilder.putAllAttributes(
+            AttributeValue.newBuilder()
+                .putAttributeValues("departments", departments)
+                .putAttributeValues("queues", queues)
+                .putAttributeValues("region", userAttributes.get("region"))
+                .build().getAttributeValuesMap()
+        );
+        
+        // Build Resource
+        Resource resource = Resource.newBuilder()
+            .setKind(request.getResource().getKind())
+            .setId(request.getResource().getId())
+            .putAllAttributes(resourceAttributes)
+            .build();
+        
+        // Make authorization check
+        CheckResourcesRequest cerbosRequest = CheckResourcesRequest.newBuilder()
+            .setPrincipal(principalBuilder.build())
+            .addResources(ResourceEntry.newBuilder()
+                .setResource(resource)
+                .addActions(request.getAction())
+                .build())
+            .build();
+        
+        CheckResourcesResponse response = cerbosClient.checkResources(cerbosRequest);
+        
+        boolean allowed = response.getResultsList().stream()
+            .anyMatch(result -> result.getIsAllowed());
+        
+        return AuthorizationCheckResponse.builder()
+            .allowed(allowed)
+            .engine("cerbos")
+            .build();
+    }
+}
+```
+
+### 4. Database Schema Integration
+
+**Core Authorization Tables:**
+```sql
+-- Primary user identity with JSONB attributes
+CREATE TABLE entitlement_core_users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(255),
+    attributes JSONB DEFAULT '{}', -- Flexible user metadata
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Department assignments for derived roles
+CREATE TABLE user_departments (
+    user_id UUID REFERENCES entitlement_core_users(user_id),
+    department_id UUID REFERENCES departments(department_id),
+    is_primary BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Application-specific role assignments
+CREATE TABLE user_business_app_roles (
+    user_id UUID REFERENCES entitlement_core_users(user_id),
+    role_id UUID REFERENCES business_app_roles(role_id),
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Role definitions with queue metadata
+CREATE TABLE business_app_roles (
+    role_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    app_id UUID REFERENCES business_applications(app_id),
+    role_name VARCHAR(100) NOT NULL,
+    metadata JSONB DEFAULT '{}', -- Contains queue assignments
+    is_active BOOLEAN DEFAULT true
+);
+```
+
+### 5. Cerbos Policy Structure
+
+**Derived Roles Definition** (`/policies/derived_roles/one-cms.yaml`):
+```yaml
+apiVersion: api.cerbos.dev/v1
+derivedRoles:
+  one_cms_derived_roles:
+    definitions:
+      # Dynamic queue membership
+      queue_member:
+        parentRoles: ["user"]
+        condition:
+          match:
+            expr: "request.resource.attr.currentTask.queue in request.principal.attr.queues"
+      
+      # Case department membership  
+      case_department_member:
+        parentRoles: ["user"]
+        condition:
+          match:
+            expr: "request.resource.attr.case.departmentCode in request.principal.attr.departments"
+      
+      # Task assignment ownership
+      task_assignee:
+        parentRoles: ["user"]
+        condition:
+          match:
+            expr: "request.resource.attr.currentTask.assignedTo == request.principal.id"
+      
+      # Case ownership
+      case_assignee:
+        parentRoles: ["user"]
+        condition:
+          match:
+            expr: "request.resource.attr.case.assignedTo == request.principal.id"
+```
+
+**Resource Policy** (`/policies/resources/one-cms-workflow.yaml`):
+```yaml
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: "default"
+  resource: "one-cms-workflow"
+  importDerivedRoles:
+    - one_cms_derived_roles
+  
+  rules:
+    # Task claiming - requires queue membership
+    - actions: ["claim_task"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - queue_member
+    
+    # Task completion - requires task assignment
+    - actions: ["complete_task"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - task_assignee
+    
+    # Case reading - department or assignment based
+    - actions: ["read_case"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - case_department_member
+        - case_assignee
+    
+    # Case creation - specific roles only
+    - actions: ["create_case"]
+      effect: EFFECT_ALLOW
+      roles:
+        - INTAKE_ANALYST
+        - EO_OFFICER
+```
+
+## Understanding Derived Roles: Dynamic Authorization
+
+### The Core Principle: Derived Roles are Dynamic Aliases
+
+Derived roles are **temporary, computed labels** that Cerbos assigns to a principal during policy evaluation. They're not stored in your database - they're calculated on-the-fly based on the relationship between the user and the specific resource being accessed.
+
+**Key Concept**: A user doesn't "have" a derived role permanently. They **qualify** for it during a specific authorization check based on context.
+
+### Derived Role Evaluation Process
+
+**Question Answered**: "During this specific check, does this user qualify as a `case_department_member` for this particular resource?"
+
+**Dynamic Calculation**:
+```
+User Context + Resource Context + Business Rules = Temporary Derived Role Assignment
+```
+
+**Example Scenarios**:
+- Alice accesses Case-001 (HR dept) → Gets `case_department_member` role 
+- Alice accesses Case-002 (Legal dept) → Does NOT get `case_department_member` role 
+- Same user, different resources, different derived role assignments
+
+## Current Implementation Status
+
+### Completed Components
+- **Hybrid Authorization Service**: Engine selection and fallback logic
+- **Database Schema**: Complete user, role, and department entities
+- **Principal Building Logic**: Database queries and context construction
+- **Cerbos SDK Integration**: gRPC client configuration and policy evaluation
+- **Session Authentication**: X-Session-Id and X-User-Id header handling
+- **Circuit Breaker Pattern**: Resilient service communication
+- **Audit Logging**: Complete authorization decision tracking
+- **Policy Definitions**: Derived roles and resource policies
+
+### Missing Components
+- **Authorization REST Endpoint**: `/api/entitlements/check` endpoint not implemented
+- **Complete Database Queries**: Some placeholder implementations need real data
+- **Production Session Store**: Currently using in-memory sessions (development only)
+
+### Key Configuration
+
+**Entitlement Service Properties:**
+```yaml
+# Enable/disable Cerbos engine
+authorization:
+  engine:
+    use-cerbos: true
+
+# Cerbos connection
+cerbos:
+  target: localhost:3593
+  tls-enabled: false
+
+# Fallback engine settings
+database:
+  engine:
+    cache-duration: PT30M
+```
+
+## Business Role to Queue Mappings
+
+| Business Role | Queue Assignment | Workflow Tasks |
+|---------------|------------------|----------------|
+| `INTAKE_ANALYST` | `intake-analyst-queue`, `eo-officer-queue` | Case creation, initial review |
+| `EO_HEAD` | `eo-head-queue` | Case assignment oversight |
+| `EO_OFFICER` | `eo-officer-queue`, `eo-head-queue` | Case routing and triage |
+| `CSIS_INTAKE_ANALYST` | `csis-intake-analyst-queue` | Security case review |
+| `ER_INTAKE_ANALYST` | `er-intake-analyst-queue` | Employee relations review |
+| `LEGAL_INTAKE_ANALYST` | `legal-intake-analyst-queue` | Legal compliance review |
+| `INVESTIGATION_MANAGER` | `investigation-manager-queue` | Investigation assignment |
+| `INVESTIGATOR` | `investigator-queue` | Investigation execution |
+
+## Key Authorization Patterns
+
+### 1. Queue-Based Task Access
+**Pattern**: Users can only claim tasks from queues they're assigned to
+**Implementation**: `queue_member` derived role with queue membership check
+**Policy**: `request.resource.attr.currentTask.queue in request.principal.attr.queues`
+
+### 2. Department-Based Case Access  
+**Pattern**: Users can access cases in their department
+**Implementation**: `case_department_member` derived role
+**Policy**: `request.resource.attr.case.departmentCode in request.principal.attr.departments`
+
+### 3. Assignment-Based Ownership
+**Pattern**: Users can access resources assigned to them
+**Implementation**: `task_assignee`, `case_assignee` derived roles
+**Policy**: `request.resource.attr.assignedTo == request.principal.id`
+
+### 4. Role-Based Creation Rights
+**Pattern**: Only specific roles can create certain resources
+**Implementation**: Static role checking
+**Policy**: Direct role membership (e.g., `INTAKE_ANALYST` can create cases)
+
+## Advanced Authorization Patterns
+
+### Multi-Level Authorization Checks
+
+The OneCMS workflow implements **layered authorization** that checks multiple levels:
+
+```java
+// Example: Case creation with workflow start
+@PostMapping("/api/cms/v1/cases")
+public ResponseEntity<CaseResponse> createCase(
+        @RequestBody CreateCaseRequest request,
+        @RequestHeader("X-User-Id") String userId) {
+    
+    // Level 1: Can user create cases?
+    authorizationService.checkCaseAuthorization(userId, null, "create_case");
+    
+    // Level 2: Can user start workflows?
+    authorizationService.checkWorkflowAuthorization(userId, processKey, "start_process");
+    
+    // Level 3: Can user access assigned queues?
+    authorizationService.checkQueueAuthorization(userId, initialQueue, "access_queue");
+    
+    // Proceed with case creation and workflow start
+    return caseService.createCaseWithWorkflow(request, userId);
+}
+```
+
+### Context-Aware Authorization
+
+**Resource Attribute Injection:**
+The system automatically injects relevant context into authorization checks:
+
+```java
+// Case context includes:
+{
+  "case": {
+    "departmentCode": "HR",
+    "assignedTo": "alice.intake",
+    "priority": "HIGH",
+    "status": "OPEN"
+  },
+  "currentTask": {
+    "queue": "intake-analyst-queue",
+    "assignedTo": null,
+    "taskName": "Review Case Details"
+  },
+  "workflow": {
+    "processDefinitionKey": "oneCmsCleanCaseWorkflow",
+    "processInstanceId": "proc-inst-789"
+  }
+}
+```
+
+### Dynamic Queue Assignment
+
+**Role Metadata Pattern:**
+```json
+{
+  "role_name": "INTAKE_ANALYST",
+  "metadata": {
+    "queues": [
+      "intake-analyst-queue",
+      "eo-officer-queue"
+    ],
+    "permissions": {
+      "case_creation": true,
+      "department_routing": true
+    },
+    "attributes": {
+      "clearance_level": "standard",
+      "max_case_priority": "HIGH"
+    }
+  }
+}
+```
+
+## Integration with OneCMS Clean Case Workflow
+
+### Workflow-Authorization Mapping
+
+| Workflow Stage | User Groups | Authorization Checks |
+|----------------|-------------|----------------------|
+| **Case Creation** | `GROUP_EO_INTAKE_ANALYST` | `create_case`, `access_queue:eo-intake-queue` |
+| **EO Head Assignment** | `GROUP_EO_HEAD` | `assign_case`, `access_queue:eo-head-queue` |
+| **EO Officer Routing** | `GROUP_EO_OFFICER` | `route_case`, `access_multiple_queues` |
+| **Department Review** | Dynamic (`${departmentGroup}`) | `review_case`, `access_queue:${departmentQueue}` |
+| **ER Sub-routing** | `GROUP_ER_INTAKE_ANALYST` | `route_case`, `access_queue:er-intake-analyst-queue` |
+| **Investigation** | `GROUP_INVESTIGATION_MANAGER`, `GROUP_INVESTIGATOR` | `assign_investigator`, `claim_task`, `complete_task` |
+
+### Derived Role Usage in Workflow
+
+**1. Queue Member Access:**
+```yaml
+# User can claim tasks from queues they're assigned to
+queue_member:
   condition:
     match:
-      expr: request.resource.attr.department_code in request.principal.attr.departments
-This works, but it's less readable and harder to reuse. By creating the case_department_member alias, your main policy becomes a simple, RBAC-style check (derivedRoles: [case_department_member]), while the complex ABAC logic is neatly encapsulated and named in the derived_roles file. This makes your policies much easier to understand, maintain, and audit.
+      expr: "request.resource.attr.currentTask.queue in request.principal.attr.queues"
+```
+
+**2. Department-Based Case Access:**
+```yaml
+# User can access cases in their department
+case_department_member:
+  condition:
+    match:
+      expr: "request.resource.attr.case.departmentCode in request.principal.attr.departments"
+```
+
+**3. Task Assignment Ownership:**
+```yaml
+# User can complete tasks assigned to them
+task_assignee:
+  condition:
+    match:
+      expr: "request.resource.attr.currentTask.assignedTo == request.principal.id"
+```
+
+## Error Handling and Resilience
+
+### Circuit Breaker Pattern
+```java
+@CircuitBreaker(name = "entitlement-service")
+@Retryable(value = {Exception.class}, maxAttempts = 3)
+public AuthorizationCheckResponse checkAuthorization(AuthorizationCheckRequest request) {
+    // Authorization logic with automatic fallback
+}
+```
+
+### Fallback Strategies
+1. **Cerbos Unavailable**: Automatic fallback to database engine
+2. **Database Issues**: Cached principal information
+3. **Network Failures**: Circuit breaker prevents cascade failures
+4. **Invalid Policies**: Detailed error logging and safe defaults
+
+## Why This Architecture Excels
+
+**RBAC + ABAC Hybrid Benefits:**
+- **RBAC**: Simple, static role assignments in database (`INTAKE_ANALYST`, `INVESTIGATOR`)
+- **ABAC**: Dynamic, context-aware permissions using derived roles
+- **Policy Clarity**: Complex logic encapsulated in readable derived role names
+- **Reusability**: Derived roles used across multiple resource types
+- **Auditability**: Clear decision trail with business-meaningful role names
+
+**Example Policy Readability:**
+```yaml
+# Clean, readable policy using derived roles
+- actions: ["claim_task"]
+  effect: EFFECT_ALLOW
+  derivedRoles:
+    - queue_member
+
+# vs. complex inline conditions (harder to read/maintain)
+- actions: ["claim_task"]
+  effect: EFFECT_ALLOW
+  condition:
+    match:
+      expr: "request.resource.attr.currentTask.queue in request.principal.attr.queues"
+```
+
+**Engineering Benefits:**
+- **Maintainable Policies**: Business rules clearly expressed
+- **Testable Logic**: Derived roles can be unit tested independently
+- **Performance**: Cerbos evaluates policies efficiently
+- **Flexibility**: Easy to add new derived roles for future requirements
+- **Compliance**: Complete audit trail with meaningful role context
+
+## Summary: Why This Architecture Works
+
+**Separation of Concerns:**
+- **Domain Services**: Focus on business logic, delegate authorization
+- **Entitlement Service**: Centralized authorization with context building
+- **Cerbos Engine**: Pure policy evaluation without user data storage
+
+**Scalability Benefits:**
+- **Stateless Authorization**: No session state in authorization layer
+- **Caching Strategy**: User context cached for performance
+- **Horizontal Scaling**: Stateless services scale independently
+- **Policy Changes**: Update policies without service restarts
+
+**Security Features:**
+- **Principle of Least Privilege**: Fine-grained permissions
+- **Dynamic Authorization**: Context-aware decision making
+- **Complete Audit Trail**: All decisions logged for compliance
+- **Defense in Depth**: Multiple authorization layers with fallbacks
+
+**The Flow Summary:**
+```
+Client Request → API Gateway (Session Auth) → Domain Service → 
+Entitlement Service (Principal Builder) → Cerbos Engine (Policy Eval) → 
+Decision → Domain Service → Business Logic Execution
+```
+
+## Next Steps for Implementation
+
+### Critical Missing Component
+
+**Authorization REST Controller:**
+```java
+@RestController
+@RequestMapping("/api/entitlements")
+public class AuthorizationController {
+    
+    @Autowired
+    private HybridAuthorizationService hybridAuthorizationService;
+    
+    @PostMapping("/check")
+    public ResponseEntity<AuthorizationCheckResponse> checkAuthorization(
+            @RequestBody AuthorizationCheckRequest request) {
+        
+        AuthorizationCheckResponse response = 
+            hybridAuthorizationService.checkAuthorization(request);
+        
+        return ResponseEntity.ok(response);
+    }
+}
+```
+
+### Integration Testing Strategy
+
+**Test Scenarios:**
+1. **Queue Access**: Verify users can only claim tasks from assigned queues
+2. **Department Access**: Confirm department-based case visibility
+3. **Workflow Progression**: Test authorization at each workflow stage
+4. **Derived Role Evaluation**: Validate dynamic role assignment logic
+5. **Engine Fallback**: Test database engine when Cerbos unavailable
+
+### Performance Optimization
+
+**Caching Strategy:**
+- **Principal Context**: Cache user roles/departments for 30 minutes
+- **Policy Evaluation**: Cerbos handles policy caching internally
+- **Circuit Breaker**: Fail-fast when authorization service unavailable
+- **Batch Checks**: Support multiple resource checks in single call
+
+This architecture provides enterprise-grade authorization with the flexibility to handle complex, context-aware business rules while maintaining performance and auditability.
