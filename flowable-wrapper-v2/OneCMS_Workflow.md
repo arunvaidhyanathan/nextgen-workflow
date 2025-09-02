@@ -2,7 +2,7 @@
 
 ## Overview
 
-The OneCMS Clean Case Management Workflow (`oneCmsCleanCaseWorkflow`) is a comprehensive BPMN 2.0 process designed to handle case management from initial intake through investigation completion. The workflow implements a four-tier organizational structure with clear separation of responsibilities and sophisticated routing logic.
+The OneCMS Clean Case Management Workflow (`oneCmsCaseWorkflow`) is a comprehensive BPMN 2.0 process designed to handle case management from initial intake through investigation completion. The workflow implements a four-tier organizational structure with clear separation of responsibilities and sophisticated routing logic.
 
 ## Workflow Architecture
 
@@ -380,10 +380,9 @@ The gateway pattern supports additional decision criteria:
 ## Technical Configuration
 
 ### Process Definition
-- **Process ID**: `oneCmsCleanCaseWorkflow`
-- **Process Name**: OneCMS Clean Case Management Workflow
+- **Process ID**: `oneCmsCaseWorkflow`
+- **Process Name**: OneCMS Case Management Workflow
 - **Executable**: `true`
-- **Target Namespace**: `http://www.onecms.com/workflow`
 
 ### Database Integration
 - **Schema**: `flowable` (Flowable engine tables)

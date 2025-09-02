@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://www.onecms.com/workflow" exporter="Camunda Modeler" exporterVersion="5.35.0">
-  <process id="oneCmsCleanCaseWorkflow" name="OneCMS Clean Case Management Workflow" isExecutable="true">
+  <process id="oneCmsCaseWorkflow" name="OneCMS Case Management Workflow" isExecutable="true">
     <laneSet>
       <lane id="lane_investigation" name="Investigation Team">
         <flowNodeRef>task_manager_assignment</flowNodeRef>
