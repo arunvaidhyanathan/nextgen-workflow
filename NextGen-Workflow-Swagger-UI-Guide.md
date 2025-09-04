@@ -41,6 +41,30 @@ This guide provides comprehensive step-by-step instructions for testing the Next
 | OneCMS Service | http://localhost:8083 | http://localhost:8080/api/cms |
 | Eureka Dashboard | http://localhost:8761 | - |
 
+## Two-Phase Case Creation Workflow
+
+This guide demonstrates a **two-phase approach** for case creation that matches real-world case management processes:
+
+### **Desired Workflow**:
+1. **Step 1**: Create case draft using `/createcase-draft` → Returns `case_id`
+2. **Step 2**: Enhance case using `/enhance-case` with the `case_id` + allegations/entities/narratives
+
+### **Current Implementation**: ✅ **ALREADY SUPPORTS THIS WORKFLOW**
+
+The current endpoints perfectly match your requirements:
+
+| Endpoint | Purpose | Request DTO | Response |
+|----------|---------|-------------|----------|
+| `POST /api/cms/v1/createcase-draft` | Initial case creation | `CreateCaseDraftRequest` | Returns `case_id` (e.g., `CMS-2025-000001`) |
+| `POST /api/cms/v1/enhance-case` | Add details to existing case | `EnhancedCreateCaseRequest` | Returns enhanced case with all details |
+
+### **Benefits of This Approach**:
+- **🎯 Progressive Case Building**: Start simple, add complexity later
+- **📋 Draft Management**: Proper draft lifecycle with workflow integration  
+- **🔄 Workflow Integration**: Both endpoints integrate with Flowable BPMN processes
+- **📊 Audit Trail**: Complete tracking from draft to final case
+- **🚦 Authorization Control**: Different permissions for draft vs enhancement phases
+
 ---
 
 ## Part 1: Workflow Registration and Deployment
@@ -134,13 +158,27 @@ This guide provides comprehensive step-by-step instructions for testing the Next
 
 ## Part 2: Case Draft Creation and Testing
 
+### **Authorization Setup (Required for All OneCMS Endpoints)**
+
+Before testing any OneCMS endpoints, you must authenticate in Swagger UI:
+
+1. Navigate to http://localhost:8083/api/swagger-ui.html
+2. **Click the "Authorize" button (🔒)** at the top right
+3. **In the Authorization modal**:
+   - **X-User-Id**: Enter `alice.intake`
+   - **X-Session-Id**: Leave empty or enter any value
+   - Click **"Authorize"** for each
+   - Click **"Close"**
+
+**The headers will now be automatically included in all requests!**
+
 ### Step 3: Create Case Draft
 
-**Endpoint**: `POST /v1/createcase-draft`  
-**URL**: http://localhost:8083/swagger-ui.html
+**Endpoint**: `POST /api/cms/v1/createcase-draft`  
+**URL**: http://localhost:8083/api/swagger-ui.html
 
 1. Navigate to **Case Management Controller** section
-2. Click on `POST /v1/createcase-draft`
+2. Click on `POST /api/cms/v1/createcase-draft`
 3. Click "Try it out"
 4. **Request Body** (from `phase1_case_draft_test.json`):
 ```json
@@ -156,8 +194,7 @@ This guide provides comprehensive step-by-step instructions for testing the Next
 }
 ```
 
-5. **Add Headers**:
-   - `X-User-Id`: `alice.intake`
+5. Click **"Execute"** (headers are automatically included after authorization)
 
 6. **Expected Response** (201 Created):
 ```json
@@ -188,13 +225,22 @@ This guide provides comprehensive step-by-step instructions for testing the Next
 
 ## Part 3: Case Enhancement and Completion
 
+### **Current Implementation Workflow**
+
+The current endpoints perfectly match the two-phase approach:
+
+| Endpoint | Purpose | Request DTO | Response |
+|----------|---------|-------------|----------|
+| `POST /api/cms/v1/createcase-draft` | Initial case creation | `CreateCaseDraftRequest` | Returns `case_id` (e.g., `CMS-2025-000001`) |
+| `POST /api/cms/v1/enhance-case` | Add details to existing case | `EnhancedCreateCaseRequest` | Returns enhanced case with all details |
+
 ### Step 4: Enhance Case with Full Details
 
-**Endpoint**: `POST /v1/cases`  
-**URL**: http://localhost:8083/swagger-ui.html
+**Endpoint**: `POST /api/cms/v1/enhance-case`  
+**URL**: http://localhost:8083/api/swagger-ui.html
 
 1. Navigate to **Case Management Controller** section
-2. Click on `POST /v1/cases`
+2. Click on `POST /api/cms/v1/enhance-case`
 3. Click "Try it out"
 4. **Request Body** (from `phase2_case_enhancement_test.json` - **Replace `case_id` with value from Step 3**):
 ```json
@@ -322,10 +368,9 @@ This guide provides comprehensive step-by-step instructions for testing the Next
 }
 ```
 
-5. **Add Headers**:
-   - `X-User-Id`: `alice.intake`
+5. Click **"Execute"** (headers are automatically included after authorization)
 
-6. **Expected Response** (201 Created):
+6. **Expected Response** (200 OK):
 ```json
 {
   "caseId": "CMS-2025-000001",
