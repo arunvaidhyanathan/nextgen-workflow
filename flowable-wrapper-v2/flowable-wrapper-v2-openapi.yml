@@ -9,17 +9,30 @@ info:
     - Task and process instance lifecycle management
     - Queue-based task distribution and assignment
     - Workflow metadata management with queue mappings
+    - BPMN deployment from files with security validation
     - Authorization delegation to entitlement-service
     - Circuit breaker patterns for resilience
     
     **Authentication**: All endpoints require session-based authentication via API Gateway with `X-User-Id` header.
     
     **Authorization**: Fine-grained access control delegated to entitlement-service via Cerbos policy engine.
+    Can be disabled for testing via `authorization.enabled=false` configuration.
     
     **Business App Context**: Most endpoints are scoped by business application name for multi-tenancy support.
     
     **Queue Management**: Tasks are automatically routed to queues based on workflow metadata configurations.
-  version: 2.0.0
+    
+    **BPMN Security**: Deployed BPMN files are validated for security with configurable limits:
+    - Maximum process elements: 500 (default)
+    - Script validation and whitelisting
+    - Java package restrictions
+    
+    **Recent Updates**: 
+    - Added authorization bypass configuration for testing
+    - Enhanced BPMN deployment from file system
+    - Improved workflow metadata persistence
+    - Process instance management with real database integration
+  version: 2.1.0
   contact:
     name: NextGen Workflow Team
 servers:

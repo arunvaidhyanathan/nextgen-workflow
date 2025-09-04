@@ -41,7 +41,7 @@
     <userTask id="task_create_case" name="Create a New Case" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
       <documentation>Create new case with initial information</documentation>
     </userTask>
-    <userTask id="task_fill_information" name="Fill Case Information (POP-UP)" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
+    <userTask id="task_fill_information" name="Fill Case Information" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
       <documentation>Enter case details, entities, allegations, narratives</documentation>
     </userTask>
     <exclusiveGateway id="gateway_case_action" name="Case Action Decision" />

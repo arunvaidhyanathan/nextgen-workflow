@@ -3,6 +3,7 @@ package com.citi.onecms.service;
 import com.citi.onecms.client.WorkflowServiceClient;
 import com.citi.onecms.dto.CreateCaseWithAllegationsRequest;
 import com.citi.onecms.dto.CaseWithAllegationsResponse;
+import com.citi.onecms.dto.EnhancedCreateCaseRequest;
 import com.citi.onecms.dto.workflow.StartProcessResponse;
 import com.citi.onecms.dto.workflow.TaskResponse;
 import com.citi.onecms.dto.workflow.WorkflowStartResult;
@@ -64,7 +65,7 @@ public class CaseService {
             // 4. Create and associate narratives
             if (request.getNarratives() != null && !request.getNarratives().isEmpty()) {
                 log.info("Creating {} narratives for case ID: {}", request.getNarratives().size(), savedCase.getId());
-                List<CaseNarrative> narratives = createNarratives(request.getNarratives(), savedCase);
+                List<CaseNarrative> narratives = createNarratives(request.getNarratives(), savedCase, userId);
                 savedCase.setNarratives(narratives);
             }
             
@@ -184,6 +185,133 @@ public class CaseService {
         
         log.info("Case {} submitted successfully by user {}", caseNumber, userId);
         return convertToResponse(savedCase);
+    }
+    
+    /**
+     * Enhance existing case with allegations, entities, and narratives
+     * Used for Option 1 two-phase approach where case is created first as draft
+     */
+    @Transactional
+    public CaseWithAllegationsResponse enhanceExistingCase(EnhancedCreateCaseRequest request, String userId) {
+        log.info("🔄 Enhancing existing case: {} by user: {}", request.getCaseId(), userId);
+        
+        // 1. Find existing case by case number (case_id is actually case_number)
+        Case existingCase = caseRepository.findByCaseNumber(request.getCaseId())
+            .orElseThrow(() -> new RuntimeException("Case not found: " + request.getCaseId()));
+        
+        log.info("Found existing case: ID={}, CaseNumber={}", existingCase.getId(), existingCase.getCaseNumber());
+        
+        try {
+            // 2. Add allegations if provided
+            if (request.getAllegations() != null && !request.getAllegations().isEmpty()) {
+                log.info("Adding {} allegations to case", request.getAllegations().size());
+                List<Allegation> newAllegations = createAllegations(request.getAllegations(), existingCase);
+                
+                // Add to existing allegations or create new list
+                if (existingCase.getAllegations() == null) {
+                    existingCase.setAllegations(newAllegations);
+                } else {
+                    existingCase.getAllegations().addAll(newAllegations);
+                }
+            }
+            
+            // 3. Add entities if provided
+            if (request.getEntities() != null && !request.getEntities().isEmpty()) {
+                log.info("Adding {} entities to case", request.getEntities().size());
+                List<CaseEntity> newEntities = createEntities(request.getEntities(), existingCase);
+                
+                // Add to existing entities or create new list
+                if (existingCase.getEntities() == null) {
+                    existingCase.setEntities(newEntities);
+                } else {
+                    existingCase.getEntities().addAll(newEntities);
+                }
+            }
+            
+            // 4. Add narratives if provided
+            if (request.getNarratives() != null && !request.getNarratives().isEmpty()) {
+                log.info("Adding {} narratives to case", request.getNarratives().size());
+                List<CaseNarrative> newNarratives = createNarratives(request.getNarratives(), existingCase, userId);
+                
+                // Add to existing narratives or create new list
+                if (existingCase.getNarratives() == null) {
+                    existingCase.setNarratives(newNarratives);
+                } else {
+                    existingCase.getNarratives().addAll(newNarratives);
+                }
+            }
+            
+            // 5. Update case timestamp
+            existingCase.setUpdatedAt(LocalDateTime.now());
+            
+            // 6. Save enhanced case
+            Case savedCase = caseRepository.save(existingCase);
+            log.info("Enhanced case saved: {} with {} allegations, {} entities, {} narratives", 
+                     savedCase.getCaseNumber(),
+                     savedCase.getAllegations() != null ? savedCase.getAllegations().size() : 0,
+                     savedCase.getEntities() != null ? savedCase.getEntities().size() : 0,
+                     savedCase.getNarratives() != null ? savedCase.getNarratives().size() : 0);
+            
+            // 7. Progress workflow by completing current tasks
+            try {
+                progressWorkflowAfterEnhancement(savedCase, userId);
+            } catch (Exception e) {
+                log.warn("Failed to progress workflow after case enhancement: {}", e.getMessage());
+                // Don't fail the whole operation if workflow progression fails
+            }
+            
+            // 8. Return enhanced case response
+            return convertToResponse(savedCase);
+            
+        } catch (Exception e) {
+            log.error("Failed to enhance case {}: {}", request.getCaseId(), e.getMessage(), e);
+            throw new RuntimeException("Failed to enhance case: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Progress workflow after case enhancement by completing current tasks
+     */
+    private void progressWorkflowAfterEnhancement(Case caseEntity, String userId) {
+        log.info("🔄 Progressing workflow for enhanced case: {}", caseEntity.getCaseNumber());
+        
+        try {
+            // Get current tasks for this process instance
+            List<TaskResponse> userTasks = workflowServiceClient.getUserTasks(userId);
+            
+            // Find tasks related to this case (by process instance ID)
+            List<TaskResponse> caseTasks = userTasks.stream()
+                .filter(task -> caseEntity.getProcessInstanceId() != null && 
+                               caseEntity.getProcessInstanceId().equals(task.getProcessInstanceId()))
+                .filter(task -> "OPEN".equals(task.getStatus()) || "CLAIMED".equals(task.getStatus()))
+                .collect(Collectors.toList());
+            
+            if (!caseTasks.isEmpty()) {
+                TaskResponse taskToComplete = caseTasks.get(0); // Complete the first available task
+                
+                // Build completion variables
+                Map<String, Object> variables = new HashMap<>();
+                variables.put("caseAction", "CREATE");
+                variables.put("enhancedBy", userId);
+                variables.put("enhancementTime", LocalDateTime.now().toString());
+                variables.put("allegationCount", caseEntity.getAllegations() != null ? caseEntity.getAllegations().size() : 0);
+                variables.put("entityCount", caseEntity.getEntities() != null ? caseEntity.getEntities().size() : 0);
+                variables.put("narrativeCount", caseEntity.getNarratives() != null ? caseEntity.getNarratives().size() : 0);
+                
+                // Complete the task to progress workflow
+                workflowServiceClient.completeTask(taskToComplete.getTaskId(), variables, userId);
+                
+                log.info("✅ Completed workflow task {} to progress case {}", 
+                         taskToComplete.getTaskId(), caseEntity.getCaseNumber());
+            } else {
+                log.info("No open tasks found for process instance: {}", caseEntity.getProcessInstanceId());
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to progress workflow for enhanced case {}: {}", 
+                      caseEntity.getCaseNumber(), e.getMessage());
+            throw e;
+        }
     }
     
     /**
@@ -367,9 +495,16 @@ public class CaseService {
                     entity.setLegalVehicle(req.getLegalVehicle());
                     entity.setManagedSegment(req.getManagedSegment());
                     entity.setRelationshipToCiti(req.getRelationshipToCiti());
+                    
+                    // Set entity_name for person (required field)
+                    String entityName = buildPersonDisplayName(req.getFirstName(), req.getMiddleName(), req.getLastName());
+                    entity.setEntityName(entityName);
                 } else {
                     // Organization fields
                     entity.setOrganizationName(req.getOrganizationName());
+                    
+                    // Set entity_name for organization (required field)
+                    entity.setEntityName(req.getOrganizationName() != null ? req.getOrganizationName() : "Unknown Organization");
                 }
                 
                 // Contact information (common to both)
@@ -393,7 +528,7 @@ public class CaseService {
     /**
      * Create case narratives from request
      */
-    private List<CaseNarrative> createNarratives(List<CreateCaseWithAllegationsRequest.NarrativeRequest> narrativeRequests, Case caseEntity) {
+    private List<CaseNarrative> createNarratives(List<CreateCaseWithAllegationsRequest.NarrativeRequest> narrativeRequests, Case caseEntity, String userId) {
         return narrativeRequests.stream()
             .map(req -> {
                 CaseNarrative narrative = new CaseNarrative();
@@ -403,6 +538,7 @@ public class CaseService {
                 narrative.setNarrativeTitle(req.getTitle());
                 narrative.setNarrativeText(req.getNarrative());
                 narrative.setInvestigationFunction(req.getInvestigationFunction());
+                narrative.setAuthor(userId != null ? userId : "System"); // Set author from user context
                 narrative.setIsRecalled(false);
                 
                 narrative.setCreatedAt(LocalDateTime.now());
@@ -607,5 +743,29 @@ public class CaseService {
      */
     private String generateAllegationId() {
         return "ALG-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 1000);
+    }
+    
+    /**
+     * Build display name for person entities
+     */
+    private String buildPersonDisplayName(String firstName, String middleName, String lastName) {
+        StringBuilder name = new StringBuilder();
+        
+        if (firstName != null && !firstName.trim().isEmpty()) {
+            name.append(firstName.trim());
+        }
+        
+        if (middleName != null && !middleName.trim().isEmpty()) {
+            if (name.length() > 0) name.append(" ");
+            name.append(middleName.trim());
+        }
+        
+        if (lastName != null && !lastName.trim().isEmpty()) {
+            if (name.length() > 0) name.append(" ");
+            name.append(lastName.trim());
+        }
+        
+        // Return a meaningful name or fallback
+        return name.length() > 0 ? name.toString() : "Unknown Person";
     }
 }

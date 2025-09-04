@@ -4,6 +4,7 @@ import com.citi.onecms.client.EntitlementServiceClient;
 import com.citi.onecms.dto.AuthorizationCheckResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,9 @@ public class AuthorizationService {
 
     private final EntitlementServiceClient entitlementServiceClient;
     
+    @Value("${cms.authorization.enabled:false}")
+    private boolean authorizationEnabled;
+    
     /**
      * Check if user is authorized to perform an action on a resource
      */
@@ -31,6 +35,12 @@ public class AuthorizationService {
             if (userId == null || userId.trim().isEmpty()) {
                 log.warn("Authorization check failed: No user ID provided");
                 return false;
+            }
+            
+            if (!authorizationEnabled) {
+                log.debug("Authorization disabled - allowing access for user={}, action={}, resource={}", 
+                         userId, action, resourceKind);
+                return true;
             }
             
             log.debug("Checking authorization: user={}, resource={}/{}, action={}", 
@@ -54,15 +64,9 @@ public class AuthorizationService {
     }
     
     /**
-     * Check authorization for case operations
+     * Check authorization for case operations with workflow context
      */
     public boolean checkCaseAuthorization(String userId, String caseNumber, String action) {
-        // Temporary bypass for testing - allow all case operations
-        log.info("TESTING MODE: Bypassing authorization check for user={}, caseNumber={}, action={}", 
-                userId, caseNumber, action);
-        return true;
-        
-        /*
         Map<String, Object> resourceAttributes = new HashMap<>();
         if (caseNumber != null) {
             resourceAttributes.put("caseNumber", caseNumber);
@@ -70,7 +74,6 @@ public class AuthorizationService {
         
         return checkAuthorization(userId, "case", caseNumber != null ? caseNumber : "new", 
                                 action, resourceAttributes);
-        */
     }
     
     /**
@@ -94,6 +97,42 @@ public class AuthorizationService {
         resourceAttributes.put("queueName", queueName);
         
         return checkAuthorization(userId, "queue", queueName, action, resourceAttributes);
+    }
+    
+    /**
+     * Check authorization for workflow registration operations
+     */
+    public boolean checkWorkflowRegistrationAuthorization(String userId, String workflowId, String action) {
+        Map<String, Object> resourceAttributes = new HashMap<>();
+        resourceAttributes.put("businessAppName", "onecms");
+        if (workflowId != null) {
+            resourceAttributes.put("workflowId", workflowId);
+        }
+        
+        return checkAuthorization(userId, "workflow-registration", workflowId != null ? workflowId : "new", 
+                                action, resourceAttributes);
+    }
+    
+    /**
+     * Check authorization for workflow status/journey operations
+     */
+    public boolean checkWorkflowStatusAuthorization(String userId, String caseNumber, String action) {
+        Map<String, Object> resourceAttributes = new HashMap<>();
+        resourceAttributes.put("caseNumber", caseNumber);
+        resourceAttributes.put("businessAppName", "onecms");
+        
+        return checkAuthorization(userId, "workflow-status", caseNumber, action, resourceAttributes);
+    }
+    
+    /**
+     * Check authorization for case submission (workflow transition operations)
+     */
+    public boolean checkCaseSubmissionAuthorization(String userId, String caseNumber) {
+        Map<String, Object> resourceAttributes = new HashMap<>();
+        resourceAttributes.put("caseNumber", caseNumber);
+        resourceAttributes.put("transitionType", "submit");
+        
+        return checkAuthorization(userId, "case", caseNumber, "submit", resourceAttributes);
     }
     
     /**

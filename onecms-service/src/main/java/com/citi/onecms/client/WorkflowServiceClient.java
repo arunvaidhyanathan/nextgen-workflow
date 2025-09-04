@@ -1,6 +1,7 @@
 package com.citi.onecms.client;
 
 import com.citi.onecms.dto.workflow.*;
+import java.time.Instant;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,11 +44,16 @@ public class WorkflowServiceClient {
         try {
             String url = baseUrl + "/api/" + BUSINESS_APP + "/process-instances/start";
             
+            // Add initiator to process variables if not already present
+            Map<String, Object> processVariables = variables != null ? new HashMap<>(variables) : new HashMap<>();
+            if (initiator != null && !processVariables.containsKey("initiatorId")) {
+                processVariables.put("initiatorId", initiator);
+            }
+            
             StartProcessRequest request = StartProcessRequest.builder()
                 .processDefinitionKey(processDefinitionKey)
                 .businessKey(businessKey)
-                .variables(variables != null ? variables : new HashMap<>())
-                .initiatorId(initiator)
+                .variables(processVariables)
                 .build();
             
             HttpHeaders headers = new HttpHeaders();
@@ -205,6 +211,77 @@ public class WorkflowServiceClient {
         }
     }
     
+    /**
+     * Get tasks for a process instance
+     */
+    @CircuitBreaker(name = "flowable-workflow-service", fallbackMethod = "getTasksForProcessInstanceFallback")
+    public List<TaskResponse> getTasksForProcessInstance(String processInstanceId, String userId) {
+        
+        log.debug("Getting tasks for process instance: {}", processInstanceId);
+        
+        try {
+            String url = baseUrl + "/api/" + BUSINESS_APP + "/tasks/process/" + processInstanceId;
+            
+            HttpHeaders headers = new HttpHeaders();
+            if (userId != null) {
+                headers.set("X-User-Id", userId);
+            }
+            
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<TaskResponse[]> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, TaskResponse[].class);
+            
+            TaskResponse[] tasks = response.getBody();
+            List<TaskResponse> taskList = tasks != null ? List.of(tasks) : List.of();
+            
+            log.debug("Retrieved {} tasks for process instance {}", taskList.size(), processInstanceId);
+            
+            return taskList;
+            
+        } catch (Exception e) {
+            log.error("Failed to get tasks for process instance {}: {}", processInstanceId, e.getMessage());
+            return List.of(); // Return empty list on failure
+        }
+    }
+    
+    /**
+     * Start a process and return enhanced response with initial task information
+     */
+    @CircuitBreaker(name = "flowable-workflow-service", fallbackMethod = "startProcessWithTasksFallback")
+    public StartProcessWithTaskResponse startProcessWithTasks(String processDefinitionKey, String businessKey, 
+                                                            Map<String, Object> variables, String initiator) {
+        
+        log.info("Starting process with task details: key={}, businessKey={}, initiator={}", 
+                processDefinitionKey, businessKey, initiator);
+        
+        // Start the process
+        StartProcessResponse processResponse = startProcess(processDefinitionKey, businessKey, variables, initiator);
+        
+        // Create enhanced response
+        StartProcessWithTaskResponse enhancedResponse = StartProcessWithTaskResponse.from(processResponse);
+        enhancedResponse.setInitiatedBy(initiator);
+        
+        // Get initial tasks for the process instance
+        try {
+            List<TaskResponse> initialTasks = getTasksForProcessInstance(processResponse.getProcessInstanceId(), initiator);
+            enhancedResponse.setAllInitialTasks(initialTasks);
+            
+            // Set the first task as the initial task if available
+            if (!initialTasks.isEmpty()) {
+                enhancedResponse.setInitialTask(initialTasks.get(0));
+            }
+            
+            log.info("Process started successfully with {} initial tasks", initialTasks.size());
+            
+        } catch (Exception e) {
+            log.warn("Failed to get initial tasks for process {}: {}", processResponse.getProcessInstanceId(), e.getMessage());
+            // Continue without task information rather than failing
+        }
+        
+        return enhancedResponse;
+    }
+    
     // Fallback methods
     
     public StartProcessResponse startProcessFallback(String processDefinitionKey, String businessKey, 
@@ -237,5 +314,28 @@ public class WorkflowServiceClient {
     public void completeTaskFallback(String taskId, Map<String, Object> variables, String userId, Exception ex) {
         log.warn("Workflow service unavailable for task completion: {}", ex.getMessage());
         // In a real scenario, you might want to queue this for retry
+    }
+    
+    public List<TaskResponse> getTasksForProcessInstanceFallback(String processInstanceId, String userId, Exception ex) {
+        log.warn("Workflow service unavailable for process instance tasks: {}", ex.getMessage());
+        return List.of();
+    }
+    
+    public StartProcessWithTaskResponse startProcessWithTasksFallback(String processDefinitionKey, String businessKey, 
+                                                                    Map<String, Object> variables, String initiator, Exception ex) {
+        log.warn("Workflow service unavailable for enhanced process start: {}", ex.getMessage());
+        
+        // Create fallback response without task information
+        return StartProcessWithTaskResponse.builder()
+                .processInstanceId("fallback-" + System.currentTimeMillis())
+                .businessKey(businessKey)
+                .processDefinitionKey(processDefinitionKey)
+                .active(false)
+                .suspended(false)
+                .startTime(Instant.now())
+                .initiatedBy(initiator)
+                .createdAt(Instant.now())
+                .allInitialTasks(List.of())
+                .build();
     }
 }

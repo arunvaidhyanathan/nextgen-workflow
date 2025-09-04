@@ -59,11 +59,11 @@ spring:
       repositories:
         query-lookup-strategy: create-if-not-found
 
-  # Liquibase Configuration - Disabled (schema already exists)
+  # Liquibase Configuration - Enabled to create database schema
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
     default-schema: ${DB_SCHEMA:onecms}
-    enabled: false
+    enabled: true
 
 # Service Clients Configuration
 service:
@@ -72,6 +72,9 @@ service:
       base-url: ${ENTITLEMENT_SERVICE_URL:http://localhost:8081}
       timeout: 30s
     flowable-core-workflow:
+      base-url: ${FLOWABLE_WORKFLOW_SERVICE_URL:http://localhost:8082}
+      timeout: 30s
+    flowable-workflow-service:
       base-url: ${FLOWABLE_WORKFLOW_SERVICE_URL:http://localhost:8082}
       timeout: 30s
 
@@ -110,6 +113,21 @@ eureka:
     lease-renewal-interval-in-seconds: 30
     lease-expiration-duration-in-seconds: 90
 
+# OpenAPI Documentation Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    filter: true
+    display-request-duration: true
+  show-actuator: true
+
 # Management and Monitoring
 management:
   endpoints:
@@ -129,6 +147,8 @@ cms:
     number-prefix: "${CASE_NUMBER_PREFIX:CMS}"
     auto-assignment: ${CASE_AUTO_ASSIGNMENT:true}
     max-allegations-per-case: ${CASE_MAX_ALLEGATIONS:10}
+  authorization:
+    enabled: ${AUTHORIZATION_ENABLED:false}
   notification:
     email:
       enabled: ${EMAIL_ENABLED:false}

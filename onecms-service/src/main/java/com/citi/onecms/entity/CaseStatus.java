@@ -6,6 +6,11 @@ package com.citi.onecms.entity;
 public enum CaseStatus {
     
     /**
+     * Case is in draft state and not yet submitted
+     */
+    DRAFT("Draft", "Case is in draft state and not yet submitted for processing", "secondary"),
+    
+    /**
      * Case has been created but not yet assigned or worked on
      */
     OPEN("Open", "Case has been created and is awaiting assignment", "primary"),
@@ -193,11 +198,12 @@ public enum CaseStatus {
             case ON_HOLD:
             case RESOLVED:
                 return 1; // Lowest priority
+            case DRAFT:
             case CLOSED:
             case CANCELLED:
             case REJECTED:
             default:
-                return 0; // No priority (completed)
+                return 0; // No priority (completed/draft)
         }
     }
 
@@ -208,6 +214,9 @@ public enum CaseStatus {
      */
     public CaseStatus[] getValidTransitions() {
         switch (this) {
+            case DRAFT:
+                return new CaseStatus[]{OPEN, SUBMITTED, CANCELLED};
+                
             case OPEN:
                 return new CaseStatus[]{SUBMITTED, IN_PROGRESS, PENDING_INFO, PENDING_APPROVAL, ON_HOLD, CANCELLED, REJECTED};
             
@@ -312,7 +321,7 @@ public enum CaseStatus {
      */
     public static CaseStatus[] getActiveStatuses() {
         return new CaseStatus[]{
-            OPEN, SUBMITTED, IN_PROGRESS, UNDER_REVIEW, ESCALATED, PENDING_INFO, 
+            DRAFT, OPEN, SUBMITTED, IN_PROGRESS, UNDER_REVIEW, ESCALATED, PENDING_INFO, 
             PENDING_APPROVAL, ON_HOLD, EXTERNAL_INVESTIGATION, 
             NEAR_COMPLETION, REQUIRES_ATTENTION, RESOLVED
         };
@@ -345,6 +354,8 @@ public enum CaseStatus {
      */
     public String getColor() {
         switch (this) {
+            case DRAFT:
+                return "#6c757d"; // Gray
             case OPEN:
                 return "#007bff"; // Blue
             case SUBMITTED:
@@ -381,6 +392,8 @@ public enum CaseStatus {
      */
     public String getIcon() {
         switch (this) {
+            case DRAFT:
+                return "fa-edit";
             case OPEN:
                 return "fa-folder-open";
             case SUBMITTED:

@@ -10,5 +10,8 @@
     
     <!-- Sample Data Population -->
     <include file="db/changelog/002-sample-data.xml"/>
+    
+    <!-- OneCMS Workflow Enhancement - Missing Roles -->
+    <include file="db/changelog/003-workflow-enhancement-roles.xml"/>
 
 </databaseChangeLog>

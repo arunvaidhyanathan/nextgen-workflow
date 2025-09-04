@@ -29,6 +29,9 @@ public class CaseEntity {
     @Column(name = "entity_type", nullable = false, length = 20)
     private EntityType entityType;
 
+    @Column(name = "entity_name", nullable = false, length = 255)
+    private String entityName;
+
     @Column(name = "investigation_function", length = 50)
     private String investigationFunction;
 

@@ -50,7 +50,7 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
     liquibase-schema: public
     default-schema: entitlements
-    enabled: true
+    enabled: false
 
 # Eureka Client Configuration
 eureka:
@@ -66,7 +66,7 @@ eureka:
 authorization:
   engine:
     # Set to false to use database-based authorization, true for Cerbos
-    use-cerbos: ${AUTHORIZATION_USE_CERBOS:false}
+    use-cerbos: ${AUTHORIZATION_USE_CERBOS:true}
     # Allow runtime switching between engines (for testing purposes)
     allow-runtime-switching: ${AUTHORIZATION_ALLOW_RUNTIME_SWITCHING:false}
   cache:

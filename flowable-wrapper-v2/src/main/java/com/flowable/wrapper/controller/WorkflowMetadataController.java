@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import com.flowable.wrapper.client.EntitlementServiceClient;
+import com.flowable.wrapper.config.AuthorizationProperties;
 import java.util.Map;
 
 @RestController
@@ -29,6 +30,7 @@ public class WorkflowMetadataController {
     
     private final WorkflowMetadataService workflowMetadataService;
     private final EntitlementServiceClient entitlementServiceClient;
+    private final AuthorizationProperties authorizationProperties;
     
     @PostMapping("/register")
     @Operation(summary = "Register workflow metadata", 
@@ -48,15 +50,19 @@ public class WorkflowMetadataController {
         log.info("Registering workflow metadata: {} in business app: {} by user: {}", 
                 request.getProcessDefinitionKey(), businessAppName, userId);
         
-        // Authorization check via Entitlement Service
-        boolean isAuthorized = entitlementServiceClient.checkAuthorization(
-                userId, null, "workflow", request.getProcessDefinitionKey(), 
-                Map.of("businessAppName", businessAppName), "register").isAllowed();
-        
-        if (!isAuthorized) {
-            log.warn("User {} not authorized to register workflow {} in business app {}", 
-                    userId, request.getProcessDefinitionKey(), businessAppName);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        // Authorization check via Entitlement Service (if enabled)
+        if (authorizationProperties.isEnabled()) {
+            boolean isAuthorized = entitlementServiceClient.checkAuthorization(
+                    userId, null, "workflow-registration", request.getProcessDefinitionKey(), 
+                    Map.of("businessAppName", businessAppName), "register").isAllowed();
+            
+            if (!isAuthorized) {
+                log.warn("User {} not authorized to register workflow {} in business app {}", 
+                        userId, request.getProcessDefinitionKey(), businessAppName);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else {
+            log.info("Authorization disabled - bypassing auth check for workflow registration");
         }
         
         WorkflowMetadataResponse response = workflowMetadataService.registerWorkflowMetadata(request);
@@ -83,15 +89,19 @@ public class WorkflowMetadataController {
         log.info("Deploying workflow: {} in business app: {} by user: {}", 
                 request.getProcessDefinitionKey(), businessAppName, userId);
         
-        // Authorization check via Entitlement Service
-        boolean isAuthorized = entitlementServiceClient.checkAuthorization(
-                userId, null, "workflow", request.getProcessDefinitionKey(), 
-                Map.of("businessAppName", businessAppName), "deploy").isAllowed();
-        
-        if (!isAuthorized) {
-            log.warn("User {} not authorized to deploy workflow {} in business app {}", 
-                    userId, request.getProcessDefinitionKey(), businessAppName);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        // Authorization check via Entitlement Service (if enabled)
+        if (authorizationProperties.isEnabled()) {
+            boolean isAuthorized = entitlementServiceClient.checkAuthorization(
+                    userId, null, "workflow-registration", request.getProcessDefinitionKey(), 
+                    Map.of("businessAppName", businessAppName), "deploy").isAllowed();
+            
+            if (!isAuthorized) {
+                log.warn("User {} not authorized to deploy workflow {} in business app {}", 
+                        userId, request.getProcessDefinitionKey(), businessAppName);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else {
+            log.info("Authorization disabled - bypassing auth check for workflow deployment");
         }
         
         WorkflowMetadataResponse response = workflowMetadataService.deployWorkflow(request);
@@ -119,7 +129,7 @@ public class WorkflowMetadataController {
         
         // Authorization check via Entitlement Service
         boolean isAuthorized = entitlementServiceClient.checkAuthorization(
-                userId, null, "workflow", processDefinitionKey, 
+                userId, null, "workflow-registration", processDefinitionKey, 
                 Map.of("businessAppName", businessAppName), "view").isAllowed();
         
         if (!isAuthorized) {
@@ -153,15 +163,19 @@ public class WorkflowMetadataController {
         log.info("Deploying workflow from file: {} for process: {} in business app: {} by user: {}", 
                 filename, processDefinitionKey, businessAppName, userId);
         
-        // Authorization check via Entitlement Service
-        boolean isAuthorized = entitlementServiceClient.checkAuthorization(
-                userId, null, "workflow", processDefinitionKey, 
-                Map.of("businessAppName", businessAppName), "deploy").isAllowed();
-        
-        if (!isAuthorized) {
-            log.warn("User {} not authorized to deploy workflow {} in business app {}", 
-                    userId, processDefinitionKey, businessAppName);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        // Authorization check via Entitlement Service (if enabled)
+        if (authorizationProperties.isEnabled()) {
+            boolean isAuthorized = entitlementServiceClient.checkAuthorization(
+                    userId, null, "workflow-registration", processDefinitionKey, 
+                    Map.of("businessAppName", businessAppName), "deploy").isAllowed();
+            
+            if (!isAuthorized) {
+                log.warn("User {} not authorized to deploy workflow {} in business app {}", 
+                        userId, processDefinitionKey, businessAppName);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else {
+            log.info("Authorization disabled - bypassing auth check for workflow deployment from file");
         }
         
         WorkflowMetadataResponse response = workflowMetadataService.deployWorkflowFromFile(processDefinitionKey, filename);

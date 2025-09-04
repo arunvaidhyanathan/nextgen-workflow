@@ -15,5 +15,4 @@ public class StartProcessRequest {
     private String processDefinitionKey;
     private String businessKey;
     private Map<String, Object> variables;
-    private String initiatorId;
 }

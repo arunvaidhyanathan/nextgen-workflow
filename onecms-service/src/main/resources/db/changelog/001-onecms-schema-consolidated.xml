@@ -623,7 +623,7 @@
             BEGIN
                 NEW.updated_at = CURRENT_TIMESTAMP;
                 RETURN NEW;
-            END;
+            END
             $$ LANGUAGE plpgsql;
             
             CREATE TRIGGER case_transitions_updated_at_trigger

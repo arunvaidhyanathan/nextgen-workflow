@@ -82,4 +82,12 @@ public interface EntitlementUserDomainRoleRepository extends JpaRepository<Entit
     @Query("UPDATE EntitlementUserDomainRole udr SET udr.isActive = false " +
            "WHERE udr.userId = :userId AND udr.roleId = :roleId")
     void deactivateUserRole(@Param("userId") UUID userId, @Param("roleId") UUID roleId);
+    
+    /**
+     * Get role names for a user (for Cerbos principal building)
+     */
+    @Query("SELECT dr.roleName FROM EntitlementUserDomainRole udr " +
+           "JOIN EntitlementDomainRole dr ON udr.roleId = dr.roleId " +
+           "WHERE udr.userId = :userId AND udr.isActive = true")
+    List<String> findRoleNamesByUserId(@Param("userId") UUID userId);
 }

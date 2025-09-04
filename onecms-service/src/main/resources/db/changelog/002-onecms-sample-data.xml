@@ -53,7 +53,7 @@
         </insert>
         <insert tableName="departments" schemaName="onecms">
             <column name="department_name" value="Corporate Security"/>
-            <column name="description" value="Corporate Security & Information Security (CSIS)"/>
+            <column name="description" value="Corporate Security &amp; Information Security (CSIS)"/>
             <column name="manager_email" value="csis.manager@company.com"/>
             <column name="active" valueBoolean="true"/>
         </insert>

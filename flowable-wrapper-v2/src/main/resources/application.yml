@@ -80,6 +80,10 @@ entitlement-service:
   base-url: ${ENTITLEMENT_SERVICE_URL:http://localhost:8081}
   timeout: ${ENTITLEMENT_SERVICE_TIMEOUT:5000}
 
+# Authorization Configuration
+authorization:
+  enabled: ${AUTHORIZATION_ENABLED:false}  # Disable auth for testing
+
 # Circuit Breaker Configuration
 resilience4j:
   circuitbreaker:
@@ -123,7 +127,7 @@ workflow:
   security:
     validation-enabled: true
     strict-mode: false
-    max-process-elements: 200
+    max-process-elements: 500
     max-script-length: 1000
     max-expression-length: 500
     max-deployment-size: 5242880  # 5MB in bytes

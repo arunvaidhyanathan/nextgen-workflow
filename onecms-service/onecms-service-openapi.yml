@@ -2,10 +2,12 @@ openapi: 3.0.3
 info:
   title: OneCMS Service API
   description: |
-    NextGen Workflow OneCMS Service - Case Management System microservice for comprehensive case management.
+    NextGen Workflow OneCMS Service - Case Management System microservice for comprehensive case management with full workflow integration.
     
     This service provides:
     - Case lifecycle management (CRUD operations)
+    - **Case Draft Management** with workflow integration  
+    - Real-time workflow process instance creation
     - Allegation management with GRC taxonomy
     - Case entity management (people/organizations)
     - Case narrative and comment management
@@ -15,12 +17,41 @@ info:
     **Authentication**: All endpoints require session-based authentication via API Gateway with `X-User-Id` header.
     
     **Authorization**: Fine-grained access control delegated to entitlement-service via Cerbos policy engine.
+    Includes circuit breaker fallback for authorization service unavailability.
     
     **Microservices Integration**: 
     - Service-to-service communication via Eureka service discovery
-    - Circuit breaker patterns for resilience
+    - Circuit breaker patterns for resilience with Resilience4j
     - Database per service pattern with PostgreSQL `onecms` schema
-  version: 1.0.0
+    - Real-time workflow process instantiation via flowable-wrapper-v2
+    - End-to-end traceability with business keys
+    
+    **Case Draft Workflow**: 
+    - Creates both Case and CaseDraft entities atomically
+    - Starts real BPMN process instances in flowable engine
+    - Captures initial task information and queue assignments
+    - Provides complete audit trail from draft to process execution
+    
+    **Two-Phase Case Creation Approach**:
+    - **Phase 1**: `/createcase-draft` - Creates case draft and starts workflow
+    - **Phase 2**: `/enhance-case` - Enhances draft with allegations, entities, narratives
+    - Enables separation of case initiation from comprehensive data entry
+    - Supports workflow progression through BPMN task completion
+    
+    **Example Two-Phase Workflow**:
+    ```
+    1. POST /createcase-draft → Returns: {"case_id": "CMS-2025-000014", "process_instance_id": "..."}
+    2. POST /enhance-case with {"case_id": "CMS-2025-000014", "allegations": [...], "entities": [...]}
+    3. Workflow progresses from task_create_case to task_assign_case automatically
+    ```
+    
+    **Recent Updates**: 
+    - **NEW**: Two-phase case creation with enhance-case endpoint
+    - Complete workflow integration with real process instances
+    - Enhanced case draft creation with workflow metadata
+    - Circuit breaker patterns for service resilience
+    - Real database persistence for all operations
+  version: 1.2.0
   contact:
     name: NextGen Workflow Team
 servers:
@@ -86,6 +117,129 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
+  # Case Draft Management endpoints
+  /cms/v1/createcase-draft:
+    post:
+      tags:
+        - Case Management
+      summary: Create a case draft with workflow integration
+      description: |
+        Create a case draft that automatically starts a real BPMN workflow process instance. 
+        
+        This endpoint performs the following actions atomically:
+        - Creates a Case entity with generated case number (format: CMS-YYYY-XXXXXX)
+        - Creates a CaseDraft entity with workflow metadata
+        - Starts a real process instance in the Flowable engine
+        - Links the case to the workflow via process instance ID and business key
+        - Returns complete workflow metadata including process instance ID
+        
+        **Workflow Integration**: Uses the deployed `oneCmsCaseWorkflow` BPMN process by default.
+        **Database Persistence**: All data is persisted in real PostgreSQL tables.
+        **Circuit Breaker**: Includes fallback handling if workflow service is unavailable.
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCaseDraftRequest'
+      responses:
+        '201':
+          description: Case draft created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseDraftResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /cms/v1/case-drafts:
+    get:
+      tags:
+        - Case Management
+      summary: Get case drafts for current user
+      description: Retrieve all case drafts created by the current user
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+      responses:
+        '200':
+          description: Case drafts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CaseDraftResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /cms/v1/case-drafts/{caseDraftId}:
+    get:
+      tags:
+        - Case Management
+      summary: Get case draft by ID
+      description: Retrieve a specific case draft by its ID
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - name: caseDraftId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Case draft ID
+      responses:
+        '200':
+          description: Case draft found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseDraftResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /cms/v1/case-drafts/{caseDraftId}/submit:
+    post:
+      tags:
+        - Case Management
+      summary: Submit case draft
+      description: Submit a case draft for processing (mark as submitted)
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - name: caseDraftId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Case draft ID
+      responses:
+        '200':
+          description: Case draft submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseDraftResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
   # Case Management endpoints
   /cms/v1/createcase:
     post:
@@ -114,6 +268,57 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '403':
           $ref: '#/components/responses/ForbiddenError'
+
+  /cms/v1/enhance-case:
+    post:
+      tags:
+        - Case Management
+      summary: Enhance existing case with allegations, entities, and narratives
+      description: |
+        Enhance an existing case draft with comprehensive data in Phase 2 of the two-phase case creation approach.
+        
+        This endpoint performs the following actions:
+        - Validates that the case exists and is in DRAFT status
+        - Adds allegations, entities, and narratives to the existing case
+        - Updates case status and triggers workflow progression
+        - Completes BPMN workflow tasks to advance process state
+        - Returns enhanced case with all associated data
+        
+        **Two-Phase Workflow**: This endpoint is designed to work with `/createcase-draft` in a two-phase approach:
+        1. Phase 1: Create case draft with `/createcase-draft` (gets case_id)
+        2. Phase 2: Enhance case with this endpoint using the case_id
+        
+        **Workflow Progression**: Automatically progresses workflow from task_create_case to task_assign_case.
+        **Database Integration**: All enhancements are persisted to PostgreSQL with proper relationships.
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnhancedCreateCaseRequest'
+      responses:
+        '200':
+          description: Case enhanced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseWithAllegationsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /cms/v1/cases:
     get:
@@ -1155,3 +1360,234 @@ components:
           format: date-time
           description: Creation timestamp
           example: "2025-01-15T10:30:00Z"
+
+    # Case Draft schemas
+    CreateCaseDraftRequest:
+      type: object
+      required:
+        - case_draft_title
+        - date_received_by_escalation_channel
+        - complaint_received_method
+      properties:
+        case_draft_title:
+          type: string
+          maxLength: 500
+          description: Title of the case draft
+          example: "Employee Misconduct Investigation"
+        case_draft_description:
+          type: string
+          description: Description of the case draft
+          example: "Detailed description of the investigation case"
+        priority:
+          $ref: '#/components/schemas/Priority'
+        case_type_id:
+          type: integer
+          format: int64
+          description: Case type ID
+          example: 1
+        department_id:
+          type: integer
+          format: int64
+          description: Department ID
+          example: 1
+        date_received_by_escalation_channel:
+          type: string
+          format: date
+          description: Date when complaint was received by escalation channel
+          example: "2025-04-15"
+        complaint_received_method:
+          type: string
+          maxLength: 100
+          description: Method through which complaint was received
+          enum:
+            - "Citi Ethics Office"
+            - "Employee Complaints Referrals"
+            - "Sales Practices"
+            - "Direct to EO"
+            - "Email"
+            - "Fax"
+            - "Hotline"
+            - "Phone"
+          example: "Email"
+        process_definition_key:
+          type: string
+          description: Process definition key for workflow (optional - defaults to oneCmsCaseWorkflow)
+          enum:
+            - "oneCmsCaseWorkflow"
+            - "OneCMS_Workflow"
+            - "OneCMS_MultiDepartment_Workflow"
+          example: "oneCmsCaseWorkflow"
+          default: "oneCmsCaseWorkflow"
+        business_key:
+          type: string
+          description: Business key for workflow instance (optional - will be generated as case number for end-to-end tracking)
+          example: "CMS-2025-000123"
+
+    # Two-Phase Case Creation Enhancement Schema
+    EnhancedCreateCaseRequest:
+      type: object
+      required:
+        - case_id
+      properties:
+        case_id:
+          type: string
+          description: Case ID (case number) of the existing case to enhance
+          pattern: "^CMS-[0-9]{4}-[0-9]{6}$"
+          example: "CMS-2025-000014"
+        allegations:
+          type: array
+          description: List of allegations to add to the case
+          items:
+            $ref: '#/components/schemas/AllegationRequest'
+          example:
+            - allegationType: "HARASSMENT"
+              severity: "HIGH"
+              description: "Workplace harassment creating hostile work environment"
+              subject: "Harassment of female colleagues"
+              narrative: "Multiple reports of inappropriate comments and behavior towards female staff members."
+              investigationFunction: "HR"
+              grcTaxonomyLevel1: "CONDUCT"
+              grcTaxonomyLevel2: "HARASSMENT"
+              grcTaxonomyLevel3: "WORKPLACE"
+              grcTaxonomyLevel4: "VERBAL"
+        entities:
+          type: array
+          description: List of entities (people/organizations) to add to the case
+          items:
+            $ref: '#/components/schemas/EntityRequest'
+          example:
+            - type: "Person"
+              relationshipType: "SUBJECT"
+              investigationFunction: "PRIMARY"
+              firstName: "John"
+              middleName: "Michael"
+              lastName: "Doe"
+              emailAddress: "john.doe@company.com"
+              phoneNumber: "+1-555-0123"
+              relationshipToCiti: "EMPLOYEE"
+              preferredContactMethod: "EMAIL"
+              anonymous: false
+        narratives:
+          type: array
+          description: List of narratives to add to the case
+          items:
+            $ref: '#/components/schemas/NarrativeRequest'
+          example:
+            - type: "INITIAL_COMPLAINT"
+              title: "Initial Complaint Report"
+              narrative: "This case was initiated following multiple reports from staff members regarding inappropriate conduct."
+              investigationFunction: "INTAKE"
+
+    CaseDraftResponse:
+      type: object
+      properties:
+        case_id:
+          type: string
+          description: Case ID (formatted case number for external identification)
+          example: "CMS-2025-000123"
+        case_draft_title:
+          type: string
+          description: Case draft title
+          example: "Employee Misconduct Investigation"
+        case_draft_description:
+          type: string
+          description: Case draft description
+          example: "Detailed description of the investigation case"
+        priority:
+          $ref: '#/components/schemas/Priority'
+        case_type_id:
+          type: integer
+          format: int64
+          description: Case type ID
+          example: 1
+        case_type_name:
+          type: string
+          description: Case type name
+          example: "Investigation"
+        department_id:
+          type: integer
+          format: int64
+          description: Department ID
+          example: 1
+        date_received_by_escalation_channel:
+          type: string
+          format: date
+          description: Date received by escalation channel
+          example: "2025-04-15"
+        complaint_received_method:
+          type: string
+          description: Method through which complaint was received
+          example: "Citi Ethics Office"
+        process_instance_id:
+          type: string
+          description: Process instance ID from workflow engine (real Flowable process instance ID)
+          example: "c8e6f366-8921-11f0-a00a-3a3e1f3f6b9c"
+        process_definition_key:
+          type: string
+          description: Process definition key
+          example: "oneCmsCaseWorkflow"
+        initial_task_id:
+          type: string
+          description: Initial task ID created
+          example: "task_789"
+        initial_task_name:
+          type: string
+          description: Initial task name
+          example: "EO Head Review"
+        initial_task_queue:
+          type: string
+          description: Initial task queue
+          example: "eo-head-queue"
+        candidate_group:
+          type: string
+          description: Candidate group for task assignment
+          example: "GROUP_EO_HEAD"
+        task_status:
+          $ref: '#/components/schemas/TaskStatus'
+        created_by_user_id:
+          type: string
+          description: User who created the draft
+          example: "alice.intake"
+        created_at:
+          type: string
+          format: date-time
+          description: When the draft was created
+          example: "2025-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: When the draft was last updated
+          example: "2025-01-15T10:30:00Z"
+        draft_status:
+          type: string
+          enum: ["DRAFT", "SUBMITTED", "CANCELLED"]
+          description: Current status of the draft
+          example: "DRAFT"
+        is_submitted:
+          type: boolean
+          description: Whether the draft has been submitted
+          example: false
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the draft was submitted
+          example: "2025-01-15T11:00:00Z"
+        workflow_status:
+          type: string
+          description: Current workflow status
+          example: "STARTED"
+
+    TaskStatus:
+      type: string
+      enum:
+        - "OPEN"
+        - "CLAIMED"
+        - "PENDING"
+        - "IN_PROGRESS"
+        - "COMPLETED"
+        - "CANCELLED"
+        - "ESCALATED"
+        - "SUSPENDED"
+      description: Task status values aligned with Flowable workflow system
+      example: "OPEN"

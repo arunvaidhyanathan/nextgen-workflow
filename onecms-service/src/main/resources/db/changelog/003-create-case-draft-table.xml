@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- ========================================= -->
+    <!-- CREATE CASE DRAFT TABLE                  -->
+    <!-- Support for draft case functionality     -->
+    <!-- ========================================= -->
+
+    <changeSet id="003-create-case-draft-table" author="onecms-enhancement">
+        <comment>Create case_drafts table for draft case management with workflow integration</comment>
+        
+        <!-- Case Drafts Table -->
+        <createTable tableName="case_drafts" schemaName="onecms">
+            <column name="case_draft_id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            
+            <!-- Link to main case table -->
+            <column name="case_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Case Information -->
+            <column name="case_draft_title" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="case_draft_description" type="TEXT"/>
+            <column name="priority" type="VARCHAR(20)" defaultValue="MEDIUM">
+                <constraints nullable="false"/>
+            </column>
+            <column name="case_type_id" type="BIGINT"/>
+            <column name="department_id" type="BIGINT"/>
+            
+            <!-- Escalation Channel Information (from UI) -->
+            <column name="date_received_by_escalation_channel" type="DATE"/>
+            <column name="complaint_received_method" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Workflow Integration -->
+            <column name="process_instance_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="process_definition_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="business_key" type="VARCHAR(255)"/>
+            
+            <!-- Initial Task Information -->
+            <column name="initial_task_id" type="VARCHAR(64)"/>
+            <column name="initial_task_name" type="VARCHAR(255)"/>
+            <column name="initial_task_queue" type="VARCHAR(100)"/>
+            <column name="candidate_group" type="VARCHAR(255)"/>
+            <column name="task_status" type="VARCHAR(50)" defaultValue="OPEN">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Audit Information -->
+            <column name="created_by_user_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Status and Flags -->
+            <column name="draft_status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_submitted" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="submitted_at" type="TIMESTAMP"/>
+        </createTable>
+
+        <!-- Indexes for performance -->
+        <createIndex indexName="idx_case_drafts_case_id" tableName="case_drafts" schemaName="onecms">
+            <column name="case_id"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_case_drafts_created_by" tableName="case_drafts" schemaName="onecms">
+            <column name="created_by_user_id"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_case_drafts_process_instance" tableName="case_drafts" schemaName="onecms">
+            <column name="process_instance_id"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_case_drafts_status" tableName="case_drafts" schemaName="onecms">
+            <column name="draft_status"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_case_drafts_created_at" tableName="case_drafts" schemaName="onecms">
+            <column name="created_at"/>
+        </createIndex>
+
+        <!-- Foreign Key Constraints -->
+        <addForeignKeyConstraint 
+            baseTableName="case_drafts" 
+            baseColumnNames="case_id"
+            baseTableSchemaName="onecms"
+            referencedTableName="cases"
+            referencedColumnNames="id"
+            referencedTableSchemaName="onecms"
+            constraintName="fk_case_drafts_case"/>
+            
+        <addForeignKeyConstraint 
+            baseTableName="case_drafts" 
+            baseColumnNames="case_type_id"
+            baseTableSchemaName="onecms"
+            referencedTableName="case_types"
+            referencedColumnNames="id"
+            referencedTableSchemaName="onecms"
+            constraintName="fk_case_drafts_case_type"/>
+            
+        <!-- Comments -->
+        <setTableRemarks tableName="case_drafts" schemaName="onecms" 
+            remarks="Draft cases with workflow integration - stores case drafts linked to main cases table"/>
+        
+        <setColumnRemarks tableName="case_drafts" columnName="case_draft_id" schemaName="onecms"
+            remarks="Primary key for case draft"/>
+        <setColumnRemarks tableName="case_drafts" columnName="case_id" schemaName="onecms"
+            remarks="Foreign key reference to cases table"/>
+        <setColumnRemarks tableName="case_drafts" columnName="process_instance_id" schemaName="onecms"
+            remarks="Flowable process instance ID linked to this draft"/>
+        <setColumnRemarks tableName="case_drafts" columnName="initial_task_id" schemaName="onecms"
+            remarks="First task created when workflow started"/>
+        <setColumnRemarks tableName="case_drafts" columnName="candidate_group" schemaName="onecms"
+            remarks="Flowable candidate group for task assignment"/>
+        <setColumnRemarks tableName="case_drafts" columnName="created_by_user_id" schemaName="onecms"
+            remarks="User ID who created the draft (reference to entitlement-service.users.id)"/>
+    </changeSet>
+
+</databaseChangeLog>

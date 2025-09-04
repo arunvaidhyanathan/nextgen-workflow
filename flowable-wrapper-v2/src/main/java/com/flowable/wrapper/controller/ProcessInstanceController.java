@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import com.flowable.wrapper.client.EntitlementServiceClient;
+import com.flowable.wrapper.config.AuthorizationProperties;
 import java.util.Map;
 
 @RestController
@@ -28,6 +29,7 @@ public class ProcessInstanceController {
     
     private final ProcessInstanceService processInstanceService;
     private final EntitlementServiceClient entitlementServiceClient;
+    private final AuthorizationProperties authorizationProperties;
     
     @PostMapping("/start")
     @Operation(summary = "Start a new process instance", 
@@ -48,15 +50,19 @@ public class ProcessInstanceController {
         log.info("Starting process instance for workflow: {} in business app: {} by user: {}", 
                 request.getProcessDefinitionKey(), businessAppName, userId);
         
-        // Authorization check for starting workflow instance
-        boolean isAuthorized = entitlementServiceClient.checkAuthorization(
-                userId, null, "process", request.getProcessDefinitionKey(), 
-                Map.of("businessAppName", businessAppName), "start").isAllowed();
-        
-        if (!isAuthorized) {
-            log.warn("User {} not authorized to create process {} in business app {}", 
-                    userId, request.getProcessDefinitionKey(), businessAppName);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        // Authorization check for starting workflow instance (if enabled)
+        if (authorizationProperties.isEnabled()) {
+            boolean isAuthorized = entitlementServiceClient.checkAuthorization(
+                    userId, null, "process", request.getProcessDefinitionKey(), 
+                    Map.of("businessAppName", businessAppName), "start").isAllowed();
+            
+            if (!isAuthorized) {
+                log.warn("User {} not authorized to create process {} in business app {}", 
+                        userId, request.getProcessDefinitionKey(), businessAppName);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else {
+            log.info("Authorization disabled - bypassing auth check for process start");
         }
         
         ProcessInstanceResponse response = processInstanceService.startProcess(request);
@@ -82,15 +88,19 @@ public class ProcessInstanceController {
         log.info("Getting process instance: {} in business app: {} by user: {}", 
                 processInstanceId, businessAppName, userId);
         
-        // Authorization check for reading workflow instance
-        boolean isAuthorized = entitlementServiceClient.checkAuthorization(
-                userId, null, "process", processInstanceId, 
-                Map.of("businessAppName", businessAppName), "view").isAllowed();
-        
-        if (!isAuthorized) {
-            log.warn("User {} not authorized to view process instance {} in business app {}", 
-                    userId, processInstanceId, businessAppName);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        // Authorization check for reading workflow instance (if enabled)
+        if (authorizationProperties.isEnabled()) {
+            boolean isAuthorized = entitlementServiceClient.checkAuthorization(
+                    userId, null, "process", processInstanceId, 
+                    Map.of("businessAppName", businessAppName), "view").isAllowed();
+            
+            if (!isAuthorized) {
+                log.warn("User {} not authorized to view process instance {} in business app {}", 
+                        userId, processInstanceId, businessAppName);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else {
+            log.info("Authorization disabled - bypassing auth check for process instance view");
         }
         
         ProcessInstanceResponse response = processInstanceService.getProcessInstance(processInstanceId);

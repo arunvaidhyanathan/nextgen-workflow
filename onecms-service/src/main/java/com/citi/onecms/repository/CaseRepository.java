@@ -25,4 +25,7 @@ public interface CaseRepository extends JpaRepository<Case, Long> {
     
     @Query("SELECT c FROM Case c WHERE c.assignedToUserId = :userId OR c.createdByUserId = :userId")
     List<Case> findCasesForUser(@Param("userId") String userId);
+    
+    @Query("SELECT COALESCE(MAX(c.id), 0) + 1 FROM Case c")
+    Long getNextCaseSequence();
 }

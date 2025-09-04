@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ================================================================== -->
+    <!-- OneCMS Case Workflow Enhancement - Missing Roles and Mappings     -->
+    <!-- Aligns BPMN candidate groups with entitlement roles               -->
+    <!-- ================================================================== -->
+
+    <changeSet id="add-onecms-workflow-roles" author="claude-code">
+        <comment>Add missing roles for OneCMS Case Workflow BPMN candidate groups</comment>
+        
+        <sql endDelimiter=";" splitStatements="false"><![CDATA[
+            -- ================================================================
+            -- ADD MISSING DOMAIN ROLES (for database-based authorization)
+            -- ================================================================
+            INSERT INTO entitlements.entitlement_domain_roles (domain_id, role_name, display_name, description, is_active) VALUES
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'EO_INTAKE_ANALYST', 'Ethics Office Intake Analyst', 'Processes incoming ethics cases', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'EO_HEAD', 'Ethics Office Head', 'Head of Ethics Office - case assignment authority', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'EO_OFFICER', 'Ethics Office Officer', 'Ethics Officer - case routing and decisions', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'CSIS_INTAKE_ANALYST', 'CSIS Intake Analyst', 'Corporate Security intake analyst', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'ER_INTAKE_ANALYST', 'Employee Relations Intake Analyst', 'Employee Relations intake processing', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'LEGAL_INTAKE_ANALYST', 'Legal Intake Analyst', 'Legal department intake analyst', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'INVESTIGATION_MANAGER', 'Investigation Manager', 'Investigation unit manager', true),
+            ((SELECT domain_id FROM entitlements.entitlement_application_domains WHERE domain_name = 'NextGen-Workflow'), 'INVESTIGATOR', 'Investigator', 'Case investigator', true)
+            ON CONFLICT (domain_id, role_name) DO NOTHING;
+
+            -- ================================================================
+            -- ADD/UPDATE BUSINESS APP ROLES (for Cerbos-based authorization)
+            -- ================================================================
+            -- Remove existing roles that need to be updated
+            DELETE FROM entitlements.business_app_roles 
+            WHERE business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms')
+            AND role_name IN ('INTAKE_ANALYST', 'INVESTIGATOR', 'INVESTIGATION_MANAGER', 'EO_OFFICER', 'EO_HEAD', 'CSIS_ANALYST', 'CSIS_MANAGER');
+
+            -- Insert aligned business app roles with proper queue mappings
+            INSERT INTO entitlements.business_app_roles (business_app_id, role_name, role_display_name, description, is_active, metadata) VALUES
+            -- EO (Ethics Office) Roles
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'EO_INTAKE_ANALYST', 'EO Intake Analyst', 'Create cases, add allegations/narratives/entities, assign to EO Officer', true, '{"queue": "eo-intake-analyst-queue", "candidateGroup": "GROUP_EO_INTAKE_ANALYST", "actions": ["create_case", "add_allegation", "add_narrative", "add_entity", "cancel_case", "assign_to_eo_officer", "save_and_reject_case"]}'),
+            
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'EO_HEAD', 'EO Head', 'Assign cases to EO Officers for routing decisions', true, '{"queue": "eo-head-queue", "candidateGroup": "GROUP_EO_HEAD", "actions": ["assign_case", "view_case", "reassign_case"]}'),
+            
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'EO_OFFICER', 'EO Officer', 'Route cases to departments, send back, reject, mark non-tracked', true, '{"queue": "eo-officer-queue", "candidateGroup": "GROUP_EO_OFFICER", "actions": ["view_case", "add_narrative", "add_allegation", "send_back_to_intake", "route_to_investigation_unit", "route_to_department", "save_case", "reject_case", "mark_non_tracked"]}'),
+            
+            -- Department Intake Roles  
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'CSIS_INTAKE_ANALYST', 'CSIS Intake Analyst', 'CSIS department case review and routing', true, '{"queue": "csis-intake-analyst-queue", "candidateGroup": "GROUP_CSIS_INTAKE_ANALYST", "actions": ["view_case", "add_info", "add_narrative", "add_allegation", "add_entity", "send_back_to_eo", "assign_to_investigation_manager", "save_and_close_case"], "department": "CSIS"}'),
+            
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'ER_INTAKE_ANALYST', 'ER Intake Analyst', 'Employee Relations case review and routing', true, '{"queue": "er-intake-analyst-queue", "candidateGroup": "GROUP_ER_INTAKE_ANALYST", "actions": ["view_case", "add_info", "add_narrative", "add_allegation", "add_entity", "send_back_to_eo", "assign_to_investigation_manager", "save_and_close_case"], "department": "ER"}'),
+            
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'LEGAL_INTAKE_ANALYST', 'Legal Intake Analyst', 'Legal department case review and routing', true, '{"queue": "legal-intake-analyst-queue", "candidateGroup": "GROUP_LEGAL_INTAKE_ANALYST", "actions": ["view_case", "add_info", "add_narrative", "add_allegation", "add_entity", "send_back_to_eo", "assign_to_investigation_manager", "save_and_close_case"], "department": "LEGAL"}'),
+            
+            -- Investigation Roles
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'INVESTIGATION_MANAGER', 'Investigation Manager', 'Assign cases to investigators, review investigation progress', true, '{"queue": "investigation-manager-queue", "candidateGroup": "GROUP_INVESTIGATION_MANAGER", "actions": ["view_case", "add_narrative", "add_allegation", "add_entity", "send_back_to_department", "assign_to_investigator", "save_and_close_case"]}'),
+            
+            ((SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'), 'INVESTIGATOR', 'Investigator', 'Execute investigations, gather evidence, complete cases', true, '{"queue": "investigator-queue", "candidateGroup": "GROUP_INVESTIGATOR", "actions": ["view_case", "add_narrative", "add_allegation", "add_entity", "send_back_to_manager", "start_active_investigation", "save_and_close_case"]}');
+
+            -- ================================================================
+            -- ASSIGN EXISTING TEST USERS TO NEW ROLES
+            -- ================================================================
+            
+            -- Map existing test users to appropriate domain roles
+            INSERT INTO entitlements.entitlement_user_domain_roles (user_id, role_id) VALUES
+            -- Alice Intake -> EO_INTAKE_ANALYST
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'alice.intake'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'EO_INTAKE_ANALYST')),
+            
+            -- Add Henry Admin -> EO_HEAD for testing 
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'henry.admin'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'EO_HEAD')),
+            
+            -- Eve Manager -> INVESTIGATION_MANAGER
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'eve.manager'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'INVESTIGATION_MANAGER')),
+            
+            -- Bob Investigator -> INVESTIGATOR
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'bob.investigator'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'INVESTIGATOR')),
+             
+            -- Grace Ethics -> EO_OFFICER
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'grace.ethics'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'EO_OFFICER')),
+             
+            -- Iris CSIS -> CSIS_INTAKE_ANALYST
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'iris.csis'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'CSIS_INTAKE_ANALYST')),
+             
+            -- Jack Analyst -> ER_INTAKE_ANALYST (repurpose for ER)
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'jack.analyst'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'ER_INTAKE_ANALYST')),
+             
+            -- Carol Legal -> LEGAL_INTAKE_ANALYST
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'carol.legal'), 
+             (SELECT role_id FROM entitlements.entitlement_domain_roles WHERE role_name = 'LEGAL_INTAKE_ANALYST'))
+            ON CONFLICT DO NOTHING;
+
+            -- ================================================================
+            -- ASSIGN USERS TO BUSINESS APP ROLES (for Cerbos)  
+            -- ================================================================
+            INSERT INTO entitlements.user_business_app_roles (user_id, business_app_role_id) VALUES
+            -- Alice -> EO_INTAKE_ANALYST business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'alice.intake'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'EO_INTAKE_ANALYST' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'))),
+             
+            -- Henry -> EO_HEAD business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'henry.admin'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'EO_HEAD' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'))),
+             
+            -- Grace -> EO_OFFICER business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'grace.ethics'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'EO_OFFICER' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'))),
+             
+            -- Iris -> CSIS_INTAKE_ANALYST business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'iris.csis'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'CSIS_INTAKE_ANALYST' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'))),
+             
+            -- Jack -> ER_INTAKE_ANALYST business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'jack.analyst'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'ER_INTAKE_ANALYST' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'))),
+             
+            -- Carol -> LEGAL_INTAKE_ANALYST business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'carol.legal'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'LEGAL_INTAKE_ANALYST' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'))),
+             
+            -- Eve -> INVESTIGATION_MANAGER business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'eve.manager'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'INVESTIGATION_MANAGER' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms'))),
+             
+            -- Bob -> INVESTIGATOR business app role
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'bob.investigator'),
+             (SELECT id FROM entitlements.business_app_roles WHERE role_name = 'INVESTIGATOR' AND business_app_id = (SELECT id FROM entitlements.business_applications WHERE business_app_name = 'onecms')))
+            ON CONFLICT DO NOTHING;
+            
+            -- ================================================================
+            -- ASSIGN USERS TO DEPARTMENTS
+            -- ================================================================
+            INSERT INTO entitlements.user_departments (user_id, department_id) VALUES
+            -- Alice -> EO Department
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'alice.intake'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'EO')),
+            
+            -- Henry -> EO Department  
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'henry.admin'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'EO')),
+             
+            -- Grace -> EO Department
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'grace.ethics'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'EO')),
+             
+            -- Iris -> CSIS Department
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'iris.csis'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'CSIS')),
+             
+            -- Jack -> HR Department (for ER role)
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'jack.analyst'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'HR')),
+             
+            -- Carol -> Legal Department
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'carol.legal'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'LEGAL')),
+             
+            -- Eve -> Investigation Unit
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'eve.manager'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'IU')),
+             
+            -- Bob -> Investigation Unit
+            ((SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'bob.investigator'),
+             (SELECT department_id FROM entitlements.departments WHERE department_code = 'IU'))
+            ON CONFLICT DO NOTHING;
+        ]]></sql>
+    </changeSet>
+</databaseChangeLog>

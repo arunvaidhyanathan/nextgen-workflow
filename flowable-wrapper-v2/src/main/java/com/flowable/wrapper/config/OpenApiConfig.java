@@ -14,12 +14,12 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Flowable Wrapper API")
-                        .version("2.0.0")
-                        .description("Clean implementation of Flowable workflow wrapper with queue management")
+                        .title("Flowable Wrapper V2 API")
+                        .version("2.1.0")
+                        .description("NextGen Workflow Flowable Wrapper V2 - Core workflow orchestration service using Flowable BPMN engine with authorization bypass configuration, BPMN deployment from files, and real database integration.")
                         .contact(new Contact()
-                                .name("Flowable Wrapper Team")
-                                .email("support@flowable-wrapper.com"))
+                                .name("NextGen Workflow Team")
+                                .email("nextgen-workflow@example.com"))
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0")));

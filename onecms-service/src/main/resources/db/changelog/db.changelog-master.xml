@@ -19,7 +19,10 @@
     <!-- Reference data and sample data for departments, case types, and lookup tables -->
     <include file="classpath:db/changelog/002-onecms-sample-data.xml"/>
     
+    <!-- Case draft functionality for enhanced workflow integration -->
+    <include file="classpath:db/changelog/003-create-case-draft-table.xml"/>
+    
     <!-- Future migrations should be added here with incremental change sets -->
-    <!-- <include file="classpath:db/changelog/003-additional-features.xml"/> -->
+    <!-- <include file="classpath:db/changelog/004-additional-features.xml"/> -->
     
 </databaseChangeLog>

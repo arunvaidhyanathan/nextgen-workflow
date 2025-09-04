@@ -33,8 +33,11 @@ public class CaseNarrative {
     @Column(name = "narrative_title", length = 255)
     private String narrativeTitle;
 
-    @Column(name = "narrative_text", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String narrativeText;
+
+    @Column(name = "author", nullable = false, length = 100)
+    private String author;
 
     @Column(name = "is_recalled")
     private Boolean isRecalled = false;
