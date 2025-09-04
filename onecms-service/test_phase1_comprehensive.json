@@ -1,0 +1,10 @@
+{
+  "case_draft_title": "Comprehensive Workflow Test Case",
+  "case_draft_description": "Testing complete two-phase workflow progression with database persistence",
+  "priority": "HIGH",
+  "case_type_id": 1,
+  "department_id": 1,
+  "date_received_by_escalation_channel": "2025-09-04",
+  "complaint_received_method": "Citi Ethics Office",
+  "process_definition_key": "oneCmsCaseWorkflow"
+}

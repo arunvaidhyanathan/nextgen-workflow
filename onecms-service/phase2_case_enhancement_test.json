@@ -14,7 +14,7 @@
       "grcTaxonomyLevel4": "VERBAL"
     },
     {
-      "allegationType": "FRAUD",
+      "allegationType": "Tracked",
       "severity": "MEDIUM",
       "description": "Potential expense report fraud and misuse of company funds",
       "subject": "Fraudulent expense claims",
@@ -26,7 +26,7 @@
       "grcTaxonomyLevel4": "RECEIPTS"
     },
     {
-      "allegationType": "SECURITY",
+      "allegationType": "Tracked",
       "severity": "CRITICAL",
       "description": "Data security violations and unauthorized access",
       "subject": "Security policy violations",

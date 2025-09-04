@@ -1,0 +1,141 @@
+{
+  "case_id": "CMS-2025-000020",
+  "allegations": [
+    {
+      "allegationType": "HARASSMENT",
+      "severity": "HIGH",
+      "description": "Systematic workplace harassment creating hostile environment",
+      "subject": "Pattern of discriminatory behavior",
+      "narrative": "Employee has been reported for making inappropriate comments about colleagues' protected characteristics during team meetings over the past 3 months.",
+      "investigationFunction": "HR",
+      "grcTaxonomyLevel1": "CONDUCT",
+      "grcTaxonomyLevel2": "HARASSMENT",
+      "grcTaxonomyLevel3": "WORKPLACE",
+      "grcTaxonomyLevel4": "DISCRIMINATORY"
+    },
+    {
+      "allegationType": "Tracked",
+      "severity": "CRITICAL",
+      "description": "Fraudulent expense reporting and misuse of corporate funds",
+      "subject": "Expense fraud scheme",
+      "narrative": "Systematic submission of fraudulent expense reports including duplicate receipts, personal expenses claimed as business, and fictitious vendor payments totaling $15,000 over 8 months.",
+      "investigationFunction": "LEGAL",
+      "grcTaxonomyLevel1": "FINANCIAL",
+      "grcTaxonomyLevel2": "FRAUD",
+      "grcTaxonomyLevel3": "EXPENSE_ABUSE",
+      "grcTaxonomyLevel4": "FICTITIOUS_CLAIMS"
+    },
+    {
+      "allegationType": "Tracked",
+      "severity": "CRITICAL",
+      "description": "Unauthorized access to confidential systems and data exfiltration",
+      "subject": "Data security breach",
+      "narrative": "Employee accessed confidential client databases outside authorized role, downloaded sensitive financial information, and transferred files to personal devices. Security logs show 47 unauthorized access attempts.",
+      "investigationFunction": "CSIS",
+      "grcTaxonomyLevel1": "SECURITY",
+      "grcTaxonomyLevel2": "DATA_BREACH",
+      "grcTaxonomyLevel3": "UNAUTHORIZED_ACCESS",
+      "grcTaxonomyLevel4": "DATA_EXFILTRATION"
+    }
+  ],
+  "entities": [
+    {
+      "type": "Person",
+      "relationshipType": "SUBJECT",
+      "investigationFunction": "PRIMARY",
+      "soeid": "EMP789456",
+      "geid": "GE456789",
+      "firstName": "Michael",
+      "middleName": "James",
+      "lastName": "Thompson",
+      "emailAddress": "michael.thompson@company.com",
+      "phoneNumber": "+1-555-0199",
+      "address": "789 Corporate Blvd",
+      "city": "Chicago",
+      "state": "IL",
+      "zip": "60601",
+      "hireDate": "2019-03-01",
+      "manager": "Lisa Rodriguez",
+      "goc": "US",
+      "hrResponsible": "David Chen",
+      "legalVehicle": "Citibank NA",
+      "managedSegment": "Investment Banking",
+      "relationshipToCiti": "EMPLOYEE",
+      "preferredContactMethod": "EMAIL",
+      "anonymous": false
+    },
+    {
+      "type": "Person",
+      "relationshipType": "COMPLAINANT",
+      "investigationFunction": "WITNESS",
+      "soeid": "EMP321654",
+      "geid": "GE654321",
+      "firstName": "Sarah",
+      "lastName": "Martinez",
+      "emailAddress": "sarah.martinez@company.com",
+      "phoneNumber": "+1-555-0277",
+      "relationshipToCiti": "EMPLOYEE",
+      "preferredContactMethod": "PHONE",
+      "anonymous": false
+    },
+    {
+      "type": "Person",
+      "relationshipType": "WITNESS",
+      "investigationFunction": "SUPPORTING",
+      "soeid": "EMP147258",
+      "firstName": "Robert",
+      "lastName": "Kim",
+      "emailAddress": "robert.kim@company.com",
+      "phoneNumber": "+1-555-0388",
+      "relationshipToCiti": "EMPLOYEE",
+      "preferredContactMethod": "EMAIL",
+      "anonymous": false
+    },
+    {
+      "type": "Organization",
+      "relationshipType": "EXTERNAL_PARTY",
+      "investigationFunction": "AFFECTED_PARTY",
+      "organizationName": "Global Finance Partners LLC",
+      "emailAddress": "legal@globalfinancepartners.com",
+      "phoneNumber": "+1-555-0499",
+      "address": "1234 Financial District",
+      "city": "New York",
+      "state": "NY",
+      "zip": "10005",
+      "preferredContactMethod": "EMAIL",
+      "anonymous": false
+    }
+  ],
+  "narratives": [
+    {
+      "type": "INITIAL_COMPLAINT",
+      "title": "Initial Complaint Filed by Sarah Martinez",
+      "narrative": "This case was initiated after Sarah Martinez filed a formal complaint on September 1, 2025, reporting multiple incidents of discriminatory behavior and suspected financial irregularities by Michael Thompson. The complaint details a pattern of harassment that has escalated over several months.",
+      "investigationFunction": "INTAKE"
+    },
+    {
+      "type": "FINANCIAL_ANALYSIS",
+      "title": "Expense Report Forensic Analysis",
+      "narrative": "Forensic analysis of Michael Thompson's expense reports from January to August 2025 reveals systematic fraud. Key findings include: 23 duplicate receipts totaling $4,247, 15 personal meal expenses claimed as client entertainment ($2,890), and 8 fictitious vendor payments ($7,863). Total fraudulent amount: $15,000.",
+      "investigationFunction": "LEGAL"
+    },
+    {
+      "type": "SECURITY_ASSESSMENT",
+      "title": "IT Security Incident Investigation",
+      "narrative": "CSIS investigation reveals that Michael Thompson accessed the client database system 47 times outside normal business hours between July 15-30, 2025. He downloaded 127 confidential files containing client financial data, PII, and trading information. Files were transferred to USB devices and his personal cloud storage account.",
+      "investigationFunction": "CSIS"
+    },
+    {
+      "type": "WITNESS_STATEMENT",
+      "title": "Witness Statement - Robert Kim",
+      "narrative": "Robert Kim, team lead for Investment Banking operations, confirms observing Michael Thompson making inappropriate comments about female colleagues during multiple team meetings. He also noticed Thompson working unusual hours and accessing systems outside his normal job responsibilities.",
+      "investigationFunction": "HR"
+    },
+    {
+      "type": "HR_REVIEW",
+      "title": "Employee Personnel File Review",
+      "narrative": "Review of Michael Thompson's personnel file shows previous informal counseling for inappropriate workplace comments in November 2024. His access privileges were expanded in May 2025 for a special project, which may have enabled the unauthorized data access. Current status: Active employee pending investigation.",
+      "investigationFunction": "HR"
+    }
+  ]
+}
