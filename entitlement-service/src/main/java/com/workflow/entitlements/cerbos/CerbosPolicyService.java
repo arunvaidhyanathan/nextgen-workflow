@@ -19,6 +19,10 @@ import java.nio.file.Paths;
  * Service for managing Cerbos policy loading and validation
  */
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    value = "authorization.engine.use-cerbos", 
+    havingValue = "true", 
+    matchIfMissing = false)
 @RequiredArgsConstructor
 @Slf4j
 public class CerbosPolicyService {
