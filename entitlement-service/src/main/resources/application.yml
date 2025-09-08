@@ -66,7 +66,7 @@ eureka:
 authorization:
   engine:
     # Set to false to use database-based authorization, true for Cerbos
-    use-cerbos: ${AUTHORIZATION_USE_CERBOS:true}
+    use-cerbos: ${AUTHORIZATION_USE_CERBOS:false}
     # Allow runtime switching between engines (for testing purposes)
     allow-runtime-switching: ${AUTHORIZATION_ALLOW_RUNTIME_SWITCHING:false}
   cache:
@@ -97,8 +97,8 @@ cerbos:
     enabled: ${CERBOS_TLS_ENABLED:false}
   policies:
     path: classpath:cerbos/policies
-    auto-load: ${CERBOS_AUTO_LOAD_POLICIES:true}
-    validate-on-startup: ${CERBOS_VALIDATE_POLICIES:true}
+    auto-load: ${CERBOS_AUTO_LOAD_POLICIES:false}
+    validate-on-startup: ${CERBOS_VALIDATE_POLICIES:false}
   connection:
     timeout: ${CERBOS_CONNECTION_TIMEOUT:30s}
     keep-alive: ${CERBOS_KEEP_ALIVE:true}

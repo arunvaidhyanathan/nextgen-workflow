@@ -77,9 +77,9 @@ public class CerbosPolicyService {
         // Check derived roles
         validatePolicyFile("derived_roles/one-cms.yaml", "Derived roles policy");
         
-        // Check resource policies
-        validatePolicyFile("resources/case.yaml", "Case resource policy");
-        validatePolicyFile("resources/one-cms-workflow.yaml", "Workflow resource policy");
+        // Check resource policies (consolidated files)
+        validatePolicyFile("resources/case-nextgen.yaml", "Case resource policy");
+        validatePolicyFile("resources/workflow-nextgen.yaml", "Workflow resource policy");
         
         log.info("All policy files validated successfully");
     }
@@ -149,8 +149,8 @@ public class CerbosPolicyService {
                 log.warn("Error checking derived roles policy: {}", e.getMessage());
             }
             
-            // Log resource policies
-            String[] resourcePolicies = {"case.yaml", "one-cms-workflow.yaml"};
+            // Log resource policies (consolidated files)
+            String[] resourcePolicies = {"case-nextgen.yaml", "workflow-nextgen.yaml"};
             for (String policy : resourcePolicies) {
                 try {
                     Resource resource = resourceLoader.getResource(policiesPath + "/resources/" + policy);

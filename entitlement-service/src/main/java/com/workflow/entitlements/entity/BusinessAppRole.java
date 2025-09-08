@@ -1,5 +1,7 @@
 package com.workflow.entitlements.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +29,7 @@ public class BusinessAppRole {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_app_id", nullable = false)
+    @JsonBackReference
     private BusinessApplication businessApplication;
     
     @Column(name = "role_name", length = 100, nullable = false)
@@ -56,5 +59,6 @@ public class BusinessAppRole {
     private Map<String, Object> metadata = new HashMap<>();
     
     @OneToMany(mappedBy = "businessAppRole", fetch = FetchType.LAZY)
+    @JsonManagedReference
     private List<UserBusinessAppRole> userAssignments;
 }

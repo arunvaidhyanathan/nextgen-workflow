@@ -22,6 +22,10 @@ import java.util.stream.Collectors;
  * This engine is selected when authorization.engine.use-cerbos=true in AuthorizationConfig.
  */
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    value = "authorization.engine.use-cerbos", 
+    havingValue = "true", 
+    matchIfMissing = false)
 @RequiredArgsConstructor
 @Slf4j
 public class CerbosAuthorizationEngine implements AuthorizationEngine {

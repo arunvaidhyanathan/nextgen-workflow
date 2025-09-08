@@ -1,5 +1,6 @@
 package com.workflow.entitlements.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,5 +49,6 @@ public class BusinessApplication {
     private Map<String, Object> metadata = new HashMap<>();
     
     @OneToMany(mappedBy = "businessApplication", fetch = FetchType.LAZY)
+    @JsonManagedReference
     private List<BusinessAppRole> roles;
 }

@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- =====================================================
+         HYBRID AUTHORIZATION SYSTEM ENHANCEMENTS
+         Version: 2.0
+         Purpose: Add support for resource-level permissions,
+                  enhanced principal attributes, and queue management
+         ===================================================== -->
+
+    <changeSet id="004-001-create-users-view" author="claude-hybrid-system">
+        <comment>Create unified users view to bridge legacy and modern table names</comment>
+        
+        <!-- Create view that aliases entitlement_core_users as users for entity compatibility -->
+        <createView viewName="users" schemaName="entitlements">
+            SELECT user_id, username, email, first_name, last_name, is_active, global_attributes, created_at, updated_at FROM entitlements.entitlement_core_users
+        </createView>
+        
+        <rollback>
+            <dropView viewName="users" schemaName="entitlements"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-002-enhance-user-attributes" author="claude-hybrid-system">
+        <comment>Add hybrid system attributes to user profiles for enhanced authorization</comment>
+        
+        <!-- Add hybrid system specific columns -->
+        <addColumn tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="authorization_engine" type="varchar(20)" defaultValue="HYBRID">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <addColumn tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="session_timeout_minutes" type="integer" defaultValue="30">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <addColumn tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="emergency_access" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <rollback>
+            <dropColumn tableName="entitlement_core_users" schemaName="entitlements" columnName="emergency_access"/>
+            <dropColumn tableName="entitlement_core_users" schemaName="entitlements" columnName="session_timeout_minutes"/>
+            <dropColumn tableName="entitlement_core_users" schemaName="entitlements" columnName="authorization_engine"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-003-create-queue-management" author="claude-hybrid-system">
+        <comment>Create queue management tables for workflow task distribution</comment>
+        
+        <!-- Create queue definitions table -->
+        <createTable tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="queue_name" type="varchar(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="queue_display_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="department_code" type="varchar(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="business_application_id" type="bigint">
+                <constraints nullable="true" referencedTableName="business_applications" 
+                           referencedTableSchemaName="entitlements" referencedColumnNames="id"
+                           foreignKeyName="fk_queue_business_app"/>
+            </column>
+            <column name="max_capacity" type="integer" defaultValue="100">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="boolean" defaultValue="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="queue_metadata" type="jsonb" defaultValue="{}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Create user-queue assignments table -->
+        <createTable tableName="user_queue_assignments" schemaName="entitlements">
+            <column name="assignment_id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="uuid">
+                <constraints nullable="false" referencedTableName="entitlement_core_users"
+                           referencedTableSchemaName="entitlements" referencedColumnNames="user_id"
+                           foreignKeyName="fk_queue_assignment_user"/>
+            </column>
+            <column name="queue_id" type="bigint">
+                <constraints nullable="false" referencedTableName="workflow_queues"
+                           referencedTableSchemaName="entitlements" referencedColumnNames="queue_id"
+                           foreignKeyName="fk_queue_assignment_queue"/>
+            </column>
+            <column name="assignment_role" type="varchar(50)" defaultValue="MEMBER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_supervisor" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority_level" type="integer" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="boolean" defaultValue="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_at" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_by" type="uuid">
+                <constraints nullable="true" referencedTableName="entitlement_core_users"
+                           referencedTableSchemaName="entitlements" referencedColumnNames="user_id"
+                           foreignKeyName="fk_queue_assignment_assigner"/>
+            </column>
+        </createTable>
+
+        <!-- Add unique constraint to prevent duplicate assignments -->
+        <addUniqueConstraint tableName="user_queue_assignments" schemaName="entitlements"
+                           columnNames="user_id,queue_id" constraintName="uk_user_queue_assignment"/>
+
+        <rollback>
+            <dropTable tableName="user_queue_assignments" schemaName="entitlements"/>
+            <dropTable tableName="workflow_queues" schemaName="entitlements"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-004-enhance-resource-permissions" author="claude-hybrid-system">
+        <comment>Enhance resource permissions table for generic resource-level ABAC</comment>
+        
+        <!-- Add columns to support generic resource permissions -->
+        <addColumn tableName="resource_permissions" schemaName="entitlements">
+            <column name="resource_kind" type="varchar(50)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        
+        <addColumn tableName="resource_permissions" schemaName="entitlements">
+            <column name="allowed_actions" type="jsonb" defaultValue="[]">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <addColumn tableName="resource_permissions" schemaName="entitlements">
+            <column name="conditions" type="jsonb" defaultValue="{}">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <addColumn tableName="resource_permissions" schemaName="entitlements">
+            <column name="priority" type="integer" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Create index for efficient resource queries -->
+        <createIndex tableName="resource_permissions" schemaName="entitlements" indexName="idx_resource_permissions_kind_id">
+            <column name="resource_kind"/>
+            <column name="resource_id"/>
+        </createIndex>
+        
+        <rollback>
+            <dropIndex tableName="resource_permissions" schemaName="entitlements" indexName="idx_resource_permissions_kind_id"/>
+            <dropColumn tableName="resource_permissions" schemaName="entitlements" columnName="priority"/>
+            <dropColumn tableName="resource_permissions" schemaName="entitlements" columnName="conditions"/>
+            <dropColumn tableName="resource_permissions" schemaName="entitlements" columnName="allowed_actions"/>
+            <dropColumn tableName="resource_permissions" schemaName="entitlements" columnName="resource_kind"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-005-create-authorization-cache" author="claude-hybrid-system">
+        <comment>Create authorization decision cache table for performance optimization</comment>
+        
+        <createTable tableName="authorization_cache" schemaName="entitlements">
+            <column name="cache_id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resource_kind" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resource_id" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="decision" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+            <column name="engine_type" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="context_hash" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Create composite index for cache lookups -->
+        <createIndex tableName="authorization_cache" schemaName="entitlements" indexName="idx_auth_cache_lookup">
+            <column name="user_id"/>
+            <column name="resource_kind"/>
+            <column name="resource_id"/>
+            <column name="action"/>
+            <column name="context_hash"/>
+        </createIndex>
+
+        <!-- Create index for cleanup operations -->
+        <createIndex tableName="authorization_cache" schemaName="entitlements" indexName="idx_auth_cache_expiry">
+            <column name="expires_at"/>
+        </createIndex>
+        
+        <rollback>
+            <dropTable tableName="authorization_cache" schemaName="entitlements"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-006-insert-onecms-queues" author="claude-hybrid-system">
+        <comment>Insert OneCMS workflow queues and business application specific roles</comment>
+        
+        <!-- Insert OneCMS workflow queues -->
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">eo-head-queue</column>
+            <column name="queue_display_name">Ethics Office Head Review Queue</column>
+            <column name="department_code">EO</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "EO Head review and approval tasks", "sla_hours": 24, "priority": "high"}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">eo-officer-queue</column>
+            <column name="queue_display_name">Ethics Office Officer Triage Queue</column>
+            <column name="department_code">EO</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "EO Officer triage and routing tasks", "sla_hours": 48, "priority": "medium"}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">csis-intake-manager-queue</column>
+            <column name="queue_display_name">CSIS Intake Manager Review Queue</column>
+            <column name="department_code">CSIS</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "CSIS manager review and assignment tasks", "sla_hours": 72, "priority": "medium"}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">csis-intake-analyst-queue</column>
+            <column name="queue_display_name">CSIS Intake Analyst Vetting Queue</column>
+            <column name="department_code">CSIS</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "CSIS analyst vetting and analysis tasks", "sla_hours": 96, "priority": "normal"}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">er-intake-analyst-queue</column>
+            <column name="queue_display_name">Employee Relations Intake Queue</column>
+            <column name="department_code">ER</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "Employee Relations intake and routing", "sla_hours": 48, "priority": "medium"}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">legal-intake-analyst-queue</column>
+            <column name="queue_display_name">Legal Department Intake Queue</column>
+            <column name="department_code">LEGAL</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "Legal department intake and review", "sla_hours": 72, "priority": "high"}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">investigation-manager-queue</column>
+            <column name="queue_display_name">Investigation Manager Assignment Queue</column>
+            <column name="department_code">INVESTIGATION</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "Investigation manager assignment and oversight", "sla_hours": 48, "priority": "high"}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">investigator-queue</column>
+            <column name="queue_display_name">Investigator Case Execution Queue</column>
+            <column name="department_code">INVESTIGATION</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "Active investigation execution tasks", "sla_hours": 168, "priority": "normal"}</column>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_queues" schemaName="entitlements">
+                <where>queue_name IN ('eo-head-queue', 'eo-officer-queue', 'csis-intake-manager-queue', 
+                                     'csis-intake-analyst-queue', 'er-intake-analyst-queue', 
+                                     'legal-intake-analyst-queue', 'investigation-manager-queue', 
+                                     'investigator-queue')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-007-insert-queue-assignments" author="claude-hybrid-system">
+        <comment>Assign users to appropriate workflow queues based on their roles</comment>
+        
+        <!-- Assign Alice (Intake Analyst) to EO queues -->
+        <insert tableName="user_queue_assignments" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'alice.intake')"></column>
+            <column name="queue_id" valueComputed="(SELECT queue_id FROM entitlements.workflow_queues WHERE queue_name = 'eo-officer-queue')"></column>
+            <column name="assignment_role">INTAKE_ANALYST</column>
+            <column name="is_supervisor">false</column>
+            <column name="priority_level">1</column>
+        </insert>
+
+        <!-- Assign Edward (Investigator) to investigation queues -->
+        <insert tableName="user_queue_assignments" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'edward.inv')"></column>
+            <column name="queue_id" valueComputed="(SELECT queue_id FROM entitlements.workflow_queues WHERE queue_name = 'investigator-queue')"></column>
+            <column name="assignment_role">INVESTIGATOR</column>
+            <column name="is_supervisor">false</column>
+            <column name="priority_level">1</column>
+        </insert>
+
+        <insert tableName="user_queue_assignments" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'edward.inv')"></column>
+            <column name="queue_id" valueComputed="(SELECT queue_id FROM entitlements.workflow_queues WHERE queue_name = 'investigation-manager-queue')"></column>
+            <column name="assignment_role">INVESTIGATION_MANAGER</column>
+            <column name="is_supervisor">true</column>
+            <column name="priority_level">2</column>
+        </insert>
+
+        <!-- Assign Sarah (Legal) to legal queues -->
+        <insert tableName="user_queue_assignments" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'sarah.legal')"></column>
+            <column name="queue_id" valueComputed="(SELECT queue_id FROM entitlements.workflow_queues WHERE queue_name = 'legal-intake-analyst-queue')"></column>
+            <column name="assignment_role">LEGAL_INTAKE_ANALYST</column>
+            <column name="is_supervisor">false</column>
+            <column name="priority_level">1</column>
+        </insert>
+
+        <!-- Assign Mike (Admin) to oversight queues -->
+        <insert tableName="user_queue_assignments" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'mike.admin')"></column>
+            <column name="queue_id" valueComputed="(SELECT queue_id FROM entitlements.workflow_queues WHERE queue_name = 'eo-head-queue')"></column>
+            <column name="assignment_role">EO_HEAD</column>
+            <column name="is_supervisor">true</column>
+            <column name="priority_level">3</column>
+        </insert>
+
+        <rollback>
+            <delete tableName="user_queue_assignments" schemaName="entitlements">
+                <where>user_id IN (
+                    SELECT user_id FROM entitlements.entitlement_core_users 
+                    WHERE username IN ('alice.intake', 'edward.inv', 'sarah.legal', 'mike.admin')
+                )</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-008-insert-resource-level-permissions" author="claude-hybrid-system">
+        <comment>Insert sample resource-level permissions to demonstrate generic ABAC</comment>
+        
+        <!-- Alice gets resource-level permission to specific test cases -->
+        <insert tableName="resource_permissions" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'alice.intake')"></column>
+            <column name="resource_kind">case</column>
+            <column name="resource_id">CMS-2025-000001</column>
+            <column name="permission_type">DIRECT</column>
+            <column name="allowed_actions">["read", "update", "comment", "advance_phase"]</column>
+            <column name="conditions">{"workflowPhase": ["INTAKE", "BUILD_CASE"], "priority": ["HIGH", "URGENT"]}</column>
+            <column name="priority">10</column>
+            <column name="expires_at" valueComputed="(CURRENT_TIMESTAMP + INTERVAL '90 days')"></column>
+            <column name="granted_by" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'mike.admin')"></column>
+        </insert>
+
+        <!-- Edward gets resource-level permission to investigation workflow -->
+        <insert tableName="resource_permissions" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'edward.inv')"></column>
+            <column name="resource_kind">workflow</column>
+            <column name="resource_id">OneCMS_Workflow</column>
+            <column name="permission_type">DIRECT</column>
+            <column name="allowed_actions">["start_process", "claim_task", "complete_task", "delegate_task"]</column>
+            <column name="conditions">{"department": ["INVESTIGATION"], "taskType": ["investigation", "findings"]}</column>
+            <column name="priority">5</column>
+            <column name="expires_at" valueComputed="(CURRENT_TIMESTAMP + INTERVAL '1 year')"></column>
+            <column name="granted_by" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'mike.admin')"></column>
+        </insert>
+
+        <!-- Sarah gets resource-level permission to legal queue -->
+        <insert tableName="resource_permissions" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'sarah.legal')"></column>
+            <column name="resource_kind">queue</column>
+            <column name="resource_id">legal-intake-analyst-queue</column>
+            <column name="permission_type">DIRECT</column>
+            <column name="allowed_actions">["view_queue", "claim_task", "bulk_assign", "queue_statistics"]</column>
+            <column name="conditions">{"businessHours": true, "emergencyAccess": false}</column>
+            <column name="priority">8</column>
+            <column name="expires_at" valueComputed="(CURRENT_TIMESTAMP + INTERVAL '1 year')"></column>
+            <column name="granted_by" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'mike.admin')"></column>
+        </insert>
+
+        <rollback>
+            <delete tableName="resource_permissions" schemaName="entitlements">
+                <where>resource_kind IN ('case', 'workflow', 'queue') 
+                   AND resource_id IN ('CMS-2025-000001', 'OneCMS_Workflow', 'legal-intake-analyst-queue')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="004-009-update-user-hybrid-attributes" author="claude-hybrid-system">
+        <comment>Update user global attributes for hybrid authorization context</comment>
+        
+        <!-- Update Alice with enhanced attributes for intake analyst role -->
+        <update tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="global_attributes">
+                {
+                    "clearance": "standard",
+                    "hire_date": "2023-01-15",
+                    "department": "EO",
+                    "departments": ["EO", "INVESTIGATION"],
+                    "queues": ["eo-officer-queue", "eo-intake-queue"],
+                    "roles": {
+                        "GROUP_EO_INTAKE_ANALYST": true,
+                        "INTAKE_ANALYST": true,
+                        "EO_INTAKE_ANALYST": true
+                    },
+                    "databasePermissions": ["case:create", "case:read", "case:update", "workflow:start"],
+                    "apiPermissions": ["basic_access", "case_management"],
+                    "sessionExpiry": "2025-12-31T23:59:59Z",
+                    "lastLoginAt": "2025-09-08T00:00:00Z",
+                    "preferredLanguage": "en",
+                    "timeZone": "UTC"
+                }
+            </column>
+            <column name="emergency_access">false</column>
+            <column name="authorization_engine">HYBRID</column>
+            <where>username = 'alice.intake'</where>
+        </update>
+
+        <!-- Update Edward with investigation-specific attributes -->
+        <update tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="global_attributes">
+                {
+                    "clearance": "confidential",
+                    "hire_date": "2020-03-22",
+                    "department": "INVESTIGATION",
+                    "departments": ["INVESTIGATION"],
+                    "queues": ["investigator-queue", "investigation-manager-queue"],
+                    "roles": {
+                        "GROUP_INVESTIGATOR": true,
+                        "GROUP_INVESTIGATION_MANAGER": true,
+                        "INVESTIGATOR": true,
+                        "INVESTIGATION_MANAGER": true
+                    },
+                    "databasePermissions": ["case:read", "case:update", "task:claim", "task:complete", "workflow:delegate"],
+                    "supervisedQueues": ["investigator-queue"],
+                    "apiPermissions": ["basic_access", "investigation_tools"],
+                    "sessionExpiry": "2025-12-31T23:59:59Z",
+                    "certifications": ["ACFE", "CFE"],
+                    "specialties": ["financial_crimes", "workplace_misconduct"]
+                }
+            </column>
+            <column name="emergency_access">true</column>
+            <column name="authorization_engine">HYBRID</column>
+            <where>username = 'edward.inv'</where>
+        </update>
+
+        <!-- Update Sarah with legal-specific attributes -->
+        <update tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="global_attributes">
+                {
+                    "clearance": "confidential",
+                    "hire_date": "2021-07-10",
+                    "department": "LEGAL",
+                    "departments": ["LEGAL", "HR"],
+                    "queues": ["legal-intake-analyst-queue", "hr-legal-queue"],
+                    "roles": {
+                        "GROUP_LEGAL_INTAKE_ANALYST": true,
+                        "LEGAL_COUNSEL": true,
+                        "LEGAL_INTAKE_ANALYST": true
+                    },
+                    "databasePermissions": ["case:read", "case:review", "legal:advise", "compliance:check"],
+                    "apiPermissions": ["basic_access", "legal_research"],
+                    "sessionExpiry": "2025-12-31T23:59:59Z",
+                    "barAdmissions": ["NY", "CA"],
+                    "practice_areas": ["employment_law", "compliance"]
+                }
+            </column>
+            <column name="emergency_access">false</column>
+            <column name="authorization_engine">HYBRID</column>
+            <where>username = 'sarah.legal'</where>
+        </update>
+
+        <!-- Update Mike with administrative attributes -->
+        <update tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="global_attributes">
+                {
+                    "clearance": "top_secret",
+                    "hire_date": "2018-05-01",
+                    "department": "ADMIN",
+                    "departments": ["EO", "INVESTIGATION", "LEGAL", "HR", "ADMIN"],
+                    "queues": ["eo-head-queue", "admin-queue"],
+                    "roles": {
+                        "SYSTEM_ADMIN": true,
+                        "GROUP_EO_HEAD": true,
+                        "EO_HEAD": true,
+                        "ADMIN": true
+                    },
+                    "databasePermissions": ["*:*"],
+                    "supervisedQueues": ["eo-head-queue", "admin-queue"],
+                    "apiPermissions": ["full_access", "admin_tools", "system_management"],
+                    "resourcePermissions": {
+                        "*::*": {
+                            "allowedActions": ["*"],
+                            "conditions": {}
+                        }
+                    },
+                    "sessionExpiry": "2025-12-31T23:59:59Z",
+                    "emergencyAccess": true
+                }
+            </column>
+            <column name="emergency_access">true</column>
+            <column name="session_timeout_minutes">60</column>
+            <column name="authorization_engine">HYBRID</column>
+            <where>username = 'mike.admin'</where>
+        </update>
+
+        <rollback>
+            <!-- Reset to original attributes -->
+            <update tableName="entitlement_core_users" schemaName="entitlements">
+                <column name="global_attributes">{"clearance": "standard", "hire_date": "2023-01-15", "department": "IU"}</column>
+                <column name="emergency_access">false</column>
+                <column name="authorization_engine">HYBRID</column>
+                <where>username = 'alice.intake'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,5 +1,6 @@
 package com.workflow.entitlements.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +27,7 @@ public class UserBusinessAppRole {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_app_role_id", nullable = false)
+    @JsonBackReference
     private BusinessAppRole businessAppRole;
     
     @Column(name = "is_active")
@@ -35,5 +37,6 @@ public class UserBusinessAppRole {
     // Helper method to get user entity (if needed)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @JsonBackReference
     private User user;
 }

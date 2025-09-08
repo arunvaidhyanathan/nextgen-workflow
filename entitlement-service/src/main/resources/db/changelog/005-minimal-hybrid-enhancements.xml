@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- =====================================================
+         MINIMAL HYBRID AUTHORIZATION ENHANCEMENTS
+         Version: 2.0 - Only add missing components
+         ===================================================== -->
+
+    <changeSet id="005-001-add-missing-user-columns" author="claude-hybrid-system">
+        <comment>Add hybrid system attributes to user profiles</comment>
+        
+        <addColumn tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="authorization_engine" type="varchar(20)" defaultValue="HYBRID">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <addColumn tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="emergency_access" type="boolean" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        
+        <rollback>
+            <dropColumn tableName="entitlement_core_users" schemaName="entitlements" columnName="emergency_access"/>
+            <dropColumn tableName="entitlement_core_users" schemaName="entitlements" columnName="authorization_engine"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="005-002-add-workflow-queues-table" author="claude-hybrid-system">
+        <comment>Create workflow queues table for task distribution</comment>
+        
+        <createTable tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="queue_name" type="varchar(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="queue_display_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="department_code" type="varchar(50)"/>
+            <column name="business_application_id" type="bigint">
+                <constraints referencedTableName="business_applications" 
+                           referencedTableSchemaName="entitlements" referencedColumnNames="id"
+                           foreignKeyName="fk_queue_business_app"/>
+            </column>
+            <column name="is_active" type="boolean" defaultValue="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="queue_metadata" type="jsonb" defaultValue="{}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <rollback>
+            <dropTable tableName="workflow_queues" schemaName="entitlements"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="005-003-insert-sample-queues" author="claude-hybrid-system">
+        <comment>Insert sample OneCMS workflow queues</comment>
+        
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">eo-officer-queue</column>
+            <column name="queue_display_name">Ethics Office Officer Queue</column>
+            <column name="department_code">EO</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "EO Officer triage tasks", "sla_hours": 48}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">investigator-queue</column>
+            <column name="queue_display_name">Investigator Queue</column>
+            <column name="department_code">INVESTIGATION</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "Investigation execution tasks", "sla_hours": 168}</column>
+        </insert>
+
+        <insert tableName="workflow_queues" schemaName="entitlements">
+            <column name="queue_name">legal-intake-analyst-queue</column>
+            <column name="queue_display_name">Legal Intake Queue</column>
+            <column name="department_code">LEGAL</column>
+            <column name="business_application_id">1</column>
+            <column name="queue_metadata">{"description": "Legal review tasks", "sla_hours": 72}</column>
+        </insert>
+        
+        <rollback>
+            <delete tableName="workflow_queues" schemaName="entitlements">
+                <where>queue_name IN ('eo-officer-queue', 'investigator-queue', 'legal-intake-analyst-queue')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="005-004-enhance-user-attributes" author="claude-hybrid-system">
+        <comment>Update user attributes for hybrid authorization</comment>
+        
+        <!-- Update Alice with enhanced attributes -->
+        <update tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="global_attributes">{
+                "clearance": "standard",
+                "hire_date": "2023-01-15",
+                "department": "EO",
+                "departments": ["EO", "INVESTIGATION"],
+                "queues": ["eo-officer-queue"],
+                "roles": {
+                    "GROUP_EO_INTAKE_ANALYST": true,
+                    "INTAKE_ANALYST": true
+                },
+                "databasePermissions": ["case:create", "case:read", "case:update"],
+                "resourcePermissions": {
+                    "case::demo-case-001": {
+                        "allowedActions": ["read", "update", "comment"],
+                        "expiresAt": "2025-12-31T23:59:59Z"
+                    }
+                }
+            }</column>
+            <column name="authorization_engine">HYBRID</column>
+            <column name="emergency_access">false</column>
+            <where>username = 'alice.intake'</where>
+        </update>
+
+        <!-- Update Edward with investigation attributes -->
+        <update tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="global_attributes">{
+                "clearance": "confidential",
+                "hire_date": "2020-03-22",
+                "department": "INVESTIGATION",
+                "departments": ["INVESTIGATION"],
+                "queues": ["investigator-queue"],
+                "roles": {
+                    "GROUP_INVESTIGATOR": true,
+                    "INVESTIGATOR": true
+                },
+                "databasePermissions": ["case:read", "case:update", "task:claim", "task:complete"]
+            }</column>
+            <column name="authorization_engine">HYBRID</column>
+            <column name="emergency_access">true</column>
+            <where>username = 'edward.inv'</where>
+        </update>
+
+        <!-- Update Sarah with legal attributes -->
+        <update tableName="entitlement_core_users" schemaName="entitlements">
+            <column name="global_attributes">{
+                "clearance": "confidential",
+                "hire_date": "2021-07-10",
+                "department": "LEGAL",
+                "departments": ["LEGAL"],
+                "queues": ["legal-intake-analyst-queue"],
+                "roles": {
+                    "GROUP_LEGAL_INTAKE_ANALYST": true,
+                    "LEGAL_COUNSEL": true
+                },
+                "databasePermissions": ["case:read", "legal:advise"]
+            }</column>
+            <column name="authorization_engine">HYBRID</column>
+            <where>username = 'sarah.legal'</where>
+        </update>
+
+        <rollback>
+            <!-- Reset to original attributes -->
+            <update tableName="entitlement_core_users" schemaName="entitlements">
+                <column name="global_attributes">{"clearance": "standard", "hire_date": "2023-01-15", "department": "IU"}</column>
+                <column name="authorization_engine">HYBRID</column>
+                <where>username IN ('alice.intake', 'edward.inv', 'sarah.legal')</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="005-005-insert-sample-resource-permissions" author="claude-hybrid-system">
+        <comment>Insert sample resource-level permissions</comment>
+        
+        <!-- Give Alice specific case permissions -->
+        <insert tableName="resource_permissions" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'alice.intake')"/>
+            <column name="resource_type">case</column>
+            <column name="resource_id">CMS-2025-000001</column>
+            <column name="allowed_actions">{read,update,comment}</column>
+            <column name="conditions">{"workflowPhase": ["INTAKE", "BUILD_CASE"]}</column>
+            <column name="expires_at" valueComputed="(CURRENT_TIMESTAMP + INTERVAL '90 days')"/>
+            <column name="granted_by" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'mike.admin')"/>
+        </insert>
+
+        <!-- Give Edward workflow permissions -->
+        <insert tableName="resource_permissions" schemaName="entitlements">
+            <column name="user_id" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'edward.inv')"/>
+            <column name="resource_type">workflow</column>
+            <column name="resource_id">OneCMS_Workflow</column>
+            <column name="allowed_actions">{claim_task,complete_task,delegate_task}</column>
+            <column name="conditions">{"department": ["INVESTIGATION"]}</column>
+            <column name="expires_at" valueComputed="(CURRENT_TIMESTAMP + INTERVAL '1 year')"/>
+            <column name="granted_by" valueComputed="(SELECT user_id FROM entitlements.entitlement_core_users WHERE username = 'mike.admin')"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="resource_permissions" schemaName="entitlements">
+                <where>resource_type IN ('case', 'workflow') AND resource_id IN ('CMS-2025-000001', 'OneCMS_Workflow')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

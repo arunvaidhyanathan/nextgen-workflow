@@ -13,5 +13,8 @@
     
     <!-- OneCMS Workflow Enhancement - Missing Roles -->
     <include file="db/changelog/003-workflow-enhancement-roles.xml"/>
+    
+    <!-- Hybrid Authorization System Enhancements - Original Full Version -->
+    <include file="db/changelog/004-hybrid-enhancements.xml"/>
 
 </databaseChangeLog>

@@ -27,6 +27,10 @@ public class CerbosConfig {
     private boolean keepAlive;
     
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        value = "authorization.engine.use-cerbos", 
+        havingValue = "true", 
+        matchIfMissing = false)
     public CerbosBlockingClient cerbosBlockingClient() {
         try {
             String endpoint = cerbosHost + ":" + cerbosPort;
