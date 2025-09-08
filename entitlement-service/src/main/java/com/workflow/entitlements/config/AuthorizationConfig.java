@@ -1,7 +1,6 @@
 package com.workflow.entitlements.config;
 
 import com.workflow.entitlements.service.authorization.AuthorizationEngine;
-import com.workflow.entitlements.service.authorization.CerbosAuthorizationEngine;
 import com.workflow.entitlements.service.authorization.DatabaseAuthorizationEngine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,17 +31,15 @@ public class AuthorizationConfig {
     @Bean
     @Primary
     public AuthorizationEngine authorizationEngine(
-            CerbosAuthorizationEngine cerbosEngine,
             DatabaseAuthorizationEngine databaseEngine,
             @Value("${authorization.engine.use-cerbos:false}") boolean useCerbos) {
         
         if (useCerbos) {
-            log.info("Initializing hybrid authorization system with Cerbos engine");
-            return cerbosEngine;
-        } else {
-            log.info("Initializing hybrid authorization system with Database engine");
-            return databaseEngine;
+            log.warn("Cerbos engine requested but not available - falling back to Database engine");
         }
+        
+        log.info("Initializing hybrid authorization system with Database engine");
+        return databaseEngine;
     }
     
     /**

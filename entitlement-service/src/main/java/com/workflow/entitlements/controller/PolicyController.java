@@ -16,6 +16,10 @@ import java.util.Map;
 @RequestMapping("/api/policies")
 @RequiredArgsConstructor
 @Slf4j
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    value = "authorization.engine.use-cerbos", 
+    havingValue = "true", 
+    matchIfMissing = false)
 public class PolicyController {
     
     private final CerbosPolicyService cerbosPolicyService;
