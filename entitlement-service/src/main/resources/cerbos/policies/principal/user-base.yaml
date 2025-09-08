@@ -1,84 +1,299 @@
 # principal/user-base.yaml
-# Base principal policy for all authenticated users in the NextGen Workflow system
+# Enhanced Base Principal Policy for NextGen Workflow Users
+# Version: 2.0 - Hybrid authorization with database integration
+# This policy defines base user attributes and constraints for all authenticated users
 apiVersion: "api.cerbos.dev/v1"
 principalPolicy:
   principal: "user"
-  version: "1.0"
+  version: "2.0"
   rules:
-    # Base validation rules that apply to all resources
+    # ========================================
+    # BASE USER AUTHENTICATION RULES
+    # ========================================
     - resource: "*"
       actions:
-        - name: "*"
-          effect: EFFECT_ALLOW
+        - effect: EFFECT_ALLOW
+          action: "authenticate"
           condition:
             match:
-              all:
-                of:
-                  # User must be active
-                  - expr: request.principal.attr.isActive == true
-                  # User must have at least one role assigned
-                  - expr: size(request.principal.roles) > 0
-                  # User must belong to at least one department (for most operations)
-                  - expr: size(request.principal.attr.departments) > 0
+              expr: request.principal.attr.isActive == true
 
-    # Special rules for system operations that don't require department membership
-    - resource: "test"
+    # ========================================
+    # SESSION AND CONTEXT VALIDATION
+    # ========================================
+    - resource: "*"
       actions:
-        - name: "*"
-          effect: EFFECT_ALLOW
+        - effect: EFFECT_ALLOW
+          action: "validate_session"
           condition:
             match:
               all:
                 of:
                   - expr: request.principal.attr.isActive == true
-                  - expr: size(request.principal.roles) > 0
+                  - expr: has(request.principal.id)
+                  # Enhanced: Session validation with expiry
+                  - expr: |
+                      !has(request.principal.attr.sessionExpiry) ||
+                      now() < timestamp(request.principal.attr.sessionExpiry)
 
-    # Workflow queue access requires queue entitlement
-    - resource: "OneCMS::oneCmsUnifiedWorkflow"
+    # ========================================
+    # PROFILE AND USER MANAGEMENT
+    # ========================================
+    - resource: "user_profile"
       actions:
-        - name: "view_queue"
-          effect: EFFECT_ALLOW
+        - effect: EFFECT_ALLOW
+          action: "read_own_profile"
           condition:
             match:
-              all:
-                of:
-                  - expr: request.principal.attr.isActive == true
-                  - expr: size(request.principal.attr.queues) > 0
-                  - expr: request.resource.attr.currentQueue in request.principal.attr.queues
-        - name: "list_queue_tasks"
-          effect: EFFECT_ALLOW
-          condition:
-            match:
-              all:
-                of:
-                  - expr: request.principal.attr.isActive == true
-                  - expr: size(request.principal.attr.queues) > 0
-                  - expr: request.resource.attr.currentQueue in request.principal.attr.queues
+              expr: |
+                request.principal.attr.isActive == true &&
+                request.resource.id == request.principal.id
 
-    # Case access requires department membership or direct assignment
-    - resource: "case"
+        - effect: EFFECT_ALLOW
+          action: "update_own_profile"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: request.resource.id == request.principal.id
+                  # Enhanced: Business hours restriction for profile changes
+                  - expr: |
+                      (now().getHours() >= 8 && now().getHours() <= 18) ||
+                      has(request.principal.attr.emergencyAccess)
+
+    # ========================================
+    # DEPARTMENT AND ORGANIZATIONAL ACCESS
+    # ========================================
+    - resource: "department"
       actions:
-        - name: "read"
-          effect: EFFECT_ALLOW
+        - effect: EFFECT_ALLOW
+          action: "view_department_info"
           condition:
             match:
               all:
                 of:
                   - expr: request.principal.attr.isActive == true
                   - expr: |
-                      request.resource.attr.department_code in request.principal.attr.departments ||
-                      request.resource.attr.assigneeId == request.principal.id
-        - name: "view"
-          effect: EFFECT_ALLOW
+                      has(request.principal.attr.departments) &&
+                      request.resource.attr.department_code in request.principal.attr.departments
+
+    # ========================================
+    # QUEUE AND WORKFLOW ACCESS BASELINE
+    # ========================================
+    - resource: "queue"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "view_assigned_queues"
           condition:
             match:
               all:
                 of:
                   - expr: request.principal.attr.isActive == true
                   - expr: |
-                      request.resource.attr.department_code in request.principal.attr.departments ||
-                      request.resource.attr.assigneeId == request.principal.id
+                      has(request.principal.attr.queues) &&
+                      size(request.principal.attr.queues) > 0
 
-  # Default rule - deny if no specific rule matches
-  defaultRule:
-    effect: EFFECT_DENY
+    # ========================================
+    # SYSTEM NOTIFICATION AND ALERTS
+    # ========================================
+    - resource: "notification"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "receive_notifications"
+          condition:
+            match:
+              expr: request.principal.attr.isActive == true
+
+        - effect: EFFECT_ALLOW
+          action: "acknowledge_notification"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: request.resource.attr.recipient_id == request.principal.id
+
+    # ========================================
+    # AUDIT TRAIL AND LOGGING BASELINE
+    # ========================================
+    - resource: "audit_log"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "generate_audit_entry"
+          condition:
+            match:
+              expr: request.principal.attr.isActive == true
+
+        - effect: EFFECT_ALLOW
+          action: "view_own_audit_trail"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: request.resource.attr.user_id == request.principal.id
+
+    # ========================================
+    # BASIC REPORTING AND ANALYTICS ACCESS
+    # ========================================
+    - resource: "report"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "view_personal_dashboard"
+          condition:
+            match:
+              expr: request.principal.attr.isActive == true
+
+        - effect: EFFECT_ALLOW
+          action: "generate_personal_report"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  # Enhanced: Rate limiting for report generation
+                  - expr: |
+                      !has(request.principal.attr.lastReportGenerated) ||
+                      (now() - timestamp(request.principal.attr.lastReportGenerated)) > duration("1h")
+
+    # ========================================
+    # HYBRID SYSTEM BASELINE PERMISSIONS
+    # ========================================
+    - resource: "*"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "database_permission_check"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  # Enhanced: Hybrid mode database permission validation
+                  - expr: |
+                      has(request.principal.attr.databasePermissions) &&
+                      size(request.principal.attr.databasePermissions) > 0
+
+    # ========================================
+    # RESOURCE-LEVEL ACCESS BASELINE (ABAC)
+    # ========================================
+    - resource: "*"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "resource_level_access_check"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  # Enhanced: Resource-level permission existence check
+                  - expr: |
+                      has(request.principal.attr.resourcePermissions) &&
+                      size(request.principal.attr.resourcePermissions) > 0
+                  # Enhanced: Non-expired permissions only
+                  - expr: |
+                      !has(request.principal.attr.resourcePermissions[request.resource.kind + "::" + request.resource.id]) ||
+                      !has(request.principal.attr.resourcePermissions[request.resource.kind + "::" + request.resource.id].expiresAt) ||
+                      now() < timestamp(request.principal.attr.resourcePermissions[request.resource.kind + "::" + request.resource.id].expiresAt)
+
+    # ========================================
+    # TIME-BASED AND CONDITIONAL ACCESS
+    # ========================================
+    - resource: "*"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "business_hours_access"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  # Enhanced: Business hours validation
+                  - expr: |
+                      (now().getHours() >= 8 && now().getHours() <= 18) &&
+                      [1,2,3,4,5].exists(d, d == now().getDayOfWeek())
+
+        - effect: EFFECT_ALLOW
+          action: "emergency_access"
+          condition:
+            match:
+              any:
+                of:
+                  - expr: has(request.principal.attr.emergencyAccess)
+                  - expr: request.resource.attr.priority == "URGENT"
+                  - expr: request.resource.attr.isEmergency == true
+
+    # ========================================
+    # INTEGRATION AND API ACCESS BASELINE
+    # ========================================
+    - resource: "api"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "basic_api_access"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  # Enhanced: API permission check
+                  - expr: |
+                      has(request.principal.attr.apiPermissions) &&
+                      "basic_access" in request.principal.attr.apiPermissions
+
+    # ========================================
+    # COLLABORATION AND COMMUNICATION
+    # ========================================
+    - resource: "comment"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "add_comment"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  # Enhanced: Comment rate limiting
+                  - expr: |
+                      !has(request.principal.attr.lastCommentTime) ||
+                      (now() - timestamp(request.principal.attr.lastCommentTime)) > duration("30s")
+
+    # ========================================
+    # SYSTEM HEALTH AND MONITORING ACCESS
+    # ========================================
+    - resource: "system"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "health_check"
+          condition:
+            match:
+              expr: request.principal.attr.isActive == true
+
+        - effect: EFFECT_ALLOW
+          action: "system_status"
+          condition:
+            match:
+              expr: request.principal.attr.isActive == true
+
+    # ========================================
+    # DATA EXPORT AND IMPORT BASELINE
+    # ========================================
+    - resource: "data_export"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "export_own_data"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  - expr: request.resource.attr.data_owner == request.principal.id
+                  # Enhanced: Export rate limiting
+                  - expr: |
+                      !has(request.principal.attr.lastExportTime) ||
+                      (now() - timestamp(request.principal.attr.lastExportTime)) > duration("1h")
+
+  # ========================================
+  # DEFAULT DENY RULE FOR PRINCIPAL
+  # ========================================
+  defaultRules:
+    - effect: EFFECT_DENY

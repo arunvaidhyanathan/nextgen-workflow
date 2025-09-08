@@ -1,50 +1,344 @@
 # workflow-nextgen.yaml
-# Resource policies for NextGen Workflow task and queue management
+# Enhanced NextGen Workflow Resource Policy with Advanced Queue Management
+# Version: 2.0 - Advanced workflow and task management with hybrid authorization
 apiVersion: "api.cerbos.dev/v1"
 resourcePolicy:
-  resource: "OneCMS::oneCmsUnifiedWorkflow"
-  version: "1.0"
+  resource: "OneCMS::oneCmsCaseWorkflow"
+  version: "2.0"
   importDerivedRoles:
-    - "one-cms"
+    - one_cms_derived_roles
   rules:
     # ========================================
-    # WORKFLOW TASK MANAGEMENT
+    # ENHANCED WORKFLOW TASK MANAGEMENT
     # ========================================
-    - actions: ["claim_task", "complete_task", "view_task"]
+    - actions: ["claim_task", "complete_task", "view_task", "get_next_task"]
       effect: EFFECT_ALLOW
-      roles: ["*"]  # All roles, but with conditions
+      roles: ["*"]  # All roles, but with enhanced conditions
+      derivedRoles:
+        - queue_member
+        - task_assignee
+        - queue_supervisor
+        - database_authorized
       condition:
         match:
           all:
             of:
               - expr: request.principal.attr.isActive == true
               - expr: size(request.principal.attr.queues) > 0
+              # Enhanced: Multi-layered access check
               - expr: |
-                  request.resource.attr.currentTask.queue in request.principal.attr.queues ||
-                  request.resource.attr.currentTask.assignee == request.principal.id
+                  # Queue-based access
+                  (has(request.resource.attr.currentTask) &&
+                   request.resource.attr.currentTask.queue in request.principal.attr.queues) ||
+                  # OR current task assignee
+                  (has(request.resource.attr.currentTask) &&
+                   request.resource.attr.currentTask.assignee == request.principal.id) ||
+                  # OR database-level task permissions
+                  (has(request.principal.attr.databasePermissions) &&
+                   ("task:" + request.action) in request.principal.attr.databasePermissions)
+              # Enhanced: BPMN candidate group verification
+              - expr: |
+                  request.action != "claim_task" ||
+                  !has(request.resource.attr.currentTask.candidateGroups) ||
+                  size(request.resource.attr.currentTask.candidateGroups.filter(group, 
+                    has(request.principal.attr.roles[group]))) > 0
 
     # ========================================
-    # QUEUE ACCESS CONTROL
+    # ENHANCED QUEUE ACCESS CONTROL
     # ========================================
-    - actions: ["view_queue", "list_queue_tasks"]
+    - actions: ["view_queue", "list_queue_tasks", "queue_statistics", "manage_queue"]
       effect: EFFECT_ALLOW
-      roles: ["*"]  # All roles, but with conditions
+      roles: ["*"]  # All roles, but with enhanced conditions
+      derivedRoles:
+        - queue_member
+        - queue_supervisor
+        - cross_department_manager
       condition:
         match:
           all:
             of:
               - expr: request.principal.attr.isActive == true
-              - expr: request.resource.attr.currentQueue in request.principal.attr.queues
+              # Enhanced: Multi-tier queue access
+              - expr: |
+                  # Direct queue membership
+                  (has(request.resource.attr.currentQueue) &&
+                   request.resource.attr.currentQueue in request.principal.attr.queues) ||
+                  # OR supervisory access
+                  (has(request.resource.attr.currentQueue) &&
+                   has(request.principal.attr.supervisedQueues) &&
+                   request.resource.attr.currentQueue in request.principal.attr.supervisedQueues) ||
+                  # OR cross-department management access
+                  (has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                   has(request.principal.attr.roles.GROUP_EO_OFFICER))
 
     # ========================================
-    # ADMINISTRATIVE WORKFLOW ACTIONS
+    # ENHANCED TASK DELEGATION WITH BUSINESS RULES
     # ========================================
-    - actions: ["audit", "export", "report", "delete"]
+    - actions: ["delegate_task", "reassign_task", "transfer_task", "escalate_task"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
+        - "CSIS_INTAKE_MANAGER"
+        - "GROUP_CSIS_INTAKE_MANAGER"
+      derivedRoles:
+        - queue_supervisor
+        - task_assignee
+        - cross_department_manager
+      condition:
+        match:
+          any:
+            of:
+              # Enhanced: Manager can delegate with business rules
+              - expr: |
+                  has(request.resource.attr.currentTask) &&
+                  request.resource.attr.currentTask.queue in request.principal.attr.queues &&
+                  (has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                   has(request.principal.attr.roles.GROUP_EO_OFFICER) ||
+                   has(request.principal.attr.roles.GROUP_CSIS_INTAKE_MANAGER)) &&
+                  # Business rule: Can't delegate to same person
+                  request.resource.attr.targetAssignee != request.resource.attr.currentTask.assignee
+              # Enhanced: Current assignee can delegate with constraints
+              - expr: |
+                  has(request.resource.attr.currentTask) &&
+                  request.resource.attr.currentTask.assignee == request.principal.id &&
+                  # Business rule: Can only delegate within same department/queue
+                  request.resource.attr.currentTask.queue in request.principal.attr.queues
+
+    # ========================================
+    # ENHANCED WORKFLOW PROCESS CONTROL
+    # ========================================
+    - actions: ["start_workflow", "suspend_process", "resume_process", "terminate_workflow", "restart_workflow"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "GROUP_EO_INTAKE_ANALYST"
+        - "GROUP_EO_OFFICER"
+        - "GROUP_EO_HEAD"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "SYSTEM_ADMIN"
+      derivedRoles:
+        - intake_phase_authorized
+        - cross_department_manager
+        - database_authorized
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Role-based workflow control
+              - expr: |
+                  # Start workflow: Only intake analysts
+                  (request.action == "start_workflow" &&
+                   has(request.principal.attr.roles.GROUP_EO_INTAKE_ANALYST)) ||
+                  # Suspend/Resume: Management roles
+                  (["suspend_process", "resume_process"].exists(action, action == request.action) &&
+                   (has(request.principal.attr.roles.GROUP_EO_OFFICER) ||
+                    has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER))) ||
+                  # Terminate: Senior management only
+                  (request.action == "terminate_workflow" &&
+                   (has(request.principal.attr.roles.GROUP_EO_HEAD) ||
+                    has(request.principal.attr.roles.SYSTEM_ADMIN)))
+
+    # ========================================
+    # ENHANCED TASK PRIORITY AND SLA MANAGEMENT
+    # ========================================
+    - actions: ["set_priority", "update_sla", "priority_override", "expedite_task"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
+      derivedRoles:
+        - queue_supervisor
+        - emergency_access_user
+      condition:
+        match:
+          any:
+            of:
+              # Enhanced: Priority management with business rules
+              - expr: |
+                  # Manager can set priority for tasks in their queues
+                  has(request.resource.attr.currentTask) &&
+                  request.resource.attr.currentTask.queue in request.principal.attr.queues &&
+                  (has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                   has(request.principal.attr.roles.GROUP_EO_OFFICER))
+              # Enhanced: Emergency override
+              - expr: |
+                  request.resource.attr.priority == "URGENT" &&
+                  (has(request.principal.attr.emergencyAccess) ||
+                   has(request.principal.attr.roles.GROUP_EO_HEAD))
+
+    # ========================================
+    # ENHANCED BATCH AND BULK OPERATIONS
+    # ========================================
+    - actions: ["bulk_claim", "bulk_complete", "bulk_reassign", "batch_process"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "SYSTEM_ADMIN"
+      derivedRoles:
+        - queue_supervisor
+        - cross_department_manager
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Bulk operation limits and controls
+              - expr: |
+                  # Management roles can perform bulk operations
+                  has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                  has(request.principal.attr.roles.GROUP_EO_OFFICER) ||
+                  has(request.principal.attr.roles.SYSTEM_ADMIN)
+              # Business rule: Reasonable batch size limits (if specified)
+              - expr: |
+                  !has(request.resource.attr.batchSize) ||
+                  request.resource.attr.batchSize <= 50 ||
+                  has(request.principal.attr.roles.SYSTEM_ADMIN)
+
+    # ========================================
+    # ENHANCED WORKFLOW ANALYTICS AND REPORTING
+    # ========================================
+    - actions: ["workflow_analytics", "performance_report", "sla_report", "queue_metrics"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
+        - "AROG_REVIEWER"
+        - "AUDIT_SPECIALIST"
+      derivedRoles:
+        - queue_supervisor
+        - audit_authorized
+        - cross_department_manager
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Reporting scope based on role
+              - expr: |
+                  # Queue supervisors can report on their queues
+                  (has(request.principal.attr.supervisedQueues) &&
+                   (!has(request.resource.attr.scope) ||
+                    request.resource.attr.scope in request.principal.attr.supervisedQueues)) ||
+                  # Management can access broader reports
+                  has(request.principal.attr.roles.GROUP_EO_OFFICER) ||
+                  has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                  # Audit roles can access all reports
+                  has(request.principal.attr.roles.AROG_REVIEWER)
+
+    # ========================================
+    # ENHANCED TIME-BASED AND CONDITIONAL OPERATIONS
+    # ========================================
+    - actions: ["schedule_task", "defer_task", "time_based_routing"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+      derivedRoles:
+        - queue_supervisor
+        - task_assignee
+        - business_hours_user
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Time-based operation controls
+              - expr: |
+                  # Current task assignee can schedule/defer their tasks
+                  (has(request.resource.attr.currentTask) &&
+                   request.resource.attr.currentTask.assignee == request.principal.id) ||
+                  # Supervisors can schedule tasks in their queues
+                  (has(request.resource.attr.currentTask) &&
+                   request.resource.attr.currentTask.queue in request.principal.attr.queues &&
+                   (has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                    has(request.principal.attr.roles.GROUP_EO_OFFICER)))
+              # Business rule: Reasonable scheduling limits
+              - expr: |
+                  !has(request.resource.attr.scheduledTime) ||
+                  timestamp(request.resource.attr.scheduledTime) <= (now() + duration("30d"))
+
+    # ========================================
+    # ENHANCED INTEGRATION AND API ACCESS
+    # ========================================
+    - actions: ["api_access", "integration_call", "external_system_sync"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "SYSTEM_ADMIN"
+        - "INTEGRATION_USER"
+        - "SERVICE_ACCOUNT"
+      derivedRoles:
+        - database_authorized
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: API access controls
+              - expr: |
+                  # System admin can access all APIs
+                  has(request.principal.attr.roles.SYSTEM_ADMIN) ||
+                  # Integration users with specific permissions
+                  (has(request.principal.attr.roles.INTEGRATION_USER) &&
+                   has(request.principal.attr.apiPermissions) &&
+                   request.action in request.principal.attr.apiPermissions) ||
+                  # Service accounts with database authorization
+                  (has(request.principal.attr.roles.SERVICE_ACCOUNT) &&
+                   has(request.principal.attr.databasePermissions) &&
+                   ("api:" + request.action) in request.principal.attr.databasePermissions)
+
+    # ========================================
+    # ENHANCED ADMINISTRATIVE OPERATIONS
+    # ========================================
+    - actions: ["audit", "export", "report", "delete", "system_override", "data_purge"]
       effect: EFFECT_ALLOW
       roles:
         - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
         - "AROG_REVIEWER"
         - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "SYSTEM_ADMIN"
+      derivedRoles:
+        - audit_authorized
+        - cross_department_manager
       condition:
         match:
-          expr: request.principal.attr.isActive == true
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Administrative operation controls
+              - expr: |
+                  # Standard admin operations
+                  (["audit", "export", "report"].exists(action, action == request.action) &&
+                   (has(request.principal.attr.roles.AROG_REVIEWER) ||
+                    has(request.principal.attr.roles.GROUP_EO_OFFICER))) ||
+                  # Destructive operations require higher privileges
+                  (["delete", "system_override", "data_purge"].exists(action, action == request.action) &&
+                   (has(request.principal.attr.roles.SYSTEM_ADMIN) ||
+                    has(request.principal.attr.roles.GROUP_EO_HEAD)))
+
+  # ========================================
+  # DEFAULT DENY RULE
+  # ========================================
+  defaultRule:
+    effect: EFFECT_DENY

@@ -1,112 +1,370 @@
 # resources/case.yaml
-# Resource policy for OneCMS case management operations
+# Hybrid Case Resource Policy for OneCMS case management operations
+# Version: 2.0 - Integrates BPMN workflow phases with hybrid authorization
 # This policy governs actions on case business objects and is enforced by OneCMS Service
 apiVersion: "api.cerbos.dev/v1"
 resourcePolicy:
   resource: "case"
-  version: "1.0"
+  version: "2.0"
   importDerivedRoles:
     - one_cms_derived_roles
   rules:
     # ========================================
-    # CASE CREATION
+    # CASE CREATION (BPMN: task_create_case)
     # ========================================
-    - actions: ["create"]
+    - actions: ["create", "initiate", "draft"]
       effect: EFFECT_ALLOW
       roles:
         - "user"               # Allow any authenticated user (for testing)
-        - "INTAKE_ANALYST"     # Only intake analysts can create new cases
-        - "EO_INTAKE_ANALYST"  # EO intake analysts can create cases
+        - "INTAKE_ANALYST"     # Legacy role support
+        - "EO_INTAKE_ANALYST"  # Legacy role support
+        - "GROUP_EO_INTAKE_ANALYST"  # BPMN candidate group
+      derivedRoles:
+        - intake_phase_authorized
+        - database_authorized    # Hybrid mode: check database permissions
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Must be in intake phase or no phase specified (new case)
+              - expr: |
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase == "INTAKE"
+
+    # ========================================
+    # CASE INFORMATION FILLING (BPMN: task_fill_information)
+    # ========================================
+    - actions: ["update", "edit", "fill_information", "add_entities", "add_allegations", "add_narratives", "upload_documents"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INTAKE_ANALYST"
+        - "EO_INTAKE_ANALYST" 
+        - "GROUP_EO_INTAKE_ANALYST"
+      derivedRoles:
+        - intake_phase_authorized
+        - task_assignee           # Current task assignee can always edit
+        - case_assignee          # Case assignee can edit
+        - database_authorized    # Hybrid mode: database permissions
+        - resource_level_authorized  # Resource-level ABAC override
+      condition:
+        match:
+          any:
+            of:
+              # Traditional role-based access during intake
+              - expr: |
+                  request.resource.attr.workflowPhase == "INTAKE" &&
+                  has(request.principal.attr.roles.GROUP_EO_INTAKE_ANALYST)
+              # Current task assignee can always edit
+              - expr: |
+                  has(request.resource.attr.currentTask) &&
+                  request.resource.attr.currentTask.assignee == request.principal.id
+              # Case assignee can edit their case
+              - expr: request.resource.attr.assigneeId == request.principal.id
+              # Hybrid mode: database permission check
+              - expr: |
+                  has(request.principal.attr.databasePermissions) &&
+                  "case:update" in request.principal.attr.databasePermissions
 
     # ========================================
     # CASE READING/VIEWING
     # ========================================
-    - actions: ["read", "view"]
+    - actions: ["read", "view", "access"]
       effect: EFFECT_ALLOW
       roles:
         - "INTAKE_ANALYST"
-        - "EO_INTAKE_ANALYST"   # EO intake analysts can view cases
-        - "INVESTIGATOR" 
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+        - "INVESTIGATOR"
+        - "GROUP_INVESTIGATOR"
         - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
         - "ADJUDICATOR"
         - "AROG_REVIEWER"
         - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
         - "HR_SPECIALIST"
         - "LEGAL_COUNSEL"
         - "SECURITY_ANALYST"
+        - "GROUP_CSIS_INTAKE_ANALYST"
+        - "GROUP_ER_INTAKE_ANALYST"
+        - "GROUP_LEGAL_INTAKE_ANALYST"
       derivedRoles:
-        # Allow department members to view cases assigned to their department
-        - case_department_member
+        - case_department_member    # Department members can view departmental cases
+        - case_assignee            # Assignee can always view
+        - task_assignee            # Current task assignee can view
+        - cross_department_manager  # Managers can view across departments
+        - database_authorized      # Hybrid mode: database permissions
+        - resource_level_authorized # Resource-level permissions
+        - audit_authorized         # Audit access
+      condition:
+        match:
+          expr: request.principal.attr.isActive == true
 
     # ========================================
-    # CASE UPDATING
+    # CASE ASSIGNMENT (BPMN: task_assign_case)
     # ========================================
-    - actions: ["update", "edit"]
+    - actions: ["assign", "reassign", "assign_to_officer"]
       effect: EFFECT_ALLOW
       roles:
-        - "INVESTIGATION_MANAGER" # Managers can always update
-        - "EO_OFFICER"           # Ethics office has broad update rights
-        - "EO_INTAKE_ANALYST"    # EO intake analysts can update during intake process
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
       derivedRoles:
-        # Allow current assignee to update their assigned case
+        - routing_phase_authorized
+        - cross_department_manager
+        - queue_supervisor
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Must be in routing phase or initial assignment
+              - expr: |
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase == "ROUTING" ||
+                  request.resource.attr.workflowPhase == "INTAKE"
+
+    # ========================================
+    # OFFICER ROUTING (BPMN: task_officer_routing)
+    # ========================================
+    - actions: ["route", "send_to_department", "send_to_csis", "send_to_er", "send_to_legal", "send_to_iu", "send_back", "save_close", "reject", "mark_non_tracked"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+      derivedRoles:
+        - routing_phase_authorized
+        - task_assignee
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: |
+                  request.resource.attr.workflowPhase == "ROUTING" ||
+                  !has(request.resource.attr.workflowPhase)
+
+    # ========================================
+    # DEPARTMENT REVIEW (BPMN: task_dept_review, task_add_details)
+    # ========================================
+    - actions: ["review", "add_details", "enhance_case", "dept_review", "add_info"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "GROUP_CSIS_INTAKE_ANALYST"
+        - "GROUP_ER_INTAKE_ANALYST" 
+        - "GROUP_LEGAL_INTAKE_ANALYST"
+        - "CSIS_INTAKE_ANALYST"
+        - "ER_INTAKE_ANALYST"
+        - "LEGAL_INTAKE_ANALYST"
+      derivedRoles:
+        - department_review_authorized
+        - task_assignee
+        - case_department_member
+        - database_authorized
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.resource.attr.workflowPhase == "DEPT_REVIEW"
+              # Must be in assigned department or current task assignee
+              - expr: |
+                  request.resource.attr.assignedDepartment in request.principal.attr.departments ||
+                  (has(request.resource.attr.currentTask) && 
+                   request.resource.attr.currentTask.assignee == request.principal.id)
+
+    # ========================================
+    # ER ROUTING DECISION (BPMN: task_er_routing)
+    # ========================================
+    - actions: ["er_routing", "keep_in_er", "route_to_csis"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "GROUP_ER_INTAKE_ANALYST"
+        - "ER_INTAKE_ANALYST"
+      derivedRoles:
+        - department_review_authorized
+        - task_assignee
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.resource.attr.workflowPhase == "DEPT_REVIEW"
+              - expr: |
+                  "ER" in request.principal.attr.departments ||
+                  (has(request.resource.attr.currentTask) && 
+                   request.resource.attr.currentTask.assignee == request.principal.id)
+
+    # ========================================
+    # INVESTIGATION MANAGEMENT (BPMN: task_manager_assignment)
+    # ========================================
+    - actions: ["assign_investigator", "manage_investigation", "investigation_assignment"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+      derivedRoles:
+        - investigation_phase_authorized
+        - queue_supervisor
+        - task_assignee
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.resource.attr.workflowPhase == "INVESTIGATION"
+              - expr: |
+                  "investigation-manager-queue" in request.principal.attr.queues ||
+                  has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER)
+
+    # ========================================
+    # ACTIVE INVESTIGATION (BPMN: task_investigator_work, task_active_investigation)
+    # ========================================
+    - actions: ["investigate", "create_plan", "review_plan", "conduct_investigation", "create_report", "initial_contact"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATOR"
+        - "GROUP_INVESTIGATOR"
+      derivedRoles:
+        - investigation_phase_authorized
+        - task_assignee
         - case_assignee
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.resource.attr.workflowPhase == "INVESTIGATION"
+              # Must be assigned to case or current task
+              - expr: |
+                  request.resource.attr.assigneeId == request.principal.id ||
+                  (has(request.resource.attr.currentTask) && 
+                   request.resource.attr.currentTask.assignee == request.principal.id)
 
     # ========================================
     # ALLEGATION MANAGEMENT
     # ========================================
-    - actions: ["add_allegation"]
+    - actions: ["add_allegation", "update_allegation", "delete_allegation", "copy_allegations"]
       effect: EFFECT_ALLOW
       roles:
         - "INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
         - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
         - "INVESTIGATOR"
+        - "GROUP_INVESTIGATOR"
       derivedRoles:
         - case_assignee
-
-    - actions: ["update_allegation"]
-      effect: EFFECT_ALLOW
-      roles:
-        - "INVESTIGATION_MANAGER"
-        - "INVESTIGATOR"
-      derivedRoles:
-        - case_assignee
+        - task_assignee
+        - intake_phase_authorized
+        - investigation_phase_authorized
+        - database_authorized
+      condition:
+        match:
+          any:
+            of:
+              # Intake phase users can manage allegations
+              - expr: |
+                  request.resource.attr.workflowPhase == "INTAKE" &&
+                  has(request.principal.attr.roles.GROUP_EO_INTAKE_ANALYST)
+              # Investigation phase users can manage allegations
+              - expr: |
+                  request.resource.attr.workflowPhase == "INVESTIGATION" &&
+                  (has(request.principal.attr.roles.GROUP_INVESTIGATOR) ||
+                   has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER))
+              # Assignees can always manage
+              - expr: |
+                  request.resource.attr.assigneeId == request.principal.id ||
+                  (has(request.resource.attr.currentTask) && 
+                   request.resource.attr.currentTask.assignee == request.principal.id)
 
     # ========================================
     # NARRATIVE MANAGEMENT
     # ========================================
-    - actions: ["add_narrative", "create_narrative"]
+    - actions: ["add_narrative", "create_narrative", "update_narrative", "delete_narrative", "copy_narratives"]
       effect: EFFECT_ALLOW
       roles:
         - "INVESTIGATOR"
+        - "GROUP_INVESTIGATOR"
         - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
         - "HR_SPECIALIST"
         - "LEGAL_COUNSEL"
         - "SECURITY_ANALYST"
+        - "GROUP_CSIS_INTAKE_ANALYST"
+        - "GROUP_ER_INTAKE_ANALYST"
+        - "GROUP_LEGAL_INTAKE_ANALYST"
+      derivedRoles:
+        - case_assignee
+        - task_assignee
+        - case_department_member
+        - investigation_phase_authorized
+        - department_review_authorized
       condition:
         match:
-          # Only allow if user's department matches case department or they're assigned
           any:
             of:
+              # Department members can add narratives to their cases
               - expr: request.resource.attr.department_code in request.principal.attr.departments
+              # Assignees can add narratives
               - expr: request.resource.attr.assigneeId == request.principal.id
-
-    # ========================================
-    # CASE ASSIGNMENT
-    # ========================================
-    - actions: ["assign", "reassign"]
-      effect: EFFECT_ALLOW
-      roles:
-        - "INVESTIGATION_MANAGER"
-        - "EO_OFFICER"
+              # Current task assignee can add narratives
+              - expr: |
+                  has(request.resource.attr.currentTask) &&
+                  request.resource.attr.currentTask.assignee == request.principal.id
 
     # ========================================
     # CASE STATUS CHANGES
     # ========================================
-    - actions: ["close_case", "reopen_case"]
+    - actions: ["close_case", "reopen_case", "cancel_case", "complete_case"]
       effect: EFFECT_ALLOW
       roles:
         - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
         - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
+      derivedRoles:
+        - cross_department_manager
+        - task_assignee
+      condition:
+        match:
+          expr: request.principal.attr.isActive == true
+
+    # ========================================
+    # COMMENTS AND COMMUNICATION
+    # ========================================
+    - actions: ["add_comment", "add_comments", "reply_comment"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "user"  # Any authenticated user can add comments
+      derivedRoles:
+        - case_department_member
+        - case_assignee
+        - task_assignee
+        - resource_level_authorized
+      condition:
+        match:
+          any:
+            of:
+              # Case participants can comment
+              - expr: request.resource.attr.assigneeId == request.principal.id
+              - expr: request.resource.attr.department_code in request.principal.attr.departments
+              - expr: |
+                  has(request.resource.attr.currentTask) &&
+                  request.resource.attr.currentTask.assignee == request.principal.id
+              # Resource-level permission override
+              - expr: |
+                  has(request.principal.attr.resourcePermissions) &&
+                  has(request.principal.attr.resourcePermissions["case::" + request.resource.id]) &&
+                  "add_comment" in request.principal.attr.resourcePermissions["case::" + request.resource.id].allowedActions
 
     # ========================================
     # SENSITIVE OPERATIONS
@@ -114,22 +372,80 @@ resourcePolicy:
     - actions: ["delete"]
       effect: EFFECT_ALLOW
       roles:
-        - "EO_OFFICER" # Only ethics office can delete cases
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
       condition:
         match:
-          # Additional safety check - only allow deletion of draft cases
-          expr: request.resource.attr.status == "DRAFT"
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Additional safety check - only allow deletion of draft cases
+              - expr: |
+                  request.resource.attr.status == "DRAFT" ||
+                  request.resource.attr.workflowPhase == "INTAKE"
 
     # ========================================
     # AUDIT AND REPORTING
     # ========================================
-    - actions: ["audit", "export", "report"]
+    - actions: ["audit", "export", "report", "view_history", "compliance_report"]
       effect: EFFECT_ALLOW
       roles:
         - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
         - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
         - "AROG_REVIEWER"
+        - "AUDIT_SPECIALIST"
+      derivedRoles:
+        - audit_authorized
+        - cross_department_manager
 
-  # Default deny rule - all other actions are denied
+    # ========================================
+    # EMERGENCY ACCESS
+    # ========================================
+    - actions: ["emergency_access"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "user"
+      derivedRoles:
+        - emergency_access_user
+      condition:
+        match:
+          any:
+            of:
+              - expr: request.resource.attr.priority == "URGENT"
+              - expr: request.resource.attr.isEmergency == true
+              - expr: has(request.principal.attr.emergencyAccess)
+
+    # ========================================
+    # GENERIC RESOURCE-LEVEL PERMISSIONS (ABAC Override)
+    # ========================================
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      derivedRoles:
+        - resource_level_authorized
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Resource permission must exist and not be expired
+              - expr: |
+                  has(request.principal.attr.resourcePermissions) &&
+                  has(request.principal.attr.resourcePermissions["case::" + request.resource.id]) &&
+                  request.action in request.principal.attr.resourcePermissions["case::" + request.resource.id].allowedActions
+              # Check expiration
+              - expr: |
+                  !has(request.principal.attr.resourcePermissions["case::" + request.resource.id].expiresAt) ||
+                  now() < timestamp(request.principal.attr.resourcePermissions["case::" + request.resource.id].expiresAt)
+
+  # ========================================
+  # DEFAULT DENY RULE
+  # ========================================
   defaultRule:
     effect: EFFECT_DENY

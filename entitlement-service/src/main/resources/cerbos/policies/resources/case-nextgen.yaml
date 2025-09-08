@@ -1,77 +1,303 @@
 # case-nextgen.yaml
-# Role-based resource policies for NextGen Workflow case management
+# NextGen Enhanced Case Resource Policy with Database Integration
+# Version: 2.0 - Hybrid authorization with database role mapping
+# This policy provides enhanced case management with database permission integration
 apiVersion: "api.cerbos.dev/v1"
 resourcePolicy:
   resource: "case"
-  version: "1.0"
+  version: "2.0"
   importDerivedRoles:
-    - "one-cms"
+    - one_cms_derived_roles
   rules:
     # ========================================
-    # INTAKE ANALYST RULES
+    # ENHANCED INTAKE ANALYST RULES
     # ========================================
     - actions: ["*"]
       effect: EFFECT_ALLOW
       roles:
         - "INTAKE_ANALYST"
         - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      derivedRoles:
+        - intake_phase_authorized
+        - database_authorized
       condition:
         match:
-          expr: request.principal.attr.isActive == true
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced condition: check workflow phase alignment
+              - expr: |
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase == "INTAKE" ||
+                  request.resource.attr.workflowPhase == "BUILD_CASE"
+              # Database hybrid mode: verify database permissions
+              - expr: |
+                  !has(request.principal.attr.databasePermissions) ||
+                  size(request.principal.attr.databasePermissions.filter(perm, 
+                    startsWith(perm, "case:"))) > 0
 
     # ========================================
-    # MANAGEMENT ROLES (Higher Privileges)
+    # ENHANCED MANAGEMENT ROLES (Higher Privileges)
     # ========================================
     - actions: ["*"]
       effect: EFFECT_ALLOW
       roles:
         - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
         - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
         - "EO_HEAD"
-      condition:
-        match:
-          expr: request.principal.attr.isActive == true
-
-    # ========================================
-    # INVESTIGATOR ROLES
-    # ========================================
-    - actions: ["read", "update", "add_narrative"]
-      effect: EFFECT_ALLOW
-      roles:
-        - "INVESTIGATOR"
+        - "GROUP_EO_HEAD"
+        - "EO_DIRECTOR"
+        - "GROUP_EO_DIRECTOR"
+      derivedRoles:
+        - cross_department_manager
+        - queue_supervisor
+        - database_authorized
+        - resource_level_authorized
       condition:
         match:
           all:
             of:
               - expr: request.principal.attr.isActive == true
+              # Enhanced: Check if action is appropriate for current phase
               - expr: |
-                  request.resource.attr.assigneeId == request.principal.id ||
-                  request.resource.attr.department_code in request.principal.attr.departments
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase != "COMPLETED" ||
+                  request.action in ["read", "view", "audit", "export", "report"]
 
     # ========================================
-    # DEPARTMENT-SPECIFIC ROLES
+    # ENHANCED INVESTIGATOR ROLES
     # ========================================
-    - actions: ["read", "add_narrative"]
+    - actions: ["read", "update", "add_narrative", "investigate", "create_plan", "conduct_investigation", "create_report", "initial_contact"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATOR"
+        - "GROUP_INVESTIGATOR"
+      derivedRoles:
+        - investigation_phase_authorized
+        - task_assignee
+        - case_assignee
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Multi-condition access check
+              - expr: |
+                  # Must be assigned to case OR current task assignee OR in investigation phase
+                  request.resource.attr.assigneeId == request.principal.id ||
+                  (has(request.resource.attr.currentTask) && 
+                   request.resource.attr.currentTask.assignee == request.principal.id) ||
+                  # Department-based access for investigation phase
+                  (request.resource.attr.workflowPhase == "INVESTIGATION" &&
+                   request.resource.attr.department_code in request.principal.attr.departments)
+
+    # ========================================
+    # ENHANCED DEPARTMENT-SPECIFIC ROLES
+    # ========================================
+    - actions: ["read", "add_narrative", "review", "add_details", "enhance_case"]
       effect: EFFECT_ALLOW
       roles:
         - "HR_SPECIALIST"
         - "LEGAL_COUNSEL"
         - "SECURITY_ANALYST"
+        - "GROUP_CSIS_INTAKE_ANALYST"
+        - "GROUP_ER_INTAKE_ANALYST"
+        - "GROUP_LEGAL_INTAKE_ANALYST"
+        - "CSIS_INTAKE_ANALYST"
+        - "ER_INTAKE_ANALYST"
+        - "LEGAL_INTAKE_ANALYST"
+        - "CSIS_INTAKE_MANAGER"
+        - "GROUP_CSIS_INTAKE_MANAGER"
+      derivedRoles:
+        - department_review_authorized
+        - case_department_member
+        - task_assignee
+        - database_authorized
       condition:
         match:
           all:
             of:
               - expr: request.principal.attr.isActive == true
-              - expr: request.resource.attr.department_code in request.principal.attr.departments
+              # Enhanced: Department alignment with workflow phase
+              - expr: |
+                  # Department members can access cases in their department
+                  request.resource.attr.department_code in request.principal.attr.departments ||
+                  # OR currently assigned to a task
+                  (has(request.resource.attr.currentTask) && 
+                   request.resource.attr.currentTask.assignee == request.principal.id) ||
+                  # OR authorized via database permissions
+                  (has(request.principal.attr.databasePermissions) &&
+                   request.action in request.principal.attr.databasePermissions.map(perm, perm.split(":")[1]))
 
     # ========================================
-    # ADMIN AND AUDIT ROLES (for case resource)
+    # ENHANCED ADMINISTRATIVE AND AUDIT ROLES
     # ========================================
-    - actions: ["audit", "export", "report", "delete"]
+    - actions: ["audit", "export", "report", "delete", "admin_override", "compliance_report", "view_history"]
       effect: EFFECT_ALLOW
       roles:
         - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
+        - "EO_DIRECTOR"
+        - "GROUP_EO_DIRECTOR"
         - "AROG_REVIEWER"
+        - "AUDIT_SPECIALIST"
+        - "SYSTEM_ADMIN"
+      derivedRoles:
+        - audit_authorized
+        - cross_department_manager
+        - database_authorized
       condition:
         match:
-          expr: request.principal.attr.isActive == true
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Audit trail requirements
+              - expr: |
+                  # For delete operations, additional checks
+                  request.action != "delete" ||
+                  request.resource.attr.status == "DRAFT" ||
+                  has(request.principal.attr.roles.SYSTEM_ADMIN)
+
+    # ========================================
+    # ENHANCED TIME-BASED AND CONDITIONAL ACCESS
+    # ========================================
+    - actions: ["emergency_access", "after_hours_access"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      derivedRoles:
+        - emergency_access_user
+        - business_hours_user
+      condition:
+        match:
+          any:
+            of:
+              # Emergency conditions
+              - expr: |
+                  request.resource.attr.priority == "URGENT" ||
+                  request.resource.attr.isEmergency == true ||
+                  has(request.principal.attr.emergencyAccess)
+              # Business hours with standard access
+              - expr: |
+                  (now().getHours() >= 8 && now().getHours() <= 18) &&
+                  [1,2,3,4,5].exists(d, d == now().getDayOfWeek()) &&
+                  request.resource.attr.department_code in request.principal.attr.departments
+
+    # ========================================
+    # ENHANCED BULK OPERATIONS
+    # ========================================
+    - actions: ["bulk_update", "bulk_assign", "bulk_export", "bulk_close"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "EO_HEAD"
+        - "GROUP_EO_HEAD"
+        - "SYSTEM_ADMIN"
+      derivedRoles:
+        - cross_department_manager
+        - database_authorized
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Bulk operations require elevated permissions
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                  has(request.principal.attr.roles.GROUP_EO_OFFICER) ||
+                  (has(request.principal.attr.databasePermissions) &&
+                   "bulk_operations" in request.principal.attr.databasePermissions)
+
+    # ========================================
+    # ENHANCED WORKFLOW PHASE TRANSITIONS
+    # ========================================
+    - actions: ["advance_phase", "transition_workflow", "phase_override"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+      derivedRoles:
+        - cross_department_manager
+        - task_assignee
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Enhanced: Phase transition logic
+              - expr: |
+                  # Current task assignee can transition their phase
+                  (has(request.resource.attr.currentTask) && 
+                   request.resource.attr.currentTask.assignee == request.principal.id) ||
+                  # OR management can override phase transitions
+                  has(request.principal.attr.roles.GROUP_EO_OFFICER) ||
+                  has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER)
+
+    # ========================================
+    # ENHANCED COLLABORATION AND SHARING
+    # ========================================
+    - actions: ["share_case", "collaborate", "invite_collaborator", "grant_access"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "INVESTIGATION_MANAGER"
+        - "GROUP_INVESTIGATION_MANAGER"
+        - "EO_OFFICER"
+        - "GROUP_EO_OFFICER"
+      derivedRoles:
+        - case_assignee
+        - cross_department_manager
+        - resource_level_authorized
+      condition:
+        match:
+          any:
+            of:
+              # Case assignee can share their case
+              - expr: request.resource.attr.assigneeId == request.principal.id
+              # Management can share any case in their department
+              - expr: |
+                  request.resource.attr.department_code in request.principal.attr.departments &&
+                  (has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                   has(request.principal.attr.roles.GROUP_EO_OFFICER))
+              # Resource-level permission to share
+              - expr: |
+                  has(request.principal.attr.resourcePermissions) &&
+                  has(request.principal.attr.resourcePermissions["case::" + request.resource.id]) &&
+                  "share_case" in request.principal.attr.resourcePermissions["case::" + request.resource.id].allowedActions
+
+    # ========================================
+    # ENHANCED DATABASE INTEGRATION FALLBACK
+    # ========================================
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      derivedRoles:
+        - database_authorized
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              # Fallback to database permissions for hybrid mode
+              - expr: |
+                  has(request.principal.attr.databasePermissions) &&
+                  (request.resource.kind + ":" + request.action) in request.principal.attr.databasePermissions
+              # Additional safety check for sensitive operations
+              - expr: |
+                  !["delete", "admin_override", "bulk_delete"].exists(action, action == request.action) ||
+                  has(request.principal.attr.roles.SYSTEM_ADMIN) ||
+                  has(request.principal.attr.roles.GROUP_EO_OFFICER)
+
+  # ========================================
+  # DEFAULT DENY RULE
+  # ========================================
+  defaultRule:
+    effect: EFFECT_DENY

@@ -5,27 +5,27 @@
 ```
 NextGen Workflow Authorization System
 │
-├── 🏛️ EXISTING LEGACY SYSTEM (✅ Working)
+├── EXISTING LEGACY SYSTEM ( Working)
 │   ├── CerbosAuthorizationService
 │   ├── Cerbos Java SDK Integration
 │   ├── Policy Files (case.yaml, workflow.yaml, etc.)
 │   ├── Principal Building (roles, departments, queues)
 │   └── AuthorizationController (/api/entitlements/check)
 │
-├── 🔄 HYBRID AUTHORIZATION SYSTEM (🔨 In Progress)
+├── HYBRID AUTHORIZATION SYSTEM ( In Progress)
 │   │
-│   ├── 🎯 Core Interfaces & DTOs
-│   │   ├── AuthorizationEngine (interface) ✅
-│   │   ├── AuthorizationRequest/Response DTOs ✅
-│   │   ├── Principal & Resource DTOs ⚠️
-│   │   ├── AuthorizationDecision ✅
-│   │   └── Engine Selection Logic ✅
+│   ├── Core Interfaces & DTOs
+│   │   ├── AuthorizationEngine (interface) 
+│   │   ├── AuthorizationRequest/Response DTOs 
+│   │   ├── Principal & Resource DTOs 
+│   │   ├── AuthorizationDecision 
+│   │   └── Engine Selection Logic 
 │   │
-│   ├── 🔧 Engine Implementations
-│   │   ├── DatabaseAuthorizationEngine ✅
+│   ├── Engine Implementations
+│   │   ├── DatabaseAuthorizationEngine 
 │   │   └── CerbosAuthorizationEngine ⚠️ (Adapter Layer)
 │   │
-│   ├── 🌐 Phase 2/3 Controllers (❌ Compilation Issues)
+│   ├── Phase 2/3 Controllers ( Compilation Issues)
 │   │   ├── AuditController
 │   │   ├── CacheManagementController  
 │   │   ├── PolicyManagementController
@@ -33,7 +33,7 @@ NextGen Workflow Authorization System
 │   │   ├── SystemManagementController
 │   │   └── IntegrationController
 │   │
-│   ├── 🔧 Service Layer (❌ Interface Mismatches)
+│   ├── Service Layer (Interface Mismatches)
 │   │   ├── HybridAuditService
 │   │   ├── HybridCacheManagementService
 │   │   ├── HybridPolicyManagementService

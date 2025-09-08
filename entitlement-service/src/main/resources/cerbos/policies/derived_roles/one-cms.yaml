@@ -1,9 +1,14 @@
 # derived_roles/one-cms.yaml
-# Derived roles specific to the OneCMS application within the nextgen-workflow ecosystem
+# Enhanced derived roles for the OneCMS application hybrid authorization system
+# Version: 2.0 - Supports both Cerbos ABAC and Database RBAC modes
 apiVersion: "api.cerbos.dev/v1"
 derivedRoles:
   name: one_cms_derived_roles
   definitions:
+    # =========================================================================
+    # BASIC RESOURCE-LEVEL DERIVED ROLES
+    # =========================================================================
+    
     # A user is a case assignee if their ID matches the assigneeId attribute of the case resource
     - name: case_assignee
       parentRoles: ["user"] # Generic role all authenticated users have
@@ -32,7 +37,9 @@ derivedRoles:
       parentRoles: ["user"]
       condition:
         match:
-          expr: request.resource.attr.currentTask.assignee == request.principal.id
+          expr: |
+            has(request.resource.attr.currentTask) &&
+            request.resource.attr.currentTask.assignee == request.principal.id
 
     # A user belongs to the same department as the case for cross-departmental visibility rules
     - name: same_department_member
@@ -40,3 +47,169 @@ derivedRoles:
       condition:
         match:
           expr: request.resource.attr.case_department_code in request.principal.attr.departments
+
+    # =========================================================================
+    # WORKFLOW PHASE-BASED DERIVED ROLES (BPMN Integration)
+    # =========================================================================
+    
+    # User authorized for intake phase operations (EO Intake tasks)
+    - name: intake_phase_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.attr.workflowPhase == "INTAKE"
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_EO_INTAKE_ANALYST) ||
+                  "eo-intake-queue" in request.principal.attr.queues
+
+    # User authorized for routing phase operations (EO Head/Officer tasks)
+    - name: routing_phase_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.attr.workflowPhase == "ROUTING"
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_EO_HEAD) ||
+                  has(request.principal.attr.roles.GROUP_EO_OFFICER) ||
+                  "eo-head-queue" in request.principal.attr.queues ||
+                  "eo-officer-queue" in request.principal.attr.queues
+
+    # User authorized for department review phase (CSIS/ER/Legal tasks)
+    - name: department_review_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.attr.workflowPhase == "DEPT_REVIEW"
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_CSIS_INTAKE_ANALYST) ||
+                  has(request.principal.attr.roles.GROUP_ER_INTAKE_ANALYST) ||
+                  has(request.principal.attr.roles.GROUP_LEGAL_INTAKE_ANALYST) ||
+                  request.resource.attr.assignedDepartment in request.principal.attr.departments
+
+    # User authorized for investigation phase operations
+    - name: investigation_phase_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.resource.attr.workflowPhase == "INVESTIGATION"
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) ||
+                  has(request.principal.attr.roles.GROUP_INVESTIGATOR) ||
+                  "investigation-manager-queue" in request.principal.attr.queues ||
+                  "investigator-queue" in request.principal.attr.queues
+
+    # =========================================================================
+    # MANAGEMENT AND OVERSIGHT DERIVED ROLES
+    # =========================================================================
+    
+    # Cross-departmental access for management roles
+    - name: cross_department_manager
+      parentRoles: ["user"]
+      condition:
+        match:
+          any:
+            of:
+              - expr: has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER)
+              - expr: has(request.principal.attr.roles.GROUP_EO_OFFICER)
+              - expr: has(request.principal.attr.roles.GROUP_EO_HEAD)
+              - expr: has(request.principal.attr.roles.GROUP_EO_DIRECTOR)
+
+    # Queue supervisor - can manage tasks in their supervised queues
+    - name: queue_supervisor
+      parentRoles: ["user"]
+      condition:
+        match:
+          any:
+            of:
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_INVESTIGATION_MANAGER) &&
+                  ("investigation-manager-queue" in request.principal.attr.queues ||
+                   "investigator-queue" in request.principal.attr.queues)
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_EO_OFFICER) &&
+                  ("eo-officer-queue" in request.principal.attr.queues)
+              - expr: |
+                  has(request.principal.attr.roles.GROUP_CSIS_INTAKE_MANAGER) &&
+                  ("csis-intake-manager-queue" in request.principal.attr.queues ||
+                   "csis-intake-analyst-queue" in request.principal.attr.queues)
+
+    # =========================================================================
+    # HYBRID SYSTEM DERIVED ROLES (Database Integration)
+    # =========================================================================
+    
+    # User has database-level permissions for the action (hybrid mode)
+    - name: database_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: has(request.principal.attr.databasePermissions)
+              - expr: |
+                  (request.resource.kind + ":" + request.action) in request.principal.attr.databasePermissions
+
+    # User has resource-level permissions (ABAC override)
+    - name: resource_level_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: has(request.principal.attr.resourcePermissions)
+              - expr: |
+                  has(request.principal.attr.resourcePermissions[request.resource.kind + "::" + request.resource.id]) &&
+                  request.action in request.principal.attr.resourcePermissions[request.resource.kind + "::" + request.resource.id].allowedActions
+              # Check expiration if present
+              - expr: |
+                  !has(request.principal.attr.resourcePermissions[request.resource.kind + "::" + request.resource.id].expiresAt) ||
+                  now() < timestamp(request.principal.attr.resourcePermissions[request.resource.kind + "::" + request.resource.id].expiresAt)
+
+    # =========================================================================
+    # CONDITIONAL ACCESS DERIVED ROLES
+    # =========================================================================
+    
+    # Time-based access (business hours only for certain operations)
+    - name: business_hours_user
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: |
+                  now().getHours() >= 8 && now().getHours() <= 18
+              - expr: |
+                  [1,2,3,4,5].exists(d, d == now().getDayOfWeek())
+
+    # Emergency access override (for urgent cases)
+    - name: emergency_access_user
+      parentRoles: ["user"]
+      condition:
+        match:
+          any:
+            of:
+              - expr: request.resource.attr.priority == "URGENT"
+              - expr: request.resource.attr.isEmergency == true
+              - expr: has(request.principal.attr.emergencyAccess)
+
+    # Audit access (for compliance and review)
+    - name: audit_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          any:
+            of:
+              - expr: has(request.principal.attr.roles.AROG_REVIEWER)
+              - expr: has(request.principal.attr.roles.GROUP_EO_OFFICER)
+              - expr: has(request.principal.attr.roles.AUDIT_SPECIALIST)
+              # Database-level audit permissions
+              - expr: |
+                  has(request.principal.attr.databasePermissions) &&
+                  "audit:access" in request.principal.attr.databasePermissions
