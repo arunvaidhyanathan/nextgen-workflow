@@ -93,7 +93,8 @@ public class Case {
     @OneToMany(mappedBy = "caseEntity", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<CaseTransition> transitions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "caseId", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "case_id")
     private List<Allegation> allegations = new ArrayList<>();
 
     // Additional case fields from frontend requirements
@@ -131,10 +132,12 @@ public class Case {
     private String investigatorId;
 
     // Entity relationships for case entities and narratives
-    @OneToMany(mappedBy = "caseId", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "case_id")
     private List<CaseEntity> entities = new ArrayList<>();
 
-    @OneToMany(mappedBy = "caseId", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "case_id")
     private List<CaseNarrative> narratives = new ArrayList<>();
 
     // Constructors

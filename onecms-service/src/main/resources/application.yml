@@ -59,11 +59,11 @@ spring:
       repositories:
         query-lookup-strategy: create-if-not-found
 
-  # Liquibase Configuration - Enabled to create database schema
+  # Liquibase Configuration - Temporarily disabled due to schema sync issues
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
     default-schema: ${DB_SCHEMA:onecms}
-    enabled: true
+    enabled: false
 
 # Service Clients Configuration
 service:

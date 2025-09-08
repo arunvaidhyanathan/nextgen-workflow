@@ -363,7 +363,41 @@ public class CaseService {
         response.setUpdatedAt(caseEntity.getUpdatedAt());
         response.setCreatedBy(caseEntity.getCreatedByUserId());
         response.setAssignedTo(caseEntity.getAssignedToUserId());
-        // response.setProcessInstanceId(caseEntity.getProcessInstanceId()); // Field not available in DTO
+        response.setProcessInstanceId(caseEntity.getProcessInstanceId());
+        
+        // Convert allegations to DTOs
+        if (caseEntity.getAllegations() != null && !caseEntity.getAllegations().isEmpty()) {
+            response.setAllegations(caseEntity.getAllegations().stream()
+                .map(this::convertAllegationToResponse)
+                .collect(Collectors.toList()));
+        }
+        
+        // Convert entities to DTOs  
+        if (caseEntity.getEntities() != null && !caseEntity.getEntities().isEmpty()) {
+            response.setEntities(caseEntity.getEntities().stream()
+                .map(this::convertEntityToResponse)
+                .collect(Collectors.toList()));
+        }
+        
+        // Convert narratives to DTOs
+        if (caseEntity.getNarratives() != null && !caseEntity.getNarratives().isEmpty()) {
+            response.setNarratives(caseEntity.getNarratives().stream()
+                .map(this::convertNarrativeToResponse)
+                .collect(Collectors.toList()));
+        }
+        
+        // Add workflow metadata if available
+        if (caseEntity.getProcessInstanceId() != null) {
+            try {
+                CaseWithAllegationsResponse.WorkflowMetadata workflowMetadata = 
+                    new CaseWithAllegationsResponse.WorkflowMetadata();
+                workflowMetadata.setProcessInstanceId(caseEntity.getProcessInstanceId());
+                workflowMetadata.setWorkflowStatus("ACTIVE");
+                response.setWorkflowMetadata(workflowMetadata);
+            } catch (Exception e) {
+                log.warn("Failed to build workflow metadata: {}", e.getMessage());
+            }
+        }
         
         return response;
     }

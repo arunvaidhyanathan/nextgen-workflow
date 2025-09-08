@@ -13,7 +13,8 @@ import java.util.Optional;
 public interface CaseRepository extends JpaRepository<Case, Long> {
     
     Optional<Case> findById(Long id);
-    Optional<Case> findByCaseNumber(String caseNumber);
+    @Query("SELECT c FROM Case c LEFT JOIN FETCH c.allegations LEFT JOIN FETCH c.entities LEFT JOIN FETCH c.narratives WHERE c.caseNumber = :caseNumber")
+    Optional<Case> findByCaseNumber(@Param("caseNumber") String caseNumber);
     List<Case> findByAssignedToUserId(String userId);
     List<Case> findByStatus(String status);
     
