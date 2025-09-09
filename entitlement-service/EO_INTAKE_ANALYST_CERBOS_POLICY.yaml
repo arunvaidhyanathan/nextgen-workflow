@@ -1,0 +1,288 @@
+# EO_INTAKE_ANALYST_CERBOS_POLICY.yaml
+# Clean Cerbos Policy for EO Intake Analyst Role
+# Version: 1.0.0
+# Created: 2025-09-09
+# Description: Focused policy for EO_INTAKE_ANALYST covering first workflow step permissions
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "case"
+  version: "1.0"
+  importDerivedRoles:
+    - eo_intake_derived_roles
+  rules:
+    # ========================================
+    # EO INTAKE ANALYST - CREATE CASE PERMISSIONS
+    # ========================================
+    - actions: ["CREATE_CASE"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              # Allow creation in intake phase
+              - expr: |
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase == "INTAKE"
+
+    # ========================================
+    # EO INTAKE ANALYST - BUILD CASE PERMISSIONS
+    # ========================================
+    - actions: ["CREATE_ENTITIES", "CREATE_ALLEGATIONS", "CREATE_NARRATIVES", "UPLOAD_DOCUMENTS"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      derivedRoles:
+        - intake_phase_worker
+        - case_creator
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              # Allow during intake and build phases
+              - expr: |
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase in ["INTAKE", "BUILD_CASE"]
+
+    # ========================================
+    # EO INTAKE ANALYST - EDIT PERMISSIONS
+    # ========================================
+    - actions: ["EDIT_ENTITIES", "EDIT_ALLEGATIONS", "EDIT_NARRATIVE", "READ_CASE", "UPDATE_CASE"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      derivedRoles:
+        - intake_phase_worker
+        - case_owner
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              # Can edit cases they created or are assigned to during build phase
+              - expr: |
+                  request.resource.attr.createdBy == request.principal.id ||
+                  request.resource.attr.assignedTo == request.principal.id ||
+                  request.resource.attr.workflowPhase in ["INTAKE", "BUILD_CASE"]
+
+    # ========================================
+    # EO INTAKE ANALYST - DELETE PERMISSIONS (LIMITED)
+    # ========================================
+    - actions: ["DELETE_ALLEGATIONS", "DELETE_NARRATIVES"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      derivedRoles:
+        - case_owner
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              # Only delete from cases they created and only during build phase
+              - expr: request.resource.attr.createdBy == request.principal.id
+              - expr: request.resource.attr.workflowPhase == "BUILD_CASE"
+
+    # NOTE: DELETE_ENTITIES is explicitly NOT allowed per entitlement matrix
+
+    # ========================================
+    # EO INTAKE ANALYST - REJECT CASE PERMISSION
+    # ========================================
+    - actions: ["REJECT_CASE"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      derivedRoles:
+        - intake_phase_worker
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              # Can reject cases during intake phase
+              - expr: request.resource.attr.workflowPhase == "INTAKE"
+              - expr: |
+                  request.resource.attr.createdBy == request.principal.id ||
+                  request.resource.attr.assignedTo == request.principal.id
+
+    # NOTE: APPROVE_REJECTION is explicitly NOT allowed per entitlement matrix
+
+    # ========================================
+    # EXPLICIT DENIALS (Security boundaries)
+    # ========================================
+    - actions: ["DELETE_ENTITIES", "APPROVE_REJECTION", "ASSIGN_TO_IU", "SEND_BACK", "APPROVE_CLOSURE", "CLOSE_CASE"]
+      effect: EFFECT_DENY
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      condition:
+        match:
+          expr: true # Always deny these actions for EO Intake Analysts
+
+    # ========================================
+    # EO INTAKE ANALYST - COPY AND UTILITY PERMISSIONS
+    # ========================================
+    - actions: ["COPY_ALLEGATIONS", "COPY_NARRATIVES", "ADD_COMMENTS", "ACCESS_CASE"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      derivedRoles:
+        - intake_phase_worker
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              # Access to cases in their department during appropriate phases
+              - expr: |
+                  request.resource.attr.department == "EO" &&
+                  request.resource.attr.workflowPhase in ["INTAKE", "BUILD_CASE"]          
+
+---
+# Derived Roles for EO Intake Analyst
+apiVersion: "api.cerbos.dev/v1"
+derivedRoles:
+  name: eo_intake_derived_roles
+  definitions:
+    # =========================================================================
+    # EO INTAKE ANALYST DERIVED ROLES
+    # =========================================================================
+    
+    # User working in intake phase with appropriate queue access
+    - name: intake_phase_worker
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.department == "EO"
+              - expr: '"eo-intake-analyst-queue" in request.principal.attr.queues'
+              - expr: |
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase in ["INTAKE", "BUILD_CASE"]
+
+    # User who created the case resource
+    - name: case_creator
+      parentRoles: ["user"]
+      condition:
+        match:
+          expr: request.resource.attr.createdBy == request.principal.id
+
+    # User who owns/is assigned to the case
+    - name: case_owner
+      parentRoles: ["user"]
+      condition:
+        match:
+          any:
+            of:
+              - expr: request.resource.attr.createdBy == request.principal.id
+              - expr: request.resource.attr.assignedTo == request.principal.id
+              - expr: request.resource.attr.currentTaskAssignee == request.principal.id
+
+    # User authorized for specific workflow phases
+    - name: intake_phase_authorized
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.department == "EO"
+              - expr: |
+                  has(request.principal.attr.roles.EO_INTAKE_ANALYST) ||
+                  has(request.principal.attr.roles.GROUP_EO_INTAKE_ANALYST)
+              - expr: |
+                  !has(request.resource.attr.workflowPhase) ||
+                  request.resource.attr.workflowPhase in ["INTAKE", "BUILD_CASE"]
+
+    # User with queue-based access
+    - name: queue_authorized_eo_intake
+      parentRoles: ["user"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: '"eo-intake-analyst-queue" in request.principal.attr.queues'
+              - expr: request.principal.attr.department == "EO"
+
+---
+# Workflow Resource Policy for EO Intake Tasks
+apiVersion: "api.cerbos.dev/v1"
+resourcePolicy:
+  resource: "workflow_task"
+  version: "1.0"
+  rules:
+    # ========================================
+    # EO INTAKE ANALYST - WORKFLOW TASK PERMISSIONS
+    # ========================================
+    - actions: ["CLAIM_TASK", "COMPLETE_TASK", "VIEW_TASK"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              # Can claim/complete tasks in their queue
+              - expr: '"eo-intake-analyst-queue" in request.principal.attr.queues'
+              # Specific BPMN task authorization
+              - expr: |
+                  request.resource.attr.taskDefinitionKey in ["task_create_case", "task_fill_information"]
+
+    - actions: ["VIEW_QUEUE"]
+      effect: EFFECT_ALLOW
+      roles:
+        - "EO_INTAKE_ANALYST"
+        - "GROUP_EO_INTAKE_ANALYST"
+      condition:
+        match:
+          all:
+            of:
+              - expr: request.principal.attr.isActive == true
+              - expr: request.principal.attr.department == "EO"
+              - expr: request.resource.attr.queueName == "eo-intake-analyst-queue"
+
+---
+# Principal Policy for User Context
+apiVersion: "api.cerbos.dev/v1"
+principalPolicy:
+  principal: "user"
+  version: "1.0"
+  rules:
+    # ========================================
+    # EO INTAKE ANALYST CONTEXT BUILDING
+    # ========================================
+    - resource: "*"
+      actions:
+        - effect: EFFECT_ALLOW
+          action: "*"
+          condition:
+            match:
+              all:
+                of:
+                  - expr: request.principal.attr.isActive == true
+                  # Must have EO department assignment
+                  - expr: '"EO" in request.principal.attr.departments'
+                  # Must have EO_INTAKE_ANALYST role
+                  - expr: |
+                      has(request.principal.attr.roles.EO_INTAKE_ANALYST) ||
+                      has(request.principal.attr.roles.GROUP_EO_INTAKE_ANALYST)
+                  # Must have appropriate queue access
+                  - expr: '"eo-intake-analyst-queue" in request.principal.attr.queues'

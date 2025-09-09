@@ -103,6 +103,20 @@ spring:
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
                 methods: GET,POST,PUT,DELETE
 
+        # Route for EMS endpoints via Entitlement Service  
+        - id: ems-service-route
+          uri: lb://entitlement-service
+          predicates:
+            - Path=/api/ems/**
+          filters:
+            - name: HeaderUserExtractionFilter
+            - RewritePath=/api/ems/(?<segment>.*), /api/ems/$\{segment}
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET,POST,PUT,DELETE
+
         # Route for OneCMS Service
         - id: onecms-service-route
           uri: lb://onecms-service

@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="002-clean-entitlement-data" author="claude" context="clean">
+        <comment>Clean data seeding for entitlement service with test users, departments, and roles</comment>
+
+        <!-- Insert Departments -->
+        <insert tableName="departments" schemaName="entitlements">
+            <column name="department_id" valueNumeric="1"/>
+            <column name="department_name" value="Investigation Unit"/>
+            <column name="department_code" value="IU"/>
+            <column name="description" value="Investigation and case management department"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="departments" schemaName="entitlements">
+            <column name="department_id" valueNumeric="2"/>
+            <column name="department_name" value="Legal Department"/>
+            <column name="department_code" value="LEGAL"/>
+            <column name="description" value="Legal counsel and compliance"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="departments" schemaName="entitlements">
+            <column name="department_id" valueNumeric="3"/>
+            <column name="department_name" value="Human Resources"/>
+            <column name="department_code" value="HR"/>
+            <column name="description" value="Human resources and employee relations"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="departments" schemaName="entitlements">
+            <column name="department_id" valueNumeric="4"/>
+            <column name="department_name" value="Security Department"/>
+            <column name="department_code" value="SECURITY"/>
+            <column name="description" value="Physical and information security"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="departments" schemaName="entitlements">
+            <column name="department_id" valueNumeric="5"/>
+            <column name="department_name" value="Ethics Office"/>
+            <column name="department_code" value="EO"/>
+            <column name="description" value="Ethics oversight and compliance"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="departments" schemaName="entitlements">
+            <column name="department_id" valueNumeric="6"/>
+            <column name="department_name" value="Corporate Security Information Security"/>
+            <column name="department_code" value="CSIS"/>
+            <column name="description" value="Corporate security and information security"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="departments" schemaName="entitlements">
+            <column name="department_id" valueNumeric="7"/>
+            <column name="department_name" value="Information Technology"/>
+            <column name="department_code" value="IT"/>
+            <column name="description" value="Information technology and systems"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Insert Test Users -->
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440001"/>
+            <column name="username" value="alice.intake"/>
+            <column name="email" value="alice.intake@company.com"/>
+            <column name="first_name" value="Alice"/>
+            <column name="last_name" value="Johnson"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"clearance": "standard", "hire_date": "2023-01-15", "department": "IU"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440002"/>
+            <column name="username" value="bob.investigator"/>
+            <column name="email" value="bob.investigator@company.com"/>
+            <column name="first_name" value="Bob"/>
+            <column name="last_name" value="Wilson"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"clearance": "high", "department": "IU", "specialization": "fraud"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440003"/>
+            <column name="username" value="carol.legal"/>
+            <column name="email" value="carol.legal@company.com"/>
+            <column name="first_name" value="Carol"/>
+            <column name="last_name" value="Davis"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"clearance": "high", "department": "LEGAL", "bar_admission": "NY"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440004"/>
+            <column name="username" value="david.hr"/>
+            <column name="email" value="david.hr@company.com"/>
+            <column name="first_name" value="David"/>
+            <column name="last_name" value="Brown"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"clearance": "standard", "department": "HR", "certifications": ["PHR", "SHRM-CP"]}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440005"/>
+            <column name="username" value="eve.manager"/>
+            <column name="email" value="eve.manager@company.com"/>
+            <column name="first_name" value="Eve"/>
+            <column name="last_name" value="Taylor"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"clearance": "top_secret", "department": "IU", "management_level": "senior"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440006"/>
+            <column name="username" value="frank.security"/>
+            <column name="email" value="frank.security@company.com"/>
+            <column name="first_name" value="Frank"/>
+            <column name="last_name" value="Anderson"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"clearance": "secret", "department": "SECURITY", "specialization": "cyber"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440007"/>
+            <column name="username" value="grace.ethics"/>
+            <column name="email" value="grace.ethics@company.com"/>
+            <column name="first_name" value="Grace"/>
+            <column name="last_name" value="Williams"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"role": "officer", "clearance": "high", "department": "EO"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440008"/>
+            <column name="username" value="henry.admin"/>
+            <column name="email" value="henry.admin@company.com"/>
+            <column name="first_name" value="Henry"/>
+            <column name="last_name" value="Martinez"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"admin": true, "clearance": "admin", "department": "IT"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440009"/>
+            <column name="username" value="iris.csis"/>
+            <column name="email" value="iris.csis@company.com"/>
+            <column name="first_name" value="Iris"/>
+            <column name="last_name" value="Garcia"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"role": "manager", "clearance": "secret", "department": "CSIS"}'/>
+        </insert>
+
+        <insert tableName="users" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440010"/>
+            <column name="username" value="jack.analyst"/>
+            <column name="email" value="jack.analyst@company.com"/>
+            <column name="first_name" value="Jack"/>
+            <column name="last_name" value="Rodriguez"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="global_attributes" value='{"role": "analyst", "clearance": "standard", "department": "CSIS"}'/>
+        </insert>
+
+        <!-- Insert User-Department Associations -->
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440001"/>
+            <column name="department_id" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440002"/>
+            <column name="department_id" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440003"/>
+            <column name="department_id" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440004"/>
+            <column name="department_id" valueNumeric="3"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440005"/>
+            <column name="department_id" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440006"/>
+            <column name="department_id" valueNumeric="4"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440007"/>
+            <column name="department_id" valueNumeric="5"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440008"/>
+            <column name="department_id" valueNumeric="7"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440009"/>
+            <column name="department_id" valueNumeric="6"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_departments" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440010"/>
+            <column name="department_id" valueNumeric="6"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Insert Business Applications -->
+        <insert tableName="business_applications" schemaName="entitlements">
+            <column name="id" valueNumeric="1"/>
+            <column name="business_app_name" value="onecms"/>
+            <column name="description" value="OneCMS Case Management System"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"version": "2.0", "environment": "development"}'/>
+        </insert>
+
+        <insert tableName="business_applications" schemaName="entitlements">
+            <column name="id" valueNumeric="2"/>
+            <column name="business_app_name" value="workflow-engine"/>
+            <column name="description" value="NextGen Workflow Engine"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"version": "1.0", "bpmn_support": true}'/>
+        </insert>
+
+        <insert tableName="business_applications" schemaName="entitlements">
+            <column name="id" valueNumeric="3"/>
+            <column name="business_app_name" value="entitlement-service"/>
+            <column name="description" value="Entitlement and Authorization Service"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"engines": ["database", "cerbos"], "version": "1.0"}'/>
+        </insert>
+
+        <!-- Insert Business App Roles -->
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="1"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="INTAKE_ANALYST"/>
+            <column name="role_display_name" value="Intake Analyst"/>
+            <column name="description" value="Reviews and triages incoming cases"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "intake-analyst-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="2"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="INVESTIGATOR"/>
+            <column name="role_display_name" value="Investigator"/>
+            <column name="description" value="Conducts investigations on assigned cases"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "investigation-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="3"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="INVESTIGATION_MANAGER"/>
+            <column name="role_display_name" value="Investigation Manager"/>
+            <column name="description" value="Manages investigation processes"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "investigation-manager-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="4"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="HR_ANALYST"/>
+            <column name="role_display_name" value="HR Analyst"/>
+            <column name="description" value="Handles HR-related cases"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "hr-discipline-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="5"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="LEGAL_COUNSEL"/>
+            <column name="role_display_name" value="Legal Counsel"/>
+            <column name="description" value="Provides legal guidance on cases"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "hr-legal-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="6"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="EO_OFFICER"/>
+            <column name="role_display_name" value="Ethics Officer"/>
+            <column name="description" value="Ethics Office case officer"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "eo-officer-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="7"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="EO_HEAD"/>
+            <column name="role_display_name" value="Ethics Office Head"/>
+            <column name="description" value="Head of Ethics Office"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "eo-head-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="8"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="CSIS_MANAGER"/>
+            <column name="role_display_name" value="CSIS Manager"/>
+            <column name="description" value="CSIS Department Manager"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "csis-intake-manager-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="9"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="CSIS_ANALYST"/>
+            <column name="role_display_name" value="CSIS Analyst"/>
+            <column name="description" value="CSIS Security Analyst"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"queue": "csis-intake-analyst-queue"}'/>
+        </insert>
+
+        <insert tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" valueNumeric="10"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="role_name" value="ADMIN"/>
+            <column name="role_display_name" value="System Administrator"/>
+            <column name="description" value="Full system administration access"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="metadata" value='{"admin": true}'/>
+        </insert>
+
+        <!-- Insert User Business App Role Assignments -->
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440001"/>
+            <column name="business_app_role_id" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440002"/>
+            <column name="business_app_role_id" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440003"/>
+            <column name="business_app_role_id" valueNumeric="5"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440004"/>
+            <column name="business_app_role_id" valueNumeric="4"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440005"/>
+            <column name="business_app_role_id" valueNumeric="3"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440006"/>
+            <column name="business_app_role_id" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440007"/>
+            <column name="business_app_role_id" valueNumeric="6"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440008"/>
+            <column name="business_app_role_id" valueNumeric="10"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440009"/>
+            <column name="business_app_role_id" valueNumeric="8"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440010"/>
+            <column name="business_app_role_id" valueNumeric="9"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Insert Sample Database RBAC Domain and Roles (for testing Database authorization engine) -->
+        <insert tableName="entitlement_application_domains" schemaName="entitlements">
+            <column name="domain_id" value="11111111-1111-1111-1111-111111111001"/>
+            <column name="business_app_id" valueNumeric="1"/>
+            <column name="domain_name" value="OneCMS Authorization Domain"/>
+            <column name="description" value="Authorization domain for OneCMS application"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_domain_roles" schemaName="entitlements">
+            <column name="role_id" value="22222222-2222-2222-2222-222222222001"/>
+            <column name="domain_id" value="11111111-1111-1111-1111-111111111001"/>
+            <column name="role_name" value="ENTERPRISE_ADMIN"/>
+            <column name="display_name" value="Enterprise Administrator"/>
+            <column name="description" value="Full administrative access to all resources"/>
+            <column name="role_level" value="ENTERPRISE"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_domain_roles" schemaName="entitlements">
+            <column name="role_id" value="22222222-2222-2222-2222-222222222002"/>
+            <column name="domain_id" value="11111111-1111-1111-1111-111111111001"/>
+            <column name="role_name" value="CASE_MANAGER"/>
+            <column name="display_name" value="Case Manager"/>
+            <column name="description" value="Can manage cases and assign investigators"/>
+            <column name="role_level" value="MANAGER"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Assign henry.admin the ENTERPRISE_ADMIN role for Database engine testing -->
+        <insert tableName="entitlement_user_domain_roles" schemaName="entitlements">
+            <column name="user_role_id" value="33333333-3333-3333-3333-333333333001"/>
+            <column name="user_id" value="550e8400-e29b-41d4-a716-446655440008"/>
+            <column name="role_id" value="22222222-2222-2222-2222-222222222001"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Insert Sample Permissions for Database RBAC -->
+        <insert tableName="entitlement_permissions" schemaName="entitlements">
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444001"/>
+            <column name="resource_type" value="case"/>
+            <column name="action" value="create"/>
+            <column name="description" value="Create new cases"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_permissions" schemaName="entitlements">
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444002"/>
+            <column name="resource_type" value="case"/>
+            <column name="action" value="read"/>
+            <column name="description" value="Read case details"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_permissions" schemaName="entitlements">
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444003"/>
+            <column name="resource_type" value="case"/>
+            <column name="action" value="update"/>
+            <column name="description" value="Update case information"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_permissions" schemaName="entitlements">
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444004"/>
+            <column name="resource_type" value="case"/>
+            <column name="action" value="delete"/>
+            <column name="description" value="Delete cases"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Assign permissions to ENTERPRISE_ADMIN role -->
+        <insert tableName="entitlement_role_permissions" schemaName="entitlements">
+            <column name="role_permission_id" value="55555555-5555-5555-5555-555555555001"/>
+            <column name="role_id" value="22222222-2222-2222-2222-222222222001"/>
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444001"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_role_permissions" schemaName="entitlements">
+            <column name="role_permission_id" value="55555555-5555-5555-5555-555555555002"/>
+            <column name="role_id" value="22222222-2222-2222-2222-222222222001"/>
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444002"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_role_permissions" schemaName="entitlements">
+            <column name="role_permission_id" value="55555555-5555-5555-5555-555555555003"/>
+            <column name="role_id" value="22222222-2222-2222-2222-222222222001"/>
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444003"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="entitlement_role_permissions" schemaName="entitlements">
+            <column name="role_permission_id" value="55555555-5555-5555-5555-555555555004"/>
+            <column name="role_id" value="22222222-2222-2222-2222-222222222001"/>
+            <column name="permission_id" value="44444444-4444-4444-4444-444444444004"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+    </changeSet>
+
+</databaseChangeLog>

@@ -41,6 +41,108 @@ tags:
     description: User department assignment management
   - name: System Testing
     description: System testing and validation endpoints
+  - name: EMS
+    description: Enterprise Management System API for frontend integration
+
+paths:
+  # EMS endpoints for frontend integration
+  /api/ems/v1/whoami:
+    get:
+      tags:
+        - EMS
+      summary: Get current user context
+      description: |
+        Retrieve comprehensive user information including roles, departments, 
+        and permissions for frontend application use.
+        
+        **Authentication**: Requires either X-Session-Id or X-User-Id header
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User context retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhoAmIResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          
+  /api/ems/v1/caniuse:
+    post:
+      tags:
+        - EMS
+      summary: Check user authorization
+      description: |
+        Check if the current user can perform specific actions on resources.
+        Returns detailed authorization decisions for frontend use.
+        
+        **Authentication**: Requires either X-Session-Id or X-User-Id header
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EMSAuthRequest'
+            examples:
+              specific_action:
+                summary: Check specific action on resource
+                value:
+                  resourceId: "CMS-10-20045"
+                  actionId: "CREATE_CASE"
+                  resourceType: "case"
+                  context:
+                    department: "HR"
+                    priority: "HIGH"
+              resource_check:
+                summary: Check common actions for resource type
+                value:
+                  resourceType: "case"
+                  context:
+                    department: "IU"
+              minimal_check:
+                summary: Minimal authorization check
+                value:
+                  actionId: "READ_CASE"
+      responses:
+        '200':
+          description: Authorization check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EMSAuthResponse'
+        '400':
+          description: Bad request - invalid request format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 paths:
   # Authentication endpoints
@@ -2169,6 +2271,15 @@ components:
         type: string
       description: Session ID for authentication
 
+    UserId:
+      name: X-User-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Direct user ID for API Gateway integration
+
   schemas:
     UserInfo:
       type: object
@@ -2438,3 +2549,221 @@ components:
           type: string
           format: date-time
           example: "2025-01-01T00:00:00Z"
+
+    # EMS endpoint schemas
+    EMSAuthRequest:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          description: Resource identifier
+          example: "CMS-10-20045"
+        actionId:
+          type: string
+          description: Action identifier
+          example: "CREATE_CASE"
+        resourceType:
+          type: string
+          description: Resource type
+          example: "case"
+        context:
+          type: object
+          additionalProperties: true
+          description: Additional context information
+          example:
+            department: "HR"
+            priority: "HIGH"
+
+    EMSAuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request was processed successfully
+          example: true
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              actionId:
+                type: string
+                description: Action identifier
+                example: "CREATE_CASE"
+              displayName:
+                type: string
+                description: Human-readable action name
+                example: "Create Case"
+              allowed:
+                type: boolean
+                description: Whether the action is allowed
+                example: true
+              reason:
+                type: string
+                description: Reason for the authorization decision
+                example: "User has INTAKE_ANALYST role"
+        resourceAccess:
+          type: object
+          properties:
+            canRead:
+              type: boolean
+              description: Can read the resource
+              example: true
+            canWrite:
+              type: boolean
+              description: Can write/update the resource
+              example: true
+            canDelete:
+              type: boolean
+              description: Can delete the resource
+              example: false
+            canApprove:
+              type: boolean
+              description: Can approve actions on the resource
+              example: false
+        derivedRoles:
+          type: array
+          items:
+            type: string
+          description: List of derived roles applied during evaluation
+          example: ["user", "case_creator"]
+        evaluationTime:
+          type: integer
+          format: int64
+          description: Policy evaluation time in milliseconds
+          example: 45
+
+    WhoAmIResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request was processed successfully
+          example: true
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: User UUID
+              example: "550e8400-e29b-41d4-a716-446655440001"
+            username:
+              type: string
+              description: Username
+              example: "alice.intake"
+            email:
+              type: string
+              description: Email address
+              example: "alice.intake@company.com"
+            firstName:
+              type: string
+              description: First name
+              example: "Alice"
+            lastName:
+              type: string
+              description: Last name
+              example: "Johnson"
+            displayName:
+              type: string
+              description: Full display name
+              example: "Alice Johnson"
+            isActive:
+              type: boolean
+              description: Whether the user account is active
+              example: true
+            attributes:
+              type: object
+              additionalProperties: true
+              description: User's global attributes
+              example:
+                department: "IU"
+                clearance: "standard"
+        roles:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int64
+                description: Role ID
+                example: 1
+              roleName:
+                type: string
+                description: Role name
+                example: "INTAKE_ANALYST"
+              displayName:
+                type: string
+                description: Role display name
+                example: "Intake Analyst"
+              businessApplication:
+                type: string
+                description: Business application name
+                example: "onecms"
+              isActive:
+                type: boolean
+                description: Whether the role assignment is active
+                example: true
+              metadata:
+                type: object
+                additionalProperties: true
+                description: Role metadata including queue information
+                example:
+                  queue: "intake-analyst-queue"
+        departments:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int64
+                description: Department ID
+                example: 1
+              name:
+                type: string
+                description: Department name
+                example: "Investigation Unit"
+              code:
+                type: string
+                description: Department code
+                example: "IU"
+              isActive:
+                type: boolean
+                description: Whether the department assignment is active
+                example: true
+        permissions:
+          type: array
+          items:
+            type: object
+            properties:
+              resource:
+                type: string
+                description: Resource type
+                example: "case"
+              actions:
+                type: array
+                items:
+                  type: string
+                description: Available actions on the resource
+                example: ["create", "read", "update", "route"]
+        context:
+          type: object
+          properties:
+            sessionExpiration:
+              type: string
+              format: date-time
+              description: Session expiration timestamp
+              example: "2025-01-09T12:00:00Z"
+            lastAccessed:
+              type: string
+              format: date-time
+              description: Last access timestamp
+              example: "2025-01-09T10:30:00Z"
+            queues:
+              type: array
+              items:
+                type: string
+              description: Available queues for the user
+              example: ["intake-analyst-queue", "eo-officer-queue"]

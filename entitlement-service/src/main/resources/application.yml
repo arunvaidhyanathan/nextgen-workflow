@@ -47,10 +47,11 @@ spring:
 
   # Liquibase Configuration
   liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.xml
+    change-log: classpath:db/changelog/db.changelog-master-clean.xml
     liquibase-schema: public
     default-schema: entitlements
-    enabled: false
+    contexts: clean
+    enabled: true
 
 # Eureka Client Configuration
 eureka:

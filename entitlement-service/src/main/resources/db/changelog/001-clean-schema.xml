@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-clean-entitlement-schema" author="claude" context="clean">
+        <comment>Clean entitlement service database schema with all required tables</comment>
+
+        <!-- Core Users Table -->
+        <createTable tableName="users" schemaName="entitlements">
+            <column name="user_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="first_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="global_attributes" type="JSONB"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Departments Table -->
+        <createTable tableName="departments" schemaName="entitlements">
+            <column name="department_id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="department_name" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="department_code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- User-Department Junction Table -->
+        <createTable tableName="user_departments" schemaName="entitlements">
+            <column name="user_department_id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="department_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Business Applications Table -->
+        <createTable tableName="business_applications" schemaName="entitlements">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="business_app_name" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metadata" type="JSONB"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Business App Roles Table -->
+        <createTable tableName="business_app_roles" schemaName="entitlements">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="business_app_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_display_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metadata" type="JSONB"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- User Business App Roles Junction Table -->
+        <createTable tableName="user_business_app_roles" schemaName="entitlements">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="business_app_role_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_by" type="UUID"/>
+        </createTable>
+
+        <!-- Entitlement Application Domains (for Database RBAC) -->
+        <createTable tableName="entitlement_application_domains" schemaName="entitlements">
+            <column name="domain_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="business_app_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="domain_name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Entitlement Domain Roles (for Database RBAC) -->
+        <createTable tableName="entitlement_domain_roles" schemaName="entitlements">
+            <column name="role_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="domain_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_name" type="VARCHAR(255)"/>
+            <column name="description" type="TEXT"/>
+            <column name="role_level" type="VARCHAR(50)"/>
+            <column name="maker_checker_type" type="VARCHAR(50)"/>
+            <column name="role_metadata" type="JSONB"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- User Domain Roles Junction Table (for Database RBAC) -->
+        <createTable tableName="entitlement_user_domain_roles" schemaName="entitlements">
+            <column name="user_role_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_by" type="UUID"/>
+            <column name="assignment_metadata" type="JSONB"/>
+        </createTable>
+
+        <!-- Entitlement Permissions (for Database RBAC) -->
+        <createTable tableName="entitlement_permissions" schemaName="entitlements">
+            <column name="permission_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="resource_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Role Permissions Junction Table (for Database RBAC) -->
+        <createTable tableName="entitlement_role_permissions" schemaName="entitlements">
+            <column name="role_permission_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="role_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="permission_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Resource Permissions (for fine-grained access control) -->
+        <createTable tableName="resource_permissions" schemaName="entitlements">
+            <column name="resource_permission_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resource_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resource_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="allowed_actions" type="TEXT[]">
+                <constraints nullable="false"/>
+            </column>
+            <column name="granted_at" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="granted_by" type="UUID"/>
+        </createTable>
+
+        <!-- Audit Logs -->
+        <createTable tableName="entitlement_audit_logs" schemaName="entitlements">
+            <column name="audit_log_id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="UUID"/>
+            <column name="event_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resource_type" type="VARCHAR(255)"/>
+            <column name="resource_id" type="VARCHAR(255)"/>
+            <column name="action" type="VARCHAR(255)"/>
+            <column name="decision" type="VARCHAR(50)"/>
+            <column name="reason" type="TEXT"/>
+            <column name="authorization_engine" type="VARCHAR(50)"/>
+            <column name="event_metadata" type="JSONB"/>
+            <column name="timestamp" type="TIMESTAMP WITH TIME ZONE" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Foreign Key Constraints -->
+        <addForeignKeyConstraint 
+            baseTableName="user_departments" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="user_id" 
+            constraintName="fk_user_departments_user" 
+            referencedTableName="users"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="user_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="user_departments" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="department_id" 
+            constraintName="fk_user_departments_department" 
+            referencedTableName="departments"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="department_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="business_app_roles" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="business_app_id" 
+            constraintName="fk_business_app_roles_app" 
+            referencedTableName="business_applications"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="user_business_app_roles" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="user_id" 
+            constraintName="fk_user_business_app_roles_user" 
+            referencedTableName="users"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="user_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="user_business_app_roles" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="business_app_role_id" 
+            constraintName="fk_user_business_app_roles_role" 
+            referencedTableName="business_app_roles"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="entitlement_application_domains" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="business_app_id" 
+            constraintName="fk_entitlement_domains_app" 
+            referencedTableName="business_applications"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="entitlement_domain_roles" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="domain_id" 
+            constraintName="fk_entitlement_domain_roles_domain" 
+            referencedTableName="entitlement_application_domains"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="domain_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="entitlement_user_domain_roles" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="user_id" 
+            constraintName="fk_entitlement_user_domain_roles_user" 
+            referencedTableName="users"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="user_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="entitlement_user_domain_roles" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="role_id" 
+            constraintName="fk_entitlement_user_domain_roles_role" 
+            referencedTableName="entitlement_domain_roles"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="role_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="entitlement_role_permissions" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="role_id" 
+            constraintName="fk_entitlement_role_permissions_role" 
+            referencedTableName="entitlement_domain_roles"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="role_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="entitlement_role_permissions" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="permission_id" 
+            constraintName="fk_entitlement_role_permissions_permission" 
+            referencedTableName="entitlement_permissions"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="permission_id"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="resource_permissions" 
+            baseTableSchemaName="entitlements"
+            baseColumnNames="user_id" 
+            constraintName="fk_resource_permissions_user" 
+            referencedTableName="users"
+            referencedTableSchemaName="entitlements" 
+            referencedColumnNames="user_id"/>
+
+        <!-- Unique Constraints -->
+        <addUniqueConstraint 
+            tableName="business_app_roles" 
+            schemaName="entitlements"
+            columnNames="business_app_id, role_name" 
+            constraintName="uk_business_app_roles_app_name"/>
+
+        <addUniqueConstraint 
+            tableName="user_business_app_roles" 
+            schemaName="entitlements"
+            columnNames="user_id, business_app_role_id" 
+            constraintName="uk_user_business_app_roles"/>
+
+        <addUniqueConstraint 
+            tableName="entitlement_user_domain_roles" 
+            schemaName="entitlements"
+            columnNames="user_id, role_id" 
+            constraintName="uk_entitlement_user_domain_roles"/>
+
+        <addUniqueConstraint 
+            tableName="entitlement_permissions" 
+            schemaName="entitlements"
+            columnNames="resource_type, action" 
+            constraintName="uk_entitlement_permissions"/>
+
+        <!-- Indexes for Performance -->
+        <createIndex tableName="users" schemaName="entitlements" indexName="idx_users_active">
+            <column name="is_active"/>
+        </createIndex>
+
+        <createIndex tableName="users" schemaName="entitlements" indexName="idx_users_username">
+            <column name="username"/>
+        </createIndex>
+
+        <createIndex tableName="users" schemaName="entitlements" indexName="idx_users_email">
+            <column name="email"/>
+        </createIndex>
+
+        <createIndex tableName="user_departments" schemaName="entitlements" indexName="idx_user_departments_user">
+            <column name="user_id"/>
+        </createIndex>
+
+        <createIndex tableName="user_business_app_roles" schemaName="entitlements" indexName="idx_user_business_app_roles_user">
+            <column name="user_id"/>
+        </createIndex>
+
+        <createIndex tableName="user_business_app_roles" schemaName="entitlements" indexName="idx_user_business_app_roles_active">
+            <column name="is_active"/>
+        </createIndex>
+
+        <createIndex tableName="entitlement_audit_logs" schemaName="entitlements" indexName="idx_audit_logs_user">
+            <column name="user_id"/>
+        </createIndex>
+
+        <createIndex tableName="entitlement_audit_logs" schemaName="entitlements" indexName="idx_audit_logs_timestamp">
+            <column name="timestamp"/>
+        </createIndex>
+
+    </changeSet>
+
+</databaseChangeLog>
