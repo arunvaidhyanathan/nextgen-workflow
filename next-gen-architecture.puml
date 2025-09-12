@@ -1,0 +1,63 @@
+@startuml NextGenWorkflowContainerDiagram
+
+title NextGen Workflow - Container Diagram
+
+!define PERSON_COLOR #08427B
+!define SYSTEM_COLOR #1168BD
+!define CONTAINER_COLOR #438DD5
+!define DATABASE_COLOR #85BBF0
+!define EXTERNAL_COLOR #999999
+
+skinparam rectangle {
+    BackgroundColor CONTAINER_COLOR
+    BorderColor #073B6F
+    FontColor white
+}
+
+skinparam database {
+    BackgroundColor DATABASE_COLOR
+    BorderColor #073B6F
+    FontColor white
+}
+
+actor "Case Manager" as user PERSON_COLOR
+actor "Investigator" as investigator PERSON_COLOR
+actor "Administrator" as admin PERSON_COLOR
+
+rectangle "React UI\n--\nReact, TypeScript\n--\nModern responsive\nuser interface" as reactui
+
+rectangle "NextGen Workflow Platform" as nextgen {
+    rectangle "Web Application\n--\nSpring Boot\n--\nServes React UI and\nhandles web requests" as webapp
+    rectangle "API Gateway\n--\nSpring Cloud Gateway\n--\nRoutes requests, handles\nsession validation" as gateway
+    
+    rectangle "Entitlement Service\n--\nSpring Boot, Cerbos\n--\nHandles authentication,\nauthorization, user management" as entitlement
+    rectangle "Workflow Engine\n--\nFlowable BPMN 2.0\n--\nOrchestrates business processes\nand task management" as workflow
+    rectangle "OneCMS Service\n--\nSpring Boot\n--\nCore case management logic\nand smart routing" as onecms
+    
+    database "Database\n--\nPostgreSQL 16\n--\nStores all application data\nin separate schemas" as postgres
+}
+
+rectangle "Cerbos Policy Engine\n--\nPolicy-based authorization\ndecisions" as cerbos EXTERNAL_COLOR
+
+' User interactions
+user --> reactui : Uses Interface
+investigator --> reactui : Uses Interface
+admin --> reactui : Uses Interface
+
+' Frontend to backend
+reactui --> webapp : Loads UI (HTTPS)
+reactui --> gateway : API Calls (HTTPS)
+
+' Main application flow
+webapp --> gateway : Internal Requests
+gateway --> onecms : Route Requests
+gateway --> entitlement : Authentication
+gateway --> workflow : Process Management
+
+' Core service interactions
+onecms --> postgres : Data Operations
+workflow --> postgres : Process Data
+entitlement --> postgres : User Data
+entitlement --> cerbos : Policy Checks
+
+@enduml
