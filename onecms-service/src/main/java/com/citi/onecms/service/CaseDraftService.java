@@ -184,7 +184,7 @@ public class CaseDraftService {
         }
         
         // Default to the case workflow for case drafts
-        return "oneCmsCaseWorkflow";
+        return "eoCaseWorkflow";
     }
     
     private String generateBusinessKey(CreateCaseDraftRequest request, String caseNumber) {

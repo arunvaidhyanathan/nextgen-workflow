@@ -424,11 +424,11 @@ public class CaseService {
                                  (hasSecurityAllegations ? 1 : 0);
             
             if (departmentCount > 1) {
-                return "OneCMS_MultiDepartment_Workflow";
+                return "eoCaseWorkflow";
             }
         }
         
-        return "OneCMS_Workflow"; // Default single department workflow
+        return "eoCaseWorkflow"; // Default single department workflow
     }
     
     /**
