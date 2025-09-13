@@ -392,7 +392,7 @@ public class CaseService {
                 CaseWithAllegationsResponse.WorkflowMetadata workflowMetadata = 
                     new CaseWithAllegationsResponse.WorkflowMetadata();
                 workflowMetadata.setProcessInstanceId(caseEntity.getProcessInstanceId());
-                workflowMetadata.setWorkflowStatus("ACTIVE");
+                workflowMetadata.setStatus("ACTIVE");
                 response.setWorkflowMetadata(workflowMetadata);
             } catch (Exception e) {
                 log.warn("Failed to build workflow metadata: {}", e.getMessage());
