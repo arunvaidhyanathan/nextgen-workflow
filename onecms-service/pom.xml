@@ -68,6 +68,12 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Jakarta Mail for email processing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Spring Boot Actuator for monitoring and managing the application -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

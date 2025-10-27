@@ -1,0 +1,67 @@
+@startuml
+skinparam sequence {
+    ArrowColor #2185D0
+    LifeLineBorderColor #2185D0
+    ParticipantBorderColor #2185D0
+    ParticipantBackgroundColor #E6F3FF
+}
+
+title Case Intake, LLM Extraction, and Summary Retrieval
+
+actor User as U
+
+boundary "Intake API (Spring Boot)" as API #LightGreen
+control "Orchestrator (Async Task)" as ORCH #LightGreen
+control "Workflow Service (CS)" as WF #LightGreen
+control "LLM Gateway (Python)" as LLMG #LightCoral
+database "Database (PostgreSQL)" as DB #LightBlue
+entity "LLM (Stelar)" as LLM #Yellow
+
+== Flow A: Case Creation and LLM Extraction (Async) ==
+U -> API: 1. POST /api/v1/emails/createcaseupload (file)
+activate API
+API -> DB: 2. INSERT into case_creation_email (PENDING, raw_email)
+API -> ORCH: 3. Dispatch: Start LLM Extraction Job (call_id)
+deactivate API
+U <-- API: 4. 202 Accepted (call_id)
+
+activate ORCH
+ORCH -> LLMG: 5. POST /extract (call_id, email_body)
+activate LLMG
+LLMG -> LLM: 6. Inference Request (Structured Prompt)
+LLM --> LLMG: 7. Structured JSON Response
+deactivate LLMG
+
+alt LLM Success (HTTP 200)
+    ORCH -> WF: 8. Request Case Creation (LLM Data)
+    activate WF
+    WF -> DB: 8.1. INSERT into cases, entities, narratives
+    WF -> DB: 8.2. INSERT into case_summaries (status_id: LLM_INITIAL)
+    WF -> WF: 8.3. Start Workflow Instance
+    WF -> DB: 8.4. Create Work Item (Task: EO_INTAKE_ANALYST)
+    ORCH <-- WF: 9. Case Created (case_id)
+    deactivate WF
+    ORCH -> DB: 10. UPDATE case_creation_email (COMPLETED, case_id)
+else LLM Failure (HTTP 500)
+    ORCH -> DB: 10. UPDATE case_creation_email (FAILED, error_details)
+end
+
+deactivate ORCH
+
+== Flow B: Human Update and Summary Snapshot ==
+group Workflow Transition (e.g., Analyst Review Complete)
+    WF -> DB: 11. Read/Validate Case Data
+    WF -> DB: 12. UPDATE cases, entities (Human Revisions)
+    note right of WF: New status is: EO_INTAKE_OFFICER
+    WF -> DB: 13. INSERT into case_summaries (case_id, status_id: EO_INTAKE_ANALYST, summary_text)
+    WF -> WF: 14. Advance Workflow / Create Next Task
+end
+
+== Flow C: Summary Retrieval (Sync) ==
+U -> API: 15. GET /api/v1/emails/casesummary (caseID, stepName)
+activate API
+API -> DB: 16. SELECT summary_text FROM case_summaries WHERE case_id=... AND status_id=stepName
+DB --> API: 17. CaseSummary Record
+API --> U: 18. 200 OK (CaseSummary JSON)
+deactivate API
+@enduml

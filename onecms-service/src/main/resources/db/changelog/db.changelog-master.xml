@@ -22,7 +22,10 @@
     <!-- Case draft functionality for enhanced workflow integration -->
     <include file="classpath:db/changelog/003-create-case-draft-table.xml"/>
     
+    <!-- Email case creation and LLM processing tables -->
+    <include file="classpath:db/changelog/004-email-case-creation-tables.xml"/>
+    
     <!-- Future migrations should be added here with incremental change sets -->
-    <!-- <include file="classpath:db/changelog/004-additional-features.xml"/> -->
+    <!-- <include file="classpath:db/changelog/005-additional-features.xml"/> -->
     
 </databaseChangeLog>

@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" 
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" 
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+             xmlns:flowable="http://flowable.org/bpmn" 
+             targetNamespace="http://www.eo.com/workflow" 
+             exporter="Flowable Open Source Modeler" 
+             exporterVersion="7.2.0">
+
+  <process id="eoCaseWorkflowV3" name="EO Case Workflow V3 - Department Specific" isExecutable="true">
+    
+    <laneSet>
+      <lane id="lane_eo_intake" name="EO Intake">
+        <flowNodeRef>start_eo_initiate_case</flowNodeRef>
+        <flowNodeRef>task_create_new_case</flowNodeRef>
+        <flowNodeRef>task_fill_information</flowNodeRef>
+        <flowNodeRef>gateway_case_action</flowNodeRef>
+        <flowNodeRef>end_case_cancelled</flowNodeRef>
+      </lane>
+      
+      <lane id="lane_eo_officer" name="EO Officer">
+        <flowNodeRef>task_assign</flowNodeRef>
+        <flowNodeRef>task_open_assigned_case</flowNodeRef>
+        <flowNodeRef>task_review_details</flowNodeRef>
+        <flowNodeRef>task_add_narrative_allegations</flowNodeRef>
+        <flowNodeRef>gateway_eo_officer_decision</flowNodeRef>
+        <flowNodeRef>task_reject_not_valid_case</flowNodeRef>
+        <flowNodeRef>end_non_tracked_case</flowNodeRef>
+        <flowNodeRef>end_case_rejected</flowNodeRef>
+      </lane>
+
+      <lane id="lane_csis_investigator" name="CSIS Investigator &amp; ER Investigator">
+        <flowNodeRef>gateway_department_fork</flowNodeRef>
+        <flowNodeRef>task_open_assigned_case_csis</flowNodeRef>
+        <flowNodeRef>task_review_details_csis</flowNodeRef>
+        <flowNodeRef>task_add_info_narrative_csis</flowNodeRef>
+        <flowNodeRef>gateway_csis_decision</flowNodeRef>
+        <flowNodeRef>task_assign_to_investigation_manager_csis</flowNodeRef>
+        <flowNodeRef>task_active_investigation_csis</flowNodeRef>
+        <flowNodeRef>task_send_initial_contact_csis</flowNodeRef>
+        <flowNodeRef>task_draft_investigation_plan_csis</flowNodeRef>
+        <flowNodeRef>task_do_investigation_csis</flowNodeRef>
+        <flowNodeRef>task_draft_report_csis</flowNodeRef>
+        <flowNodeRef>end_send_csis</flowNodeRef>
+      </lane>
+
+      <lane id="lane_csis_investigation_manager" name="CSIS Investigation Manager &amp; ER Investigation Analyst">
+        <flowNodeRef>task_open_assigned_case_er</flowNodeRef>
+        <flowNodeRef>task_review_details_er</flowNodeRef>
+        <flowNodeRef>task_add_narrative_allegations_er</flowNodeRef>
+        <flowNodeRef>gateway_er_decision</flowNodeRef>
+        <flowNodeRef>task_assign_to_investigator_er</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <!-- Start Event -->
+    <startEvent id="start_eo_initiate_case" name="EO Initiate Case" flowable:initiator="initiator">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'INITIATED')}" />
+      </extensionElements>
+    </startEvent>
+
+    <!-- EO Intake Lane -->
+    <userTask id="task_create_new_case" name="Create a New Case" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
+      <documentation>Create new case with initial information</documentation>
+    </userTask>
+
+    <userTask id="task_fill_information" name="Fill the Information [POP-UP]" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
+      <documentation>Enter Information: Case Details, Entities, Allegations, Narratives</documentation>
+    </userTask>
+
+    <exclusiveGateway id="gateway_case_action" name="Case Action" />
+
+    <endEvent id="end_case_cancelled" name="End">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'CANCELLED')}" />
+      </extensionElements>
+    </endEvent>
+
+    <!-- EO Officer Lane -->
+    <userTask id="task_assign" name="Assign" flowable:candidateGroups="GROUP_EO_HEAD">
+      <documentation>EO Head assigns case</documentation>
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'ASSIGNED')}" />
+      </extensionElements>
+    </userTask>
+
+    <userTask id="task_open_assigned_case" name="Open the Assigned Case" flowable:candidateGroups="GROUP_EO_OFFICER">
+      <documentation>EO Officer opens assigned case</documentation>
+    </userTask>
+
+    <userTask id="task_review_details" name="Review Details" flowable:candidateGroups="GROUP_EO_OFFICER">
+      <documentation>Review case details and information</documentation>
+    </userTask>
+
+    <userTask id="task_add_narrative_allegations" name="Add Narrative, Allegations, Entities" flowable:candidateGroups="GROUP_EO_OFFICER">
+      <documentation>Enhance case with additional details</documentation>
+    </userTask>
+
+    <exclusiveGateway id="gateway_eo_officer_decision" name="EO Officer Decision" />
+
+    <userTask id="task_reject_not_valid_case" name="Reject/Not a valid case" flowable:candidateGroups="GROUP_EO_OFFICER">
+      <documentation>Reject case as invalid</documentation>
+    </userTask>
+
+    <endEvent id="end_non_tracked_case" name="Non-tracked Case - Other Commentaries">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'NON_TRACKED')}" />
+      </extensionElements>
+    </endEvent>
+
+    <endEvent id="end_case_rejected" name="Case Rejected">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'REJECTED')}" />
+      </extensionElements>
+    </endEvent>
+
+    <!-- Department Fork Gateway -->
+    <parallelGateway id="gateway_department_fork" name="Department Fork" />
+
+    <!-- CSIS Investigator Lane -->
+    <userTask id="task_open_assigned_case_csis" name="Open the Assigned Case" flowable:candidateGroups="GROUP_CSIS_INVESTIGATOR">
+      <documentation>CSIS Investigator opens assigned case</documentation>
+    </userTask>
+
+    <userTask id="task_review_details_csis" name="Review Details" flowable:candidateGroups="GROUP_CSIS_INVESTIGATOR">
+      <documentation>CSIS review case details</documentation>
+    </userTask>
+
+    <userTask id="task_add_info_narrative_csis" name="Add Info, Narrative, Allegations, Entities" flowable:candidateGroups="GROUP_CSIS_INVESTIGATOR">
+      <documentation>CSIS adds additional information</documentation>
+    </userTask>
+
+    <exclusiveGateway id="gateway_csis_decision" name="CSIS Decision" />
+
+    <userTask id="task_assign_to_investigation_manager_csis" name="Assign to Investigation Manager" flowable:candidateGroups="GROUP_CSIS_INVESTIGATOR">
+      <documentation>Send to CSIS Investigation Manager</documentation>
+    </userTask>
+
+    <userTask id="task_active_investigation_csis" name="Active Investigation" flowable:candidateGroups="GROUP_CSIS_INVESTIGATION_MANAGER">
+      <documentation>Active investigation by CSIS</documentation>
+    </userTask>
+
+    <userTask id="task_send_initial_contact_csis" name="Send Initial Contact" flowable:candidateGroups="GROUP_CSIS_INVESTIGATION_MANAGER">
+      <documentation>Send initial contact to parties</documentation>
+    </userTask>
+
+    <userTask id="task_draft_investigation_plan_csis" name="Draft Investigation Plan &amp; Submit for Approval by Manager" flowable:candidateGroups="GROUP_CSIS_INVESTIGATION_MANAGER">
+      <documentation>Create investigation plan</documentation>
+    </userTask>
+
+    <userTask id="task_do_investigation_csis" name="Do Investigation (mostly offline)" flowable:candidateGroups="GROUP_CSIS_INVESTIGATOR">
+      <documentation>Conduct investigation activities</documentation>
+    </userTask>
+
+    <userTask id="task_draft_report_csis" name="Draft Report of Investigation &amp; Submit for Manager's Approval" flowable:candidateGroups="GROUP_CSIS_INVESTIGATOR">
+      <documentation>Draft final investigation report</documentation>
+    </userTask>
+
+    <endEvent id="end_send_csis" name="Send">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable('csisState', 'COMPLETED')}" />
+      </extensionElements>
+    </endEvent>
+
+    <!-- ER Investigation Lane -->
+    <userTask id="task_open_assigned_case_er" name="Open the Assigned Case" flowable:candidateGroups="GROUP_ER_INVESTIGATOR">
+      <documentation>ER opens assigned case</documentation>
+    </userTask>
+
+    <userTask id="task_review_details_er" name="Review Details" flowable:candidateGroups="GROUP_ER_INVESTIGATOR">
+      <documentation>ER review case details</documentation>
+    </userTask>
+
+    <userTask id="task_add_narrative_allegations_er" name="Add Narrative, Allegations, Entities" flowable:candidateGroups="GROUP_ER_INVESTIGATOR">
+      <documentation>ER adds additional information</documentation>
+    </userTask>
+
+    <exclusiveGateway id="gateway_er_decision" name="ER Decision" />
+
+    <userTask id="task_assign_to_investigator_er" name="Assign to Investigator" flowable:candidateGroups="GROUP_ER_INVESTIGATION_ANALYST">
+      <documentation>ER assigns to investigator</documentation>
+    </userTask>
+
+    <!-- Sequence Flows -->
+
+    <!-- EO Intake Flow -->
+    <sequenceFlow id="flow_start_to_create" sourceRef="start_eo_initiate_case" targetRef="task_create_new_case" />
+    <sequenceFlow id="flow_create_to_fill" sourceRef="task_create_new_case" targetRef="task_fill_information" />
+    <sequenceFlow id="flow_fill_to_decision" sourceRef="task_fill_information" targetRef="gateway_case_action" />
+
+    <!-- Case Action Decisions -->
+    <sequenceFlow id="flow_create_case" name="Create" sourceRef="gateway_case_action" targetRef="task_assign">
+      <conditionExpression xsi:type="tFormalExpression">${caseAction == 'CREATE'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_cancel_case" name="Cancel" sourceRef="gateway_case_action" targetRef="end_case_cancelled">
+      <conditionExpression xsi:type="tFormalExpression">${caseAction == 'CANCEL'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- EO Officer Flow -->
+    <sequenceFlow id="flow_assign_to_open" sourceRef="task_assign" targetRef="task_open_assigned_case" />
+    <sequenceFlow id="flow_open_to_review" sourceRef="task_open_assigned_case" targetRef="task_review_details" />
+    <sequenceFlow id="flow_review_to_add" sourceRef="task_review_details" targetRef="task_add_narrative_allegations" />
+    <sequenceFlow id="flow_add_to_decision" sourceRef="task_add_narrative_allegations" targetRef="gateway_eo_officer_decision" />
+
+    <!-- EO Officer Decisions -->
+    <sequenceFlow id="flow_send_back_to_eo_intake" name="Send Back to EO Intake" sourceRef="gateway_eo_officer_decision" targetRef="task_fill_information">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_send_to_iu" name="Send to IU" sourceRef="gateway_eo_officer_decision" targetRef="gateway_department_fork">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'SEND_TO_IU'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_reject_case" name="Reject/Not a valid case" sourceRef="gateway_eo_officer_decision" targetRef="task_reject_not_valid_case">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'REJECT'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_non_tracked" name="Non-tracked Case - Other" sourceRef="gateway_eo_officer_decision" targetRef="end_non_tracked_case">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'NON_TRACKED'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_reject_to_end" sourceRef="task_reject_not_valid_case" targetRef="end_case_rejected" />
+
+    <!-- Department Fork -->
+    <sequenceFlow id="flow_fork_to_csis" name="To CSIS" sourceRef="gateway_department_fork" targetRef="task_open_assigned_case_csis" />
+    <sequenceFlow id="flow_fork_to_er" name="To ER" sourceRef="gateway_department_fork" targetRef="task_open_assigned_case_er" />
+
+    <!-- CSIS Flow -->
+    <sequenceFlow id="flow_csis_open_to_review" sourceRef="task_open_assigned_case_csis" targetRef="task_review_details_csis" />
+    <sequenceFlow id="flow_csis_review_to_add" sourceRef="task_review_details_csis" targetRef="task_add_info_narrative_csis" />
+    <sequenceFlow id="flow_csis_add_to_decision" sourceRef="task_add_info_narrative_csis" targetRef="gateway_csis_decision" />
+
+    <!-- CSIS Decisions -->
+    <sequenceFlow id="flow_csis_send_back" name="Send Back" sourceRef="gateway_csis_decision" targetRef="task_add_info_narrative_csis">
+      <conditionExpression xsi:type="tFormalExpression">${csisAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_csis_assign_manager" name="Assign to Investigation Manager" sourceRef="gateway_csis_decision" targetRef="task_assign_to_investigation_manager_csis">
+      <conditionExpression xsi:type="tFormalExpression">${csisAction == 'ASSIGN_MANAGER'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_csis_save_close" name="Save, Save &amp; Close, Cancel" sourceRef="gateway_csis_decision" targetRef="end_send_csis">
+      <conditionExpression xsi:type="tFormalExpression">${csisAction == 'SAVE_CLOSE'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- CSIS Investigation Flow -->
+    <sequenceFlow id="flow_csis_manager_to_active" sourceRef="task_assign_to_investigation_manager_csis" targetRef="task_active_investigation_csis" />
+    <sequenceFlow id="flow_csis_active_to_contact" sourceRef="task_active_investigation_csis" targetRef="task_send_initial_contact_csis" />
+    <sequenceFlow id="flow_csis_contact_to_plan" sourceRef="task_send_initial_contact_csis" targetRef="task_draft_investigation_plan_csis" />
+    <sequenceFlow id="flow_csis_plan_to_investigate" sourceRef="task_draft_investigation_plan_csis" targetRef="task_do_investigation_csis" />
+    <sequenceFlow id="flow_csis_investigate_to_report" sourceRef="task_do_investigation_csis" targetRef="task_draft_report_csis" />
+    <sequenceFlow id="flow_csis_report_to_send" sourceRef="task_draft_report_csis" targetRef="end_send_csis" />
+
+    <!-- ER Flow -->
+    <sequenceFlow id="flow_er_open_to_review" sourceRef="task_open_assigned_case_er" targetRef="task_review_details_er" />
+    <sequenceFlow id="flow_er_review_to_add" sourceRef="task_review_details_er" targetRef="task_add_narrative_allegations_er" />
+    <sequenceFlow id="flow_er_add_to_decision" sourceRef="task_add_narrative_allegations_er" targetRef="gateway_er_decision" />
+
+    <!-- ER Decisions -->
+    <sequenceFlow id="flow_er_send_back" name="Send Back" sourceRef="gateway_er_decision" targetRef="task_add_narrative_allegations_er">
+      <conditionExpression xsi:type="tFormalExpression">${erAction == 'SEND_BACK'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_er_assign_investigator" name="Assign to Investigator" sourceRef="gateway_er_decision" targetRef="task_assign_to_investigator_er">
+      <conditionExpression xsi:type="tFormalExpression">${erAction == 'ASSIGN_INVESTIGATOR'}</conditionExpression>
+    </sequenceFlow>
+
+  </process>
+
+  <!-- BPMN Diagram Visualization -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_eoCaseWorkflowV3">
+    <bpmndi:BPMNPlane id="BPMNPlane_eoCaseWorkflowV3" bpmnElement="eoCaseWorkflowV3">
+      
+      <!-- Swimlane Shapes -->
+      <bpmndi:BPMNShape id="BPMNShape_lane_eo_intake" bpmnElement="lane_eo_intake" isHorizontal="true">
+        <omgdc:Bounds x="160" y="50" width="2200" height="150" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="30" y="115" width="30" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="BPMNShape_lane_eo_officer" bpmnElement="lane_eo_officer" isHorizontal="true">
+        <omgdc:Bounds x="160" y="200" width="2200" height="150" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="30" y="265" width="30" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="BPMNShape_lane_csis_investigator" bpmnElement="lane_csis_investigator" isHorizontal="true">
+        <omgdc:Bounds x="160" y="350" width="2200" height="150" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="30" y="415" width="30" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_lane_csis_investigation_manager" bpmnElement="lane_csis_investigation_manager" isHorizontal="true">
+        <omgdc:Bounds x="160" y="500" width="2200" height="150" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="30" y="565" width="30" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Task and Event Shapes - EO Intake Lane -->
+      <bpmndi:BPMNShape id="BPMNShape_start_eo_initiate_case" bpmnElement="start_eo_initiate_case">
+        <omgdc:Bounds x="210" y="107" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="190" y="147" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_create_new_case" bpmnElement="task_create_new_case">
+        <omgdc:Bounds x="290" y="85" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_fill_information" bpmnElement="task_fill_information">
+        <omgdc:Bounds x="430" y="85" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_gateway_case_action" bpmnElement="gateway_case_action" isMarkerVisible="true">
+        <omgdc:Bounds x="590" y="100" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_end_case_cancelled" bpmnElement="end_case_cancelled">
+        <omgdc:Bounds x="690" y="60" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- EO Officer Lane -->
+      <bpmndi:BPMNShape id="BPMNShape_task_assign" bpmnElement="task_assign">
+        <omgdc:Bounds x="690" y="235" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_open_assigned_case" bpmnElement="task_open_assigned_case">
+        <omgdc:Bounds x="830" y="235" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_review_details" bpmnElement="task_review_details">
+        <omgdc:Bounds x="990" y="235" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_add_narrative_allegations" bpmnElement="task_add_narrative_allegations">
+        <omgdc:Bounds x="1130" y="235" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_officer_decision" bpmnElement="gateway_eo_officer_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1300" y="250" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_reject_not_valid_case" bpmnElement="task_reject_not_valid_case">
+        <omgdc:Bounds x="1400" y="170" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_end_non_tracked_case" bpmnElement="end_non_tracked_case">
+        <omgdc:Bounds x="1570" y="190" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_end_case_rejected" bpmnElement="end_case_rejected">
+        <omgdc:Bounds x="1570" y="140" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Department Fork -->
+      <bpmndi:BPMNShape id="BPMNShape_gateway_department_fork" bpmnElement="gateway_department_fork">
+        <omgdc:Bounds x="1400" y="315" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <!-- CSIS Lane -->
+      <bpmndi:BPMNShape id="BPMNShape_task_open_assigned_case_csis" bpmnElement="task_open_assigned_case_csis">
+        <omgdc:Bounds x="1500" y="385" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_review_details_csis" bpmnElement="task_review_details_csis">
+        <omgdc:Bounds x="1660" y="385" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_add_info_narrative_csis" bpmnElement="task_add_info_narrative_csis">
+        <omgdc:Bounds x="1800" y="385" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_gateway_csis_decision" bpmnElement="gateway_csis_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1970" y="400" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_assign_to_investigation_manager_csis" bpmnElement="task_assign_to_investigation_manager_csis">
+        <omgdc:Bounds x="2060" y="385" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_active_investigation_csis" bpmnElement="task_active_investigation_csis">
+        <omgdc:Bounds x="2220" y="385" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_send_initial_contact_csis" bpmnElement="task_send_initial_contact_csis">
+        <omgdc:Bounds x="210" y="535" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_draft_investigation_plan_csis" bpmnElement="task_draft_investigation_plan_csis">
+        <omgdc:Bounds x="370" y="535" width="150" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_do_investigation_csis" bpmnElement="task_do_investigation_csis">
+        <omgdc:Bounds x="560" y="535" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_draft_report_csis" bpmnElement="task_draft_report_csis">
+        <omgdc:Bounds x="730" y="535" width="150" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_end_send_csis" bpmnElement="end_send_csis">
+        <omgdc:Bounds x="920" y="557" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- ER Lane -->
+      <bpmndi:BPMNShape id="BPMNShape_task_open_assigned_case_er" bpmnElement="task_open_assigned_case_er">
+        <omgdc:Bounds x="1070" y="535" width="120" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_review_details_er" bpmnElement="task_review_details_er">
+        <omgdc:Bounds x="1230" y="535" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_add_narrative_allegations_er" bpmnElement="task_add_narrative_allegations_er">
+        <omgdc:Bounds x="1370" y="535" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_gateway_er_decision" bpmnElement="gateway_er_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1540" y="550" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="BPMNShape_task_assign_to_investigator_er" bpmnElement="task_assign_to_investigator_er">
+        <omgdc:Bounds x="1630" y="535" width="130" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges (Key flows only for readability) -->
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_start_to_create" bpmnElement="flow_start_to_create">
+        <omgdi:waypoint x="246" y="125" />
+        <omgdi:waypoint x="290" y="125" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_create_to_fill" bpmnElement="flow_create_to_fill">
+        <omgdi:waypoint x="390" y="125" />
+        <omgdi:waypoint x="430" y="125" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_fill_to_decision" bpmnElement="flow_fill_to_decision">
+        <omgdi:waypoint x="550" y="125" />
+        <omgdi:waypoint x="590" y="125" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_create_case" bpmnElement="flow_create_case">
+        <omgdi:waypoint x="615" y="150" />
+        <omgdi:waypoint x="615" y="190" />
+        <omgdi:waypoint x="740" y="190" />
+        <omgdi:waypoint x="740" y="235" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_cancel_case" bpmnElement="flow_cancel_case">
+        <omgdi:waypoint x="640" y="125" />
+        <omgdi:waypoint x="665" y="125" />
+        <omgdi:waypoint x="665" y="78" />
+        <omgdi:waypoint x="690" y="78" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_assign_to_open" bpmnElement="flow_assign_to_open">
+        <omgdi:waypoint x="790" y="275" />
+        <omgdi:waypoint x="830" y="275" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_fork_to_csis" bpmnElement="flow_fork_to_csis">
+        <omgdi:waypoint x="1425" y="365" />
+        <omgdi:waypoint x="1425" y="425" />
+        <omgdi:waypoint x="1500" y="425" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_fork_to_er" bpmnElement="flow_fork_to_er">
+        <omgdi:waypoint x="1425" y="365" />
+        <omgdi:waypoint x="1425" y="500" />
+        <omgdi:waypoint x="1130" y="500" />
+        <omgdi:waypoint x="1130" y="535" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

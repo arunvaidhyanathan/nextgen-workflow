@@ -1,280 +1,373 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://www.eo.com/workflow" exporter="Camunda Modeler" exporterVersion="5.35.0">
-  <process id="eoCaseWorkflow" name="EO Case Management Workflow" isExecutable="true">
+  <process id="eoCaseWorkflow" name="Enhanced EO Case Management Workflow" isExecutable="true">
     <laneSet>
       <lane id="lane_eo_intake" name="EO Intake">
         <flowNodeRef>start_eo_case_received</flowNodeRef>
-        <flowNodeRef>task_eo_intake</flowNodeRef>
         <flowNodeRef>task_claim_case</flowNodeRef>
-      </lane>
-      <lane id="lane_department_analysts" name="Department Analysts">
-        <flowNodeRef>gateway_eo_analyst_decision</flowNodeRef>
-        <flowNodeRef>task_eo_officer_review</flowNodeRef>
+        <flowNodeRef>task_eo_intake</flowNodeRef>
+        <flowNodeRef>eo_analyst_decision</flowNodeRef>
+        <flowNodeRef>task_eo_head_review</flowNodeRef>
+        <flowNodeRef>eo_head_decision</flowNodeRef>
+        <flowNodeRef>close_case_eo_manager</flowNodeRef>
+        <flowNodeRef>task_prepare_allegations</flowNodeRef>
+        <flowNodeRef>gateway_allegation_check</flowNodeRef>
+        <flowNodeRef>gateway_fork_allegations</flowNodeRef>
+        <flowNodeRef>gateway_join_allegations</flowNodeRef>
+        <flowNodeRef>task_consolidate_results</flowNodeRef>
       </lane>
       <lane id="lane_eo_officer" name="EO Officer">
-        <flowNodeRef>gateway_eo_officer_decision</flowNodeRef>
-        <flowNodeRef>task_eo_head_review</flowNodeRef>
-        <flowNodeRef>gateway_eo_head_decision</flowNodeRef>
-        <flowNodeRef>end_case_approved</flowNodeRef>
-        <flowNodeRef>end_case_rejected</flowNodeRef>
+        <flowNodeRef>task_eo_officer_review</flowNodeRef>
+        <flowNodeRef>eo_officer_decision</flowNodeRef>
+      </lane>
+      <lane id="lane_department_analysts" name="Department Analysts">
+        <flowNodeRef>subprocess_allegation_processing</flowNodeRef>
       </lane>
     </laneSet>
-
-
-<startEvent id="start_eo_case_received" name="EO Case Received" flowable:initiator="initiator">
-  <extensionElements>
-    <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'RECEIVED')}" />
-    <flowable:executionListener event="start" expression="${execution.setVariable('caseCreatedDate', 'now')}" />
-    <flowable:executionListener event="start" expression="${execution.setVariable('caseCreatedBy', initiator)}" />
-  </extensionElements>
-</startEvent>
-
-  <serviceTask id="task_claim_case" name="Claim Case" flowable:expression="${execution.setVariable('caseClaimed', true)}">
+    <startEvent id="start_eo_case_received" name="EO Case Received" flowable:initiator="initiator">
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;caseState&#39;, &#39;RECEIVED&#39;)}" />
+        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;caseCreatedDate&#39;, execution.getCurrentTime())}" />
+      </extensionElements>
+    </startEvent>
+    <serviceTask id="task_claim_case" name="Claim Case" flowable:expression="${execution.setVariable(&#39;caseClaimed&#39;, true)}">
       <documentation>Initial case claiming by EO Intake team</documentation>
-      <incoming>flow_start_to_claim</incoming>
-      <outgoing>flow_claim_to_intake</outgoing>
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;claimedBy&#39;, initiator)}" />
+        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;claimTimestamp&#39;, execution.getCurrentTime())}" />
+      </extensionElements>
     </serviceTask>
-
-<userTask id="task_eo_intake" name="EO Intake" 
-          flowable:assignee="${initiator}" 
-          flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
-  <documentation>Process case intake - Auto-assigned with intelligent fallback</documentation>
-  <extensionElements>
-    <!-- Task Creation Events -->
-    <flowable:executionListener event="create" expression="${execution.setVariable('intakeAssignedDate', 'now')}" />
-    <flowable:executionListener event="create" expression="${execution.setVariable('originalAssignee', initiator)}" />
-    <flowable:executionListener event="create" expression="${execution.setVariable('caseClaimed', true)}" />
-    <flowable:executionListener event="create" expression="${execution.setVariable('claimTimestamp', 'now')}" />
-    
-    <!-- Task Assignment Events -->
-    <flowable:executionListener event="assignment" expression="${execution.setVariable('currentAssignee', task.getAssignee())}" />
-    <flowable:executionListener event="assignment" expression="${execution.setVariable('claimedBy', task.getAssignee())}" />
-    <flowable:executionListener event="assignment" expression="${execution.setVariable('reassignmentCount', (reassignmentCount != null ? reassignmentCount + 1 : 1))}" />
-    
-    <!-- Task Start Events -->
-    <flowable:executionListener event="start" expression="${execution.setVariable('caseState', 'IN_INTAKE')}" />
-    <flowable:executionListener event="start" expression="${execution.setVariable('intakeStartedDate', 'now')}" />
-  </extensionElements>
-</userTask>
-
-    
-    <exclusiveGateway id="gateway_eo_analyst_decision" name="EO Analyst Decision" />
+    <userTask id="task_eo_intake" name="EO Intake" flowable:assignee="${initiator}" flowable:candidateGroups="GROUP_EO_INTAKE_ANALYST">
+      <documentation>Process case intake - Collect case details and allegations with departments</documentation>
+      <extensionElements>
+        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;caseState&#39;, &#39;INTAKE&#39;)}" />
+      </extensionElements>
+    </userTask>
+    <exclusiveGateway id="eo_analyst_decision" name="EO Analyst Decision" />
     <userTask id="task_eo_officer_review" name="EO Officer Review" flowable:candidateGroups="GROUP_EO_OFFICER">
       <documentation>EO Officer reviews case and makes routing decision</documentation>
     </userTask>
-    <exclusiveGateway id="gateway_eo_officer_decision" name="EO Officer Decision" />
+    <exclusiveGateway id="eo_officer_decision" name="EO Officer Decision" />
+    <serviceTask id="task_prepare_allegations" name="Prepare Allegations" flowable:class="com.eo.workflow.PrepareAllegationsTask">
+      <documentation>Process allegations list and prepare for multi-instance execution</documentation>
+    </serviceTask>
+    <exclusiveGateway id="gateway_allegation_check" name="Multiple Allegations?" />
+    <parallelGateway id="gateway_fork_allegations" name="Fork Allegations">
+      <incoming>eo_officer_approve</incoming>
+    </parallelGateway>
+    <subProcess id="subprocess_allegation_processing" name="Multi-Allegation Processing">
+      <multiInstanceLoopCharacteristics flowable:collection="allegations" flowable:elementVariable="allegation">
+        <extensionElements>
+          <flowable:variableAggregation target="allegationResults">
+            <variable source="allegationResult" target="allegationResult" />
+            <variable source="allegationStatus" target="allegationStatus" />
+            <variable source="departmentRecommendation" target="departmentRecommendation" />
+            <variable source="investigationDetails" target="investigationDetails" />
+          </flowable:variableAggregation>
+        </extensionElements>
+      </multiInstanceLoopCharacteristics>
+      <startEvent id="allegation_start" name="Start Allegation Processing" />
+      <serviceTask id="task_route_to_dept" name="Route to Department" flowable:expression="${execution.setVariable(&#39;assignedDepartment&#39;, allegation.department)}">
+        <extensionElements>
+          <flowable:executionListener event="start" expression="${execution.setVariable(&#39;allegationId&#39;, allegation.id)}" />
+          <flowable:executionListener event="start" expression="${execution.setVariable(&#39;allegationType&#39;, allegation.type)}" />
+          <flowable:executionListener event="start" expression="${execution.setVariable(&#39;allegationSeverity&#39;, allegation.severity)}" />
+        </extensionElements>
+      </serviceTask>
+      <userTask id="task_dept_investigation" name="Department Investigation" flowable:candidateGroups="${&#39;GROUP_&#39; + allegation.department + &#39;_INVESTIGATOR&#39;}">
+        <documentation>Investigate allegation within assigned department</documentation>
+        <extensionElements>
+          <flowable:executionListener event="create" expression="${execution.setVariable(&#39;investigationStartDate&#39;, execution.getCurrentTime())}" />
+          <flowable:executionListener event="create" expression="${execution.setVariable(&#39;investigationAssignedTo&#39;, task.getAssignee())}" />
+        </extensionElements>
+      </userTask>
+      <userTask id="task_dept_review" name="Department Review" flowable:candidateGroups="${&#39;GROUP_&#39; + allegation.department + &#39;_REVIEWER&#39;}">
+        <documentation>Review investigation findings and make recommendation</documentation>
+        <extensionElements>
+          <flowable:executionListener event="create" expression="${execution.setVariable(&#39;reviewStartDate&#39;, execution.getCurrentTime())}" />
+        </extensionElements>
+      </userTask>
+      <serviceTask id="task_set_allegation_result" name="Set Allegation Result" flowable:expression="${execution.setVariable(&#39;allegationResult&#39;, deptDecision)}">
+        <extensionElements>
+          <flowable:executionListener event="start" expression="${execution.setVariable(&#39;allegationStatus&#39;, &#39;COMPLETED&#39;)}" />
+          <flowable:executionListener event="start" expression="${execution.setVariable(&#39;completedDate&#39;, execution.getCurrentTime())}" />
+          <flowable:executionListener event="start" expression="${execution.setVariable(&#39;investigationDetails&#39;, investigationFindings)}" />
+        </extensionElements>
+      </serviceTask>
+      <endEvent id="allegation_end" name="Allegation Processed" />
+      <sequenceFlow id="flow_allegation_start_to_route" sourceRef="allegation_start" targetRef="task_route_to_dept" />
+      <sequenceFlow id="flow_route_to_investigation" sourceRef="task_route_to_dept" targetRef="task_dept_investigation" />
+      <sequenceFlow id="flow_investigation_to_review" sourceRef="task_dept_investigation" targetRef="task_dept_review" />
+      <sequenceFlow id="flow_review_to_result" sourceRef="task_dept_review" targetRef="task_set_allegation_result" />
+      <sequenceFlow id="flow_result_to_end" sourceRef="task_set_allegation_result" targetRef="allegation_end" />
+    </subProcess>
+    <parallelGateway id="gateway_join_allegations" name="Join Allegations" />
+    <serviceTask id="task_consolidate_results" name="Consolidate Results" flowable:class="com.eo.workflow.ConsolidateResultsTask">
+      <documentation>Analyze all allegation results and create case summary</documentation>
+    </serviceTask>
     <userTask id="task_eo_head_review" name="EO Head Review" flowable:candidateGroups="GROUP_EO_HEAD">
-      <documentation>EO Head reviews case for final decision</documentation>
+      <documentation>EO Head reviews case (single allegation) or consolidated results (multiple allegations)</documentation>
     </userTask>
-    <exclusiveGateway id="gateway_eo_head_decision" name="EO Head Decision" />
-    <endEvent id="end_case_approved" name="Case Approved">
+    <exclusiveGateway id="eo_head_decision" name="EO Head Decision" />
+    <endEvent id="close_case_eo_manager" name="Close Case">
       <extensionElements>
-        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;caseState&#39;, &#39;APPROVED&#39;)}" />
+        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;caseState&#39;, &#39;CLOSED&#39;)}" />
+        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;closedDate&#39;, execution.getCurrentTime())}" />
       </extensionElements>
     </endEvent>
-    <endEvent id="end_case_rejected" name="Case Rejected">
-      <extensionElements>
-        <flowable:executionListener event="start" expression="${execution.setVariable(&#39;caseState&#39;, &#39;REJECTED&#39;)}" />
-      </extensionElements>
-    </endEvent>
-    <sequenceFlow id="flow_start_to_claim" sourceRef="start_eo_case_received" targetRef="task_claim_case" />
-    <sequenceFlow id="flow_claim_to_intake" sourceRef="task_claim_case" targetRef="task_eo_intake" />
-    <sequenceFlow id="flow_intake_to_analyst_decision" sourceRef="task_eo_intake" targetRef="gateway_eo_analyst_decision" />
-    <sequenceFlow id="flow_analyst_approve" name="EO Approve" sourceRef="gateway_eo_analyst_decision" targetRef="task_eo_head_review">
+    <sequenceFlow id="start_new_process" name="Start New Process" sourceRef="start_eo_case_received" targetRef="task_claim_case" />
+    <sequenceFlow id="claim_case" name="Claim Case" sourceRef="task_claim_case" targetRef="task_eo_intake" />
+    <sequenceFlow id="eo_analyst_action" name="EO Analyst Action" sourceRef="task_eo_intake" targetRef="eo_analyst_decision" />
+    <sequenceFlow id="eo_reject_request" name="EO Approve (Send to Head)" sourceRef="eo_analyst_decision" targetRef="task_prepare_allegations">
       <conditionExpression xsi:type="tFormalExpression">${eoAnalystAction == 'APPROVE'}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow_analyst_to_officer" name="Send to EO Officer" sourceRef="gateway_eo_analyst_decision" targetRef="task_eo_officer_review">
+    <sequenceFlow id="assign_to_eo_officer" name="Assign to EO Officer" sourceRef="eo_analyst_decision" targetRef="task_eo_officer_review">
       <conditionExpression xsi:type="tFormalExpression">${eoAnalystAction == 'SEND_TO_OFFICER'}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow_analyst_reject" name="EO Reject Request" sourceRef="gateway_eo_analyst_decision" targetRef="end_case_rejected">
-      <conditionExpression xsi:type="tFormalExpression">${eoAnalystAction == 'REJECT'}</conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="flow_analyst_send_back" name="Send Back to EO Analyst" sourceRef="gateway_eo_analyst_decision" targetRef="task_eo_intake">
-      <conditionExpression xsi:type="tFormalExpression">${eoAnalystAction == 'SEND_BACK'}</conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="flow_officer_to_decision" sourceRef="task_eo_officer_review" targetRef="gateway_eo_officer_decision" />
-    <sequenceFlow id="flow_officer_approve" name="EO Approve" sourceRef="gateway_eo_officer_decision" targetRef="task_eo_head_review">
-      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'APPROVE'}</conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="flow_officer_send_back" name="Send Back to EO Analyst" sourceRef="gateway_eo_officer_decision" targetRef="task_eo_intake">
+    <sequenceFlow id="eo_officer_action" name="EO Officer Action" sourceRef="task_eo_officer_review" targetRef="eo_officer_decision" />
+    <sequenceFlow id="eo_officer_send_back" name="Send Back to EO Analyst" sourceRef="eo_officer_decision" targetRef="task_eo_intake">
       <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'SEND_BACK'}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow_head_to_decision" sourceRef="task_eo_head_review" targetRef="gateway_eo_head_decision" />
-    <sequenceFlow id="flow_head_approve" name="Reject Approved" sourceRef="gateway_eo_head_decision" targetRef="end_case_approved">
+    <sequenceFlow id="eo_officer_approve" name="Officer Approve" sourceRef="eo_officer_decision" targetRef="gateway_fork_allegations">
+      <conditionExpression xsi:type="tFormalExpression">${eoOfficerAction == 'APPROVE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_prepare_to_check" name="Check Allegations" sourceRef="task_prepare_allegations" targetRef="gateway_allegation_check" />
+    <sequenceFlow id="flow_single_allegation" name="Single Allegation" sourceRef="gateway_allegation_check" targetRef="task_eo_head_review">
+      <conditionExpression xsi:type="tFormalExpression">${allegationCount == 1}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_fork_to_subprocess" name="Process Allegations" sourceRef="gateway_fork_allegations" targetRef="subprocess_allegation_processing" />
+    <sequenceFlow id="flow_subprocess_to_join" name="All Allegations Complete" sourceRef="subprocess_allegation_processing" targetRef="gateway_join_allegations" />
+    <sequenceFlow id="flow_join_to_consolidate" name="Consolidate Results" sourceRef="gateway_join_allegations" targetRef="task_consolidate_results" />
+    <sequenceFlow id="flow_consolidate_to_head" name="To Final Review" sourceRef="task_consolidate_results" targetRef="task_eo_head_review" />
+    <sequenceFlow id="eo_head_action" name="EO Head Action" sourceRef="task_eo_head_review" targetRef="eo_head_decision" />
+    <sequenceFlow id="eo_manager_reject_approved" name="Approve &#38; Close" sourceRef="eo_head_decision" targetRef="close_case_eo_manager">
       <conditionExpression xsi:type="tFormalExpression">${eoHeadAction == 'APPROVE'}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow_head_reject" name="Reject Approved" sourceRef="gateway_eo_head_decision" targetRef="end_case_rejected">
-      <conditionExpression xsi:type="tFormalExpression">${eoHeadAction == 'REJECT'}</conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="flow_head_send_back" name="Send Back to EO Analyst" sourceRef="gateway_eo_head_decision" targetRef="task_eo_intake">
+    <sequenceFlow id="send_back_to_eo_analyst" name="Send Back to EO Analyst" sourceRef="eo_head_decision" targetRef="task_eo_intake">
       <conditionExpression xsi:type="tFormalExpression">${eoHeadAction == 'SEND_BACK'}</conditionExpression>
     </sequenceFlow>
-
   </process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_eoCaseWorkflow">
     <bpmndi:BPMNPlane id="BPMNPlane_eoCaseWorkflow" bpmnElement="eoCaseWorkflow">
-      <bpmndi:BPMNShape id="BPMNShape_lane_eo_officer" bpmnElement="lane_eo_officer" isHorizontal="true">
-        <omgdc:Bounds x="160" y="350" width="1200" height="150" />
+      <bpmndi:BPMNShape id="BPMNShape_lane_department_analysts" bpmnElement="lane_department_analysts" isHorizontal="true">
+        <omgdc:Bounds x="160" y="400" width="1800" height="250" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="30" y="415" width="30" height="20" />
+          <omgdc:Bounds x="30" y="515" width="30" height="20" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_lane_department_analysts" bpmnElement="lane_department_analysts" isHorizontal="true">
-        <omgdc:Bounds x="160" y="200" width="1200" height="150" />
+      <bpmndi:BPMNShape id="BPMNShape_lane_eo_officer" bpmnElement="lane_eo_officer" isHorizontal="true">
+        <omgdc:Bounds x="160" y="250" width="1800" height="150" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="30" y="265" width="30" height="20" />
+          <omgdc:Bounds x="30" y="315" width="30" height="20" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_lane_eo_intake" bpmnElement="lane_eo_intake" isHorizontal="true">
-        <omgdc:Bounds x="160" y="50" width="1200" height="150" />
+        <omgdc:Bounds x="160" y="50" width="1800" height="200" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="30" y="115" width="30" height="20" />
+          <omgdc:Bounds x="30" y="140" width="30" height="20" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_start_eo_case_received" bpmnElement="start_eo_case_received">
-        <omgdc:Bounds x="210" y="105" width="36" height="36" />
+        <omgdc:Bounds x="210" y="135" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="196" y="145" width="64" height="27" />
+          <omgdc:Bounds x="196" y="175" width="64" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_task_eo_intake" bpmnElement="task_eo_intake">
-        <omgdc:Bounds x="430" y="83" width="100" height="80" />
+      <bpmndi:BPMNShape id="BPMNShape_task_claim_case" bpmnElement="task_claim_case">
+        <omgdc:Bounds x="290" y="113" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_analyst_decision" bpmnElement="gateway_eo_analyst_decision" isMarkerVisible="true">
-        <omgdc:Bounds x="575" y="250" width="50" height="50" />
+      <bpmndi:BPMNShape id="BPMNShape_task_eo_intake" bpmnElement="task_eo_intake">
+        <omgdc:Bounds x="430" y="113" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_eo_analyst_decision" bpmnElement="eo_analyst_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="575" y="128" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="555" y="305" width="90" height="27" />
+          <omgdc:Bounds x="573" y="91" width="55" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_task_eo_officer_review" bpmnElement="task_eo_officer_review">
-        <omgdc:Bounds x="430" y="235" width="100" height="80" />
+        <omgdc:Bounds x="430" y="285" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_officer_decision" bpmnElement="gateway_eo_officer_decision" isMarkerVisible="true">
-        <omgdc:Bounds x="455" y="400" width="50" height="50" />
+      <bpmndi:BPMNShape id="BPMNShape_eo_officer_decision" bpmnElement="eo_officer_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="575" y="300" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="435" y="455" width="90" height="27" />
+          <omgdc:Bounds x="555" y="357" width="90" height="27" />
         </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_prepare_allegations" bpmnElement="task_prepare_allegations">
+        <omgdc:Bounds x="710" y="113" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_allegation_check" bpmnElement="gateway_allegation_check" isMarkerVisible="true">
+        <omgdc:Bounds x="855" y="128" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="850" y="90.5" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_fork_allegations" bpmnElement="gateway_fork_allegations">
+        <omgdc:Bounds x="855" y="505" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="835" y="562" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_subprocess_allegation_processing" bpmnElement="subprocess_allegation_processing" isExpanded="true">
+        <omgdc:Bounds x="960" y="440" width="600" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_allegation_start" bpmnElement="allegation_start">
+        <omgdc:Bounds x="980" y="507" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_route_to_dept" bpmnElement="task_route_to_dept">
+        <omgdc:Bounds x="1050" y="485" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_dept_investigation" bpmnElement="task_dept_investigation">
+        <omgdc:Bounds x="1180" y="485" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_dept_review" bpmnElement="task_dept_review">
+        <omgdc:Bounds x="1310" y="485" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_set_allegation_result" bpmnElement="task_set_allegation_result">
+        <omgdc:Bounds x="1440" y="485" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_allegation_end" bpmnElement="allegation_end">
+        <omgdc:Bounds x="1572" y="507" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_allegation_start_to_route" bpmnElement="flow_allegation_start_to_route">
+        <omgdi:waypoint x="1016" y="525" />
+        <omgdi:waypoint x="1050" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_route_to_investigation" bpmnElement="flow_route_to_investigation">
+        <omgdi:waypoint x="1150" y="525" />
+        <omgdi:waypoint x="1180" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_to_review" bpmnElement="flow_investigation_to_review">
+        <omgdi:waypoint x="1280" y="525" />
+        <omgdi:waypoint x="1310" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_to_result" bpmnElement="flow_review_to_result">
+        <omgdi:waypoint x="1410" y="525" />
+        <omgdi:waypoint x="1440" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_result_to_end" bpmnElement="flow_result_to_end">
+        <omgdi:waypoint x="1540" y="525" />
+        <omgdi:waypoint x="1572" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_join_allegations" bpmnElement="gateway_join_allegations">
+        <omgdc:Bounds x="1615" y="505" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="1595" y="562" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_task_consolidate_results" bpmnElement="task_consolidate_results">
+        <omgdc:Bounds x="1590" y="113" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_task_eo_head_review" bpmnElement="task_eo_head_review">
-        <omgdc:Bounds x="710" y="385" width="100" height="80" />
+        <omgdc:Bounds x="1010" y="113" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_gateway_eo_head_decision" bpmnElement="gateway_eo_head_decision" isMarkerVisible="true">
-        <omgdc:Bounds x="855" y="400" width="50" height="50" />
+      <bpmndi:BPMNShape id="BPMNShape_eo_head_decision" bpmnElement="eo_head_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="1155" y="128" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="835" y="455" width="90" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_end_case_approved" bpmnElement="end_case_approved">
-        <omgdc:Bounds x="950" y="355" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="932" y="395" width="72" height="14" />
+          <omgdc:Bounds x="1135" y="185" width="90" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_end_case_rejected" bpmnElement="end_case_rejected">
-        <omgdc:Bounds x="950" y="445" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_close_case_eo_manager" bpmnElement="close_case_eo_manager">
+        <omgdc:Bounds x="1250" y="135" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="932" y="485" width="72" height="14" />
+          <omgdc:Bounds x="1240" y="175" width="57" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_1y3p98v_di" bpmnElement="task_claim_case">
-        <omgdc:Bounds x="290" y="83" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_start_to_claim" bpmnElement="flow_start_to_claim">
-        <omgdi:waypoint x="246" y="123" />
-        <omgdi:waypoint x="290" y="123" />
+      <bpmndi:BPMNEdge id="BPMNEdge_start_new_process" bpmnElement="start_new_process">
+        <omgdi:waypoint x="246" y="153" />
+        <omgdi:waypoint x="290" y="153" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_claim_to_intake" bpmnElement="flow_claim_to_intake">
-        <omgdi:waypoint x="390" y="123" />
-        <omgdi:waypoint x="430" y="123" />
+      <bpmndi:BPMNEdge id="BPMNEdge_claim_case" bpmnElement="claim_case">
+        <omgdi:waypoint x="390" y="153" />
+        <omgdi:waypoint x="430" y="153" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_intake_to_analyst_decision" bpmnElement="flow_intake_to_analyst_decision">
-        <omgdi:waypoint x="480" y="163" />
-        <omgdi:waypoint x="480" y="209" />
-        <omgdi:waypoint x="600" y="209" />
-        <omgdi:waypoint x="600" y="250" />
+      <bpmndi:BPMNEdge id="BPMNEdge_eo_analyst_action" bpmnElement="eo_analyst_action">
+        <omgdi:waypoint x="530" y="153" />
+        <omgdi:waypoint x="575" y="153" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_analyst_approve" bpmnElement="flow_analyst_approve">
-        <omgdi:waypoint x="625" y="275" />
-        <omgdi:waypoint x="760" y="275" />
-        <omgdi:waypoint x="760" y="385" />
+      <bpmndi:BPMNEdge id="BPMNEdge_eo_reject_request" bpmnElement="eo_reject_request">
+        <omgdi:waypoint x="625" y="153" />
+        <omgdi:waypoint x="710" y="153" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="659" y="257" width="60" height="14" />
+          <omgdc:Bounds x="630" y="135" width="75" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_analyst_to_officer" bpmnElement="flow_analyst_to_officer">
-        <omgdi:waypoint x="575" y="275" />
-        <omgdi:waypoint x="530" y="275" />
+      <bpmndi:BPMNEdge id="BPMNEdge_assign_to_eo_officer" bpmnElement="assign_to_eo_officer">
+        <omgdi:waypoint x="600" y="178" />
+        <omgdi:waypoint x="600" y="210" />
+        <omgdi:waypoint x="480" y="210" />
+        <omgdi:waypoint x="480" y="285" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="495" y="257" width="85" height="14" />
+          <omgdc:Bounds x="507" y="196" width="65" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_analyst_reject" bpmnElement="flow_analyst_reject">
-        <omgdi:waypoint x="625" y="275" />
-        <omgdi:waypoint x="968" y="275" />
-        <omgdi:waypoint x="968" y="445" />
+      <bpmndi:BPMNEdge id="BPMNEdge_eo_officer_action" bpmnElement="eo_officer_action">
+        <omgdi:waypoint x="530" y="325" />
+        <omgdi:waypoint x="575" y="325" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_eo_officer_send_back" bpmnElement="eo_officer_send_back">
+        <omgdi:waypoint x="600" y="300" />
+        <omgdi:waypoint x="600" y="240" />
+        <omgdi:waypoint x="450" y="240" />
+        <omgdi:waypoint x="450" y="193" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="785" y="257" width="89" height="14" />
+          <omgdc:Bounds x="357" y="216" width="85" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_analyst_send_back" bpmnElement="flow_analyst_send_back">
-        <omgdi:waypoint x="585" y="260" />
-        <omgdi:waypoint x="585" y="180" />
-        <omgdi:waypoint x="480" y="180" />
-        <omgdi:waypoint x="480" y="163" />
+      <bpmndi:BPMNEdge id="BPMNEdge_eo_officer_approve" bpmnElement="eo_officer_approve">
+        <omgdi:waypoint x="625" y="325" />
+        <omgdi:waypoint x="880" y="325" />
+        <omgdi:waypoint x="880" y="505" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="495" y="185" width="85" height="27" />
+          <omgdc:Bounds x="763" y="307" width="76" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_officer_to_decision" bpmnElement="flow_officer_to_decision">
-        <omgdi:waypoint x="480" y="315" />
-        <omgdi:waypoint x="480" y="400" />
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_prepare_to_check" bpmnElement="flow_prepare_to_check">
+        <omgdi:waypoint x="810" y="153" />
+        <omgdi:waypoint x="855" y="153" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_officer_approve" bpmnElement="flow_officer_approve">
-        <omgdi:waypoint x="505" y="425" />
-        <omgdi:waypoint x="710" y="425" />
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_single_allegation" bpmnElement="flow_single_allegation">
+        <omgdi:waypoint x="905" y="153" />
+        <omgdi:waypoint x="1010" y="153" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="575" y="407" width="60" height="14" />
+          <omgdc:Bounds x="920" y="135" width="75" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_officer_send_back" bpmnElement="flow_officer_send_back">
-        <omgdi:waypoint x="465" y="410" />
-        <omgdi:waypoint x="410" y="410" />
-        <omgdi:waypoint x="410" y="180" />
-        <omgdi:waypoint x="480" y="180" />
-        <omgdi:waypoint x="480" y="163" />
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_fork_to_subprocess" bpmnElement="flow_fork_to_subprocess">
+        <omgdi:waypoint x="905" y="530" />
+        <omgdi:waypoint x="960" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_subprocess_to_join" bpmnElement="flow_subprocess_to_join">
+        <omgdi:waypoint x="1560" y="530" />
+        <omgdi:waypoint x="1615" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_join_to_consolidate" bpmnElement="flow_join_to_consolidate">
+        <omgdi:waypoint x="1640" y="505" />
+        <omgdi:waypoint x="1640" y="193" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_consolidate_to_head" bpmnElement="flow_consolidate_to_head">
+        <omgdi:waypoint x="1590" y="153" />
+        <omgdi:waypoint x="1110" y="153" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_eo_head_action" bpmnElement="eo_head_action">
+        <omgdi:waypoint x="1110" y="153" />
+        <omgdi:waypoint x="1155" y="153" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_eo_manager_reject_approved" bpmnElement="eo_manager_reject_approved">
+        <omgdi:waypoint x="1205" y="153" />
+        <omgdi:waypoint x="1250" y="153" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="325" y="290" width="85" height="27" />
+          <omgdc:Bounds x="1210" y="135" width="75" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_head_to_decision" bpmnElement="flow_head_to_decision">
-        <omgdi:waypoint x="810" y="425" />
-        <omgdi:waypoint x="855" y="425" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_head_approve" bpmnElement="flow_head_approve">
-        <omgdi:waypoint x="885" y="410" />
-        <omgdi:waypoint x="920" y="410" />
-        <omgdi:waypoint x="920" y="373" />
-        <omgdi:waypoint x="950" y="373" />
+      <bpmndi:BPMNEdge id="BPMNEdge_send_back_to_eo_analyst" bpmnElement="send_back_to_eo_analyst">
+        <omgdi:waypoint x="1180" y="128" />
+        <omgdi:waypoint x="1180" y="80" />
+        <omgdi:waypoint x="480" y="80" />
+        <omgdi:waypoint x="480" y="113" />
         <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="875" y="365" width="80" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_head_reject" bpmnElement="flow_head_reject">
-        <omgdi:waypoint x="885" y="440" />
-        <omgdi:waypoint x="920" y="440" />
-        <omgdi:waypoint x="920" y="463" />
-        <omgdi:waypoint x="950" y="463" />
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="875" y="470" width="80" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_head_send_back" bpmnElement="flow_head_send_back">
-        <omgdi:waypoint x="865" y="410" />
-        <omgdi:waypoint x="865" y="180" />
-        <omgdi:waypoint x="480" y="180" />
-        <omgdi:waypoint x="480" y="163" />
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="645" y="185" width="85" height="27" />
+          <omgdc:Bounds x="795" y="62" width="85" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>

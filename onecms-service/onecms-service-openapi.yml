@@ -7,10 +7,12 @@ info:
     This service provides:
     - Case lifecycle management (CRUD operations)
     - **Case Draft Management** with workflow integration  
+    - **Email Case Creation** with LLM-driven extraction
     - Real-time workflow process instance creation
     - Allegation management with GRC taxonomy
     - Case entity management (people/organizations)
     - Case narrative and comment management
+    - Case summary tracking across workflow steps
     - Workflow integration via flowable-wrapper-v2
     - Authorization delegation to entitlement-service
     
@@ -63,6 +65,8 @@ servers:
 tags:
   - name: Case Management
     description: Core case management operations
+  - name: Email Case Intake
+    description: LLM-driven case creation from email files and case summary retrieval
   - name: System
     description: System health and testing endpoints
 
@@ -733,6 +737,120 @@ paths:
                   caseNumber:
                     type: string
                     example: "CMS-2025-000001"
+
+  # Email Case Intake endpoints
+  /v1/emails/createcaseupload:
+    post:
+      tags:
+        - Email Case Intake
+      summary: Upload email file and asynchronously create case via LLM extraction
+      description: |
+        Accepts .eml or .msg files, stores raw email data, and triggers asynchronous LLM processing for case creation.
+        
+        **Process Flow:**
+        1. Upload email file (.eml or .msg)
+        2. Extract basic metadata (sender, subject, body)
+        3. Store raw email data in `case_creation_email` table with PENDING status
+        4. Return call ID for tracking
+        5. Background process picks up PENDING record and calls LLM Gateway
+        6. LLM extracts structured data (narrative, allegations, entities)
+        7. Case is created with extracted data and status updated to COMPLETED
+      operationId: createCaseFromEmail
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The .eml or .msg file to be processed
+              required:
+                - file
+      responses:
+        '202':
+          description: Accepted - Email file saved and LLM processing job triggered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailCaseUploadResponse'
+        '400':
+          description: Bad Request - Missing file or invalid file type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Internal Server Error - Database or storage error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/emails/casesummary:
+    get:
+      tags:
+        - Email Case Intake
+      summary: Retrieve a historical case summary snapshot for a specific workflow step
+      description: |
+        Returns the case summary text for a given case ID and workflow step.
+        
+        **Workflow Steps:**
+        - `LLM_INITIAL`: Initial summary created by LLM processing
+        - `EO_INTAKE_ANALYST`: Summary updated during Ethics Office analyst review
+        - `EO_INTAKE_DIRECTOR`: Summary updated during Ethics Office director review
+        - `INVESTIGATION_COMPLETE`: Final summary after investigation completion
+        
+        **Use Cases:**
+        - Review historical case summaries at different workflow stages
+        - Track how case understanding evolved through the workflow
+        - Audit trail for case progression and decision-making
+      operationId: getCaseSummaryByStep
+      parameters:
+        - $ref: '#/components/parameters/X-User-Id'
+        - name: caseID
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The unique identifier of the case
+          example: 12345
+        - name: stepName
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [LLM_INITIAL, EO_INTAKE_ANALYST, EO_INTAKE_DIRECTOR, INVESTIGATION_COMPLETE]
+          description: The workflow step whose summary snapshot is requested
+          example: "LLM_INITIAL"
+      responses:
+        '200':
+          description: OK - Returns the case summary record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseSummaryResponse'
+        '404':
+          description: Not Found - No summary exists for the given step
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          description: Forbidden - Access denied to case summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   parameters:
@@ -1591,3 +1709,59 @@ components:
         - "SUSPENDED"
       description: Task status values aligned with Flowable workflow system
       example: "OPEN"
+
+    # Email Case Intake Schemas
+    EmailCaseUploadResponse:
+      type: object
+      required:
+        - callId
+        - status
+        - message
+      properties:
+        callId:
+          type: integer
+          format: int64
+          description: Unique ID for tracking the asynchronous job in case_creation_email table
+          example: 12345
+        status:
+          type: string
+          description: Processing status of the email upload
+          example: "PROCESSING"
+          enum: ["PROCESSING", "PENDING", "COMPLETED", "FAILED"]
+        message:
+          type: string
+          description: Human-readable status message
+          example: "Email intake started asynchronously."
+
+    CaseSummaryResponse:
+      type: object
+      required:
+        - caseSummaryId
+        - caseId
+        - statusId
+        - createdAt
+      properties:
+        caseSummaryId:
+          type: integer
+          format: int64
+          description: Unique identifier for the summary record
+          example: 55
+        caseId:
+          type: integer
+          format: int64
+          description: Case ID this summary belongs to
+          example: 12345
+        statusId:
+          type: string
+          description: Workflow step identifier
+          example: "EO_INTAKE_ANALYST"
+          enum: ["LLM_INITIAL", "EO_INTAKE_ANALYST", "EO_INTAKE_DIRECTOR", "INVESTIGATION_COMPLETE"]
+        summaryText:
+          type: string
+          description: The case summary text for this workflow step
+          example: "The analyst review confirms the facts: Jane Doe is the subject of harassment allegations by John Smith. Investigation recommended for HR department review."
+        createdAt:
+          type: string
+          format: date-time
+          description: When this summary snapshot was created
+          example: "2025-10-25T14:30:00Z"

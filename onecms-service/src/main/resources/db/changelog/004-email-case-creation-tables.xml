@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- ========================================= -->
+    <!-- 004: EMAIL CASE CREATION AND LLM PROCESSING TABLES -->
+    <!-- ========================================= -->
+
+    <!-- ========================================= -->
+    <!-- ChangeSet 1: Case Creation Email Table (case_creation_email) -->
+    <!-- Stores raw email, metadata, and tracks the LLM processing job status. -->
+    <!-- ========================================= -->
+    <changeSet id="004-create-case-creation-email-table" author="onecms-email-intake">
+        <comment>Creates the table for storing raw email data and tracking LLM extraction status.</comment>
+
+        <!-- Sequence for unique call_id -->
+        <createSequence
+            sequenceName="create_case_email_seq"
+            incrementBy="1"
+            minValue="1"
+            startValue="1"
+            schemaName="onecms"/>
+
+        <!-- Case Creation Email Table -->
+        <createTable tableName="case_creation_email" schemaName="onecms">
+            <column name="call_id" type="BIGINT" defaultValueSequenceNext="create_case_email_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sender_email" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sender_name" type="VARCHAR(255)"/>
+            <column name="subject" type="TEXT"/>
+            <column name="body_text" type="TEXT"/>
+            <column name="raw_email_attachment" type="BYTEA">
+                <constraints nullable="false"/>
+            </column>
+            <column name="employee_id" type="VARCHAR(50)"/>
+            <!-- Optional foreign key to cases.id, populated only after successful case creation -->
+            <column name="case_id" type="BIGINT"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE"/>
+        </createTable>
+
+        <!-- Foreign Key Constraint to cases table (optional link) -->
+        <addForeignKeyConstraint
+            baseTableName="case_creation_email" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_creation_email_case"
+            referencedTableName="cases" referencedColumnNames="id" referencedTableSchemaName="onecms"
+            onDelete="SET NULL"
+            deferrable="true" initiallyDeferred="true"/>
+
+        <!-- Performance Indexes for status and call_id lookup -->
+        <createIndex tableName="case_creation_email" schemaName="onecms" indexName="idx_case_creation_email_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="case_creation_email" schemaName="onecms" indexName="idx_case_creation_email_sender">
+            <column name="sender_email"/>
+        </createIndex>
+        <createIndex tableName="case_creation_email" schemaName="onecms" indexName="idx_case_creation_email_case_id">
+            <column name="case_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ========================================= -->
+    <!-- ChangeSet 2: Case Summary Table for Maintenance (case_summaries) -->
+    <!-- Stores denormalized case data for quick lookups. -->
+    <!-- ========================================= -->
+    <changeSet id="004-create-case-summary-table" author="onecms-email-intake">
+        <comment>Creates the table for denormalized case summary data.</comment>
+
+        <!-- Sequence for unique case_summaries_id -->
+        <createSequence
+            sequenceName="case_summaries_seq"
+            incrementBy="1"
+            minValue="1"
+            startValue="1"
+            schemaName="onecms"/>
+
+        <!-- Case Summaries Table -->
+        <createTable tableName="case_summaries" schemaName="onecms">
+            <column name="case_summaries_id" type="BIGINT" defaultValueSequenceNext="case_summaries_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="case_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="summary_text" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Foreign Key Constraint to cases table -->
+        <addForeignKeyConstraint
+            baseTableName="case_summaries" baseColumnNames="case_id" baseTableSchemaName="onecms"
+            constraintName="fk_case_summaries_case"
+            referencedTableName="cases" referencedColumnNames="id" referencedTableSchemaName="onecms"
+            onDelete="CASCADE"/>
+
+        <!-- Performance Indexes -->
+        <createIndex tableName="case_summaries" schemaName="onecms" indexName="idx_case_summaries_case_id">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex tableName="case_summaries" schemaName="onecms" indexName="idx_case_summaries_status_id">
+            <column name="status_id"/>
+        </createIndex>
+        
+        <!-- Composite unique constraint for case_id + status_id combination -->
+        <addUniqueConstraint
+            tableName="case_summaries"
+            columnNames="case_id, status_id"
+            constraintName="uq_case_summaries_case_status"
+            schemaName="onecms"/>
+    </changeSet>
+
+</databaseChangeLog>
